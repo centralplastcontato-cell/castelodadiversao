@@ -31,6 +31,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Plus, Loader2, Users, Shield } from "lucide-react";
@@ -495,11 +506,38 @@ export default function UsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Switch
-                          checked={u.is_active}
-                          onCheckedChange={() => handleToggleActive(u.user_id, u.is_active)}
-                          disabled={u.user_id === user.id}
-                        />
+                        {u.user_id === user.id ? (
+                          <Switch checked={u.is_active} disabled />
+                        ) : u.is_active ? (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Switch checked={u.is_active} />
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  O usuário <strong>{u.full_name}</strong> não poderá mais acessar o sistema. 
+                                  Você pode reativá-lo a qualquer momento.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleToggleActive(u.user_id, u.is_active)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Desativar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        ) : (
+                          <Switch
+                            checked={u.is_active}
+                            onCheckedChange={() => handleToggleActive(u.user_id, u.is_active)}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

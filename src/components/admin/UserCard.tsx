@@ -9,6 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { User, Mail } from "lucide-react";
 
 interface UserCardProps {
@@ -71,16 +82,43 @@ export function UserCard({
           </Select>
         </div>
 
-        {/* Active toggle */}
+        {/* Active toggle with confirmation */}
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <span className="text-sm text-muted-foreground">
             {isCurrentUser ? "Você não pode se desativar" : "Usuário ativo"}
           </span>
-          <Switch
-            checked={user.is_active}
-            onCheckedChange={() => onToggleActive(user.user_id, user.is_active)}
-            disabled={isCurrentUser}
-          />
+          {isCurrentUser ? (
+            <Switch checked={user.is_active} disabled />
+          ) : user.is_active ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Switch checked={user.is_active} />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    O usuário <strong>{user.full_name}</strong> não poderá mais acessar o sistema. 
+                    Você pode reativá-lo a qualquer momento.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => onToggleActive(user.user_id, user.is_active)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Desativar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            <Switch
+              checked={user.is_active}
+              onCheckedChange={() => onToggleActive(user.user_id, user.is_active)}
+            />
+          )}
         </div>
       </CardContent>
     </Card>
