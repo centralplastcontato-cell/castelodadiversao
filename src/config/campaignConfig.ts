@@ -39,7 +39,7 @@ export const campaignConfig = {
   chatbot: {
     monthOptions: ["Fevereiro", "Março"],
     dayOptions: ["Segunda a Quinta", "Sexta", "Sábado", "Domingo"],
-    guestOptions: ["Até 50 pessoas", "51-70 pessoas", "71-100 pessoas", "100+ pessoas"],
+    guestOptions: ["50 pessoas", "60 pessoas", "70 pessoas", "80 pessoas", "90 pessoas", "100 pessoas"],
   },
 
   // IDENTIFICAÇÃO
