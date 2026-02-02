@@ -76,7 +76,7 @@ export const castleBenefits = [
   },
   {
     icon: "🎉",
-    title: "+15 Anos de Experiência",
+    title: "+10 Anos na Cidade",
     description: "Milhares de festas realizadas com excelência e alegria",
   },
 ];
