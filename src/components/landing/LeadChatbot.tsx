@@ -68,7 +68,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
       {
         id: "day-of-month",
         type: "bot",
-        content: `Qual dia de ${leadData.month} você prefere?`,
+        content: `Para qual dia de ${leadData.month} você gostaria de agendar?`,
         options: dayOptions,
       },
     ]);
@@ -333,7 +333,11 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
                   >
                     <p className="whitespace-pre-line">{message.content}</p>
                     {message.options && (
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className={`mt-3 ${
+                        message.id === "day-of-month" 
+                          ? "grid grid-cols-7 gap-1" 
+                          : "flex flex-wrap gap-2"
+                      }`}>
                         {message.options.map((option) => (
                           <button
                             key={option}
@@ -342,9 +346,13 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
                                 ? handleDayOfMonthSelect(option) 
                                 : handleOptionSelect(option)
                             }
-                            className="bg-card text-foreground px-4 py-2 rounded-full text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm"
+                            className={`${
+                              message.id === "day-of-month"
+                                ? "bg-card text-foreground w-9 h-9 rounded-lg text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm flex items-center justify-center"
+                                : "bg-card text-foreground px-4 py-2 rounded-full text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm"
+                            }`}
                           >
-                            {message.id === "day-of-month" ? `Dia ${option}` : option}
+                            {option}
                           </button>
                         ))}
                       </div>
