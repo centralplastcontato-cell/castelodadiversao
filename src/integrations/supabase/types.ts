@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      campaign_leads: {
+        Row: {
+          campaign_id: string
+          campaign_name: string | null
+          created_at: string
+          day_preference: string | null
+          guests: string | null
+          id: string
+          month: string | null
+          name: string
+          whatsapp: string
+        }
+        Insert: {
+          campaign_id: string
+          campaign_name?: string | null
+          created_at?: string
+          day_preference?: string | null
+          guests?: string | null
+          id?: string
+          month?: string | null
+          name: string
+          whatsapp: string
+        }
+        Update: {
+          campaign_id?: string
+          campaign_name?: string | null
+          created_at?: string
+          day_preference?: string | null
+          guests?: string | null
+          id?: string
+          month?: string | null
+          name?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
