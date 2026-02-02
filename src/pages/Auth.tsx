@@ -122,14 +122,14 @@ export default function Auth() {
           Voltar ao site
         </Button>
 
-        <div className="relative rounded-3xl overflow-hidden shadow-floating">
+        <div className="relative rounded-3xl overflow-hidden" style={{ boxShadow: '0 20px 60px -15px hsl(25 95% 55% / 0.25)' }}>
           {/* Card background with warm gradient border effect */}
           <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 via-festive/20 to-castle/30 p-[2px] rounded-3xl">
             <div className="w-full h-full bg-card rounded-3xl" />
           </div>
           
           {/* Card content */}
-          <div className="relative bg-card/95 backdrop-blur-sm p-8 rounded-3xl border border-secondary/20">
+          <div className="relative bg-card p-8 rounded-3xl border border-secondary/20">
             <div className="text-center mb-8">
               <div className="relative inline-block">
                 <div className="absolute -inset-4 bg-gradient-to-r from-secondary/25 via-festive/25 to-castle/25 rounded-full blur-xl opacity-60" />
@@ -182,7 +182,7 @@ export default function Auth() {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-cta hover:opacity-90 text-white font-semibold py-5 rounded-xl shadow-button hover:shadow-floating transition-all duration-300"
+                className="w-full bg-gradient-cta hover:opacity-90 text-white font-semibold py-5 rounded-xl shadow-button transition-all duration-300"
                 disabled={isLoading}
               >
                 {isLoading ? (
