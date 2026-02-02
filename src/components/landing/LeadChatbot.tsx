@@ -397,7 +397,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               <div className="flex flex-wrap justify-center gap-2">
                 <a
                   href={`https://wa.me/5515991336278?text=${encodeURIComponent(
-                    `Olá! 🎉\n\nVim pelo site do Castelo da Diversão e gostaria de saber mais sobre a promoção!\n\n📋 *Meus dados:*\n👤 Nome: ${leadData.name || ''}\n📍 Unidade: ${leadData.unit || ''}\n📅 Data: ${leadData.dayOfMonth || ''}/${leadData.month || ''}\n👥 Convidados: ${leadData.guests || ''}\n\nAguardo retorno! 😊`
+                    `Ola!\n\nVim pelo site do Castelo da Diversao e gostaria de saber mais sobre a promocao!\n\n*Meus dados:*\nNome: ${leadData.name || ''}\nUnidade: ${leadData.unit || ''}\nData: ${leadData.dayOfMonth || ''}/${leadData.month || ''}\nConvidados: ${leadData.guests || ''}\n\nAguardo retorno!`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -409,7 +409,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
                 </a>
                 <a
                   href={`https://wa.me/5515974034646?text=${encodeURIComponent(
-                    `Olá! 🎉\n\nVim pelo site do Castelo da Diversão e gostaria de saber mais sobre a promoção!\n\n📋 *Meus dados:*\n👤 Nome: ${leadData.name || ''}\n📍 Unidade: ${leadData.unit || ''}\n📅 Data: ${leadData.dayOfMonth || ''}/${leadData.month || ''}\n👥 Convidados: ${leadData.guests || ''}\n\nAguardo retorno! 😊`
+                    `Ola!\n\nVim pelo site do Castelo da Diversao e gostaria de saber mais sobre a promocao!\n\n*Meus dados:*\nNome: ${leadData.name || ''}\nUnidade: ${leadData.unit || ''}\nData: ${leadData.dayOfMonth || ''}/${leadData.month || ''}\nConvidados: ${leadData.guests || ''}\n\nAguardo retorno!`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
