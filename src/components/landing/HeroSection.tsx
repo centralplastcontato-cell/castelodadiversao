@@ -25,7 +25,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
             key={i}
             className="absolute w-3 h-3 rounded-full"
             style={{
-              background: ['hsl(330 85% 55%)', 'hsl(40 95% 55%)', 'hsl(280 65% 50%)', 'hsl(175 70% 45%)'][i % 4],
+              background: ['hsl(210 90% 50%)', 'hsl(45 95% 55%)', 'hsl(145 70% 40%)', 'hsl(25 95% 55%)', 'hsl(5 85% 55%)'][i % 5],
               left: `${Math.random() * 100}%`,
               top: `-5%`,
             }}

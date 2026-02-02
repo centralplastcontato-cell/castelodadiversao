@@ -6,60 +6,60 @@
 
 @layer base {
   :root {
-    /* Festive Children's Party Theme */
-    --background: 45 100% 98%;
-    --foreground: 330 80% 20%;
+    /* Festive Party Theme - Inclusive & Vibrant */
+    --background: 45 50% 98%;
+    --foreground: 220 30% 20%;
 
     --card: 0 0% 100%;
-    --card-foreground: 330 80% 20%;
+    --card-foreground: 220 30% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 330 80% 20%;
+    --popover-foreground: 220 30% 20%;
 
-    /* Vibrant Magenta Pink - Main Brand */
-    --primary: 330 85% 55%;
+    /* Vibrant Blue - Main Brand (from logo) */
+    --primary: 210 90% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Sunny Yellow Orange */
-    --secondary: 40 95% 55%;
-    --secondary-foreground: 330 80% 20%;
+    /* Sunny Yellow Orange (from logo) */
+    --secondary: 45 95% 55%;
+    --secondary-foreground: 220 30% 20%;
 
-    /* Soft Lavender */
-    --muted: 280 30% 95%;
-    --muted-foreground: 280 20% 45%;
+    /* Soft Neutral */
+    --muted: 45 20% 95%;
+    --muted-foreground: 220 15% 45%;
 
-    /* Bright Teal Accent */
-    --accent: 175 70% 45%;
+    /* Fresh Green Accent (from logo) */
+    --accent: 145 70% 40%;
     --accent-foreground: 0 0% 100%;
 
-    /* Festive Orange */
+    /* Festive Orange (from logo) */
     --festive: 25 95% 55%;
     --festive-foreground: 0 0% 100%;
 
-    /* Castle Purple */
-    --castle: 280 65% 50%;
+    /* Fun Red (from logo) */
+    --castle: 5 85% 55%;
     --castle-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 330 30% 90%;
-    --input: 330 30% 90%;
-    --ring: 330 85% 55%;
+    --border: 220 20% 90%;
+    --input: 220 20% 90%;
+    --ring: 210 90% 50%;
 
     --radius: 1rem;
 
-    /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(330 85% 55%) 0%, hsl(280 65% 50%) 50%, hsl(330 85% 55%) 100%);
-    --gradient-festive: linear-gradient(135deg, hsl(40 95% 55%) 0%, hsl(25 95% 55%) 100%);
-    --gradient-cta: linear-gradient(135deg, hsl(25 95% 55%) 0%, hsl(330 85% 55%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(45 100% 98%) 100%);
-    --gradient-confetti: linear-gradient(135deg, hsl(330 85% 55% / 0.1) 0%, hsl(40 95% 55% / 0.1) 100%);
+    /* Gradients - More colorful and inclusive */
+    --gradient-hero: linear-gradient(135deg, hsl(210 90% 50%) 0%, hsl(145 70% 40%) 50%, hsl(210 90% 50%) 100%);
+    --gradient-festive: linear-gradient(135deg, hsl(45 95% 55%) 0%, hsl(25 95% 55%) 100%);
+    --gradient-cta: linear-gradient(135deg, hsl(25 95% 55%) 0%, hsl(5 85% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(45 50% 98%) 100%);
+    --gradient-confetti: linear-gradient(135deg, hsl(210 90% 50% / 0.1) 0%, hsl(45 95% 55% / 0.1) 100%);
 
     /* Shadows */
-    --shadow-card: 0 10px 40px -10px hsl(330 85% 55% / 0.2);
-    --shadow-button: 0 8px 25px -5px hsl(330 85% 55% / 0.4);
-    --shadow-floating: 0 20px 60px -15px hsl(280 65% 50% / 0.3);
+    --shadow-card: 0 10px 40px -10px hsl(210 90% 50% / 0.15);
+    --shadow-button: 0 8px 25px -5px hsl(25 95% 55% / 0.4);
+    --shadow-floating: 0 20px 60px -15px hsl(210 90% 50% / 0.25);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -72,39 +72,39 @@
   }
 
   .dark {
-    --background: 280 30% 8%;
-    --foreground: 45 100% 98%;
+    --background: 220 30% 8%;
+    --foreground: 45 50% 98%;
 
-    --card: 280 30% 12%;
-    --card-foreground: 45 100% 98%;
+    --card: 220 30% 12%;
+    --card-foreground: 45 50% 98%;
 
-    --popover: 280 30% 12%;
-    --popover-foreground: 45 100% 98%;
+    --popover: 220 30% 12%;
+    --popover-foreground: 45 50% 98%;
 
-    --primary: 330 85% 60%;
+    --primary: 210 90% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 95% 55%;
-    --secondary-foreground: 280 30% 8%;
+    --secondary: 45 95% 55%;
+    --secondary-foreground: 220 30% 8%;
 
-    --muted: 280 30% 18%;
-    --muted-foreground: 280 20% 70%;
+    --muted: 220 30% 18%;
+    --muted-foreground: 220 20% 70%;
 
-    --accent: 175 70% 50%;
+    --accent: 145 70% 45%;
     --accent-foreground: 0 0% 100%;
 
     --festive: 25 95% 55%;
     --festive-foreground: 0 0% 100%;
 
-    --castle: 280 65% 55%;
+    --castle: 5 85% 60%;
     --castle-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 280 30% 20%;
-    --input: 280 30% 20%;
-    --ring: 330 85% 60%;
+    --border: 220 30% 20%;
+    --input: 220 30% 20%;
+    --ring: 210 90% 55%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -153,7 +153,7 @@
   }
 
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-castle to-festive;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-festive;
   }
 
   .floating-animation {
@@ -166,10 +166,10 @@
 
   .confetti-bg {
     background-image: 
-      radial-gradient(circle at 20% 80%, hsl(330 85% 55% / 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, hsl(40 95% 55% / 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, hsl(280 65% 50% / 0.05) 0%, transparent 50%),
-      radial-gradient(circle at 60% 60%, hsl(175 70% 45% / 0.05) 0%, transparent 50%);
+      radial-gradient(circle at 20% 80%, hsl(210 90% 50% / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsl(45 95% 55% / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, hsl(145 70% 40% / 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 60% 60%, hsl(25 95% 55% / 0.05) 0%, transparent 50%);
   }
 }
 
@@ -218,10 +218,10 @@
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px hsl(330 85% 55% / 0.4);
+    box-shadow: 0 0 20px hsl(210 90% 50% / 0.4);
   }
   50% {
-    box-shadow: 0 0 40px hsl(330 85% 55% / 0.6);
+    box-shadow: 0 0 40px hsl(210 90% 50% / 0.6);
   }
 }
 
