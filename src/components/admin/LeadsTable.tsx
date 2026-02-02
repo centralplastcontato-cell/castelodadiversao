@@ -50,6 +50,7 @@ import {
   Eye,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { LeadCard } from "./LeadCard";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -233,12 +234,12 @@ export function LeadsTable({
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center justify-between">
+      {/* Header */}
+      <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-primary" />
-          <span className="font-medium text-foreground">
-            {totalCount} lead{totalCount !== 1 ? "s" : ""} encontrado
-            {totalCount !== 1 ? "s" : ""}
+          <span className="font-medium text-foreground text-sm sm:text-base">
+            {totalCount} lead{totalCount !== 1 ? "s" : ""}
           </span>
         </div>
 
@@ -249,9 +250,12 @@ export function LeadsTable({
                 {isDeleting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  <Trash2 className="w-4 h-4 sm:mr-2" />
                 )}
-                Excluir {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}
+                <span className="hidden sm:inline">
+                  Excluir {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}
+                </span>
+                <span className="sm:hidden">{selectedIds.size}</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -276,7 +280,28 @@ export function LeadsTable({
         )}
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Mobile: Card View */}
+      <div className="block sm:hidden p-3 space-y-3">
+        {leads.map((lead) => (
+          <LeadCard
+            key={lead.id}
+            lead={lead}
+            responsaveis={responsaveis}
+            onLeadClick={onLeadClick}
+            onStatusChange={handleStatusChangeInline}
+            onDelete={handleDeleteSingle}
+            canEdit={canEdit}
+            isAdmin={isAdmin}
+            isSelected={selectedIds.has(lead.id)}
+            onToggleSelect={toggleSelect}
+            formatWhatsAppLink={formatWhatsAppLink}
+            getResponsavelName={getResponsavelName}
+          />
+        ))}
+      </div>
+
+      {/* Desktop: Table View */}
+      <div className="hidden sm:block overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
