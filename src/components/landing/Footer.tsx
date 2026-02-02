@@ -1,5 +1,5 @@
 import { campaignConfig } from "@/config/campaignConfig";
-import logoCastelo from "@/assets/logo-castelo.jpeg";
+import logoCastelo from "@/assets/logo-castelo.png";
 
 export function Footer() {
   return (

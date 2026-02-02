@@ -7,7 +7,7 @@ import { LeadsFilters } from "@/components/admin/LeadsFilters";
 import { Button } from "@/components/ui/button";
 import { LogOut, Users, ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import logoCastelo from "@/assets/logo-castelo.jpeg";
+import logoCastelo from "@/assets/logo-castelo.png";
 
 export interface LeadFilters {
   campaign: string;
