@@ -59,15 +59,15 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
     return monthMap[month] || 31;
   };
 
-  const addDayOfMonthStep = () => {
-    const daysInMonth = getDaysInMonth(leadData.month || "");
+  const addDayOfMonthStep = (month: string) => {
+    const daysInMonth = getDaysInMonth(month);
     const dayOptions = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`);
     setMessages((prev) => [
       ...prev,
       {
         id: "day-of-month",
         type: "bot",
-        content: `Para qual dia de ${leadData.month} você gostaria de agendar?`,
+        content: `Para qual dia de ${month} você gostaria de agendar?`,
         options: dayOptions,
       },
     ]);
@@ -162,10 +162,10 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               },
             ]);
             setTimeout(() => {
-              addDayOfMonthStep();
+              addDayOfMonthStep(option);
             }, 1500);
           } else {
-            addDayOfMonthStep();
+            addDayOfMonthStep(option);
           }
           setCurrentStep(2);
           break;
