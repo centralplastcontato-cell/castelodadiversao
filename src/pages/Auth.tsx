@@ -1,0 +1,193 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/hooks/use-toast";
+import { Loader2, Lock, Mail, ArrowLeft } from "lucide-react";
+import { z } from "zod";
+
+const emailSchema = z.string().email("Email inválido");
+const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres");
+
+export default function Auth() {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) {
+          navigate("/admin");
+        }
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        navigate("/admin");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      emailSchema.parse(email);
+      passwordSchema.parse(password);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Erro de validação",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setIsLoading(true);
+
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/admin`,
+          },
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Conta criada!",
+          description: "Verifique seu email para confirmar o cadastro.",
+        });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        navigate("/admin");
+      }
+    } catch (error: any) {
+      let message = "Ocorreu um erro. Tente novamente.";
+      
+      if (error.message?.includes("Invalid login credentials")) {
+        message = "Email ou senha incorretos.";
+      } else if (error.message?.includes("User already registered")) {
+        message = "Este email já está cadastrado.";
+      } else if (error.message?.includes("Email not confirmed")) {
+        message = "Por favor, confirme seu email antes de entrar.";
+      }
+
+      toast({
+        title: "Erro",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/")}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Voltar ao site
+        </Button>
+
+        <div className="bg-card rounded-2xl shadow-floating p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-hero rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <h1 className="font-display text-2xl font-bold text-foreground">
+              Área Administrativa
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {isSignUp ? "Crie sua conta" : "Entre para gerenciar leads"}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-gradient-hero hover:opacity-90"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : isSignUp ? (
+                "Criar conta"
+              ) : (
+                "Entrar"
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-primary hover:underline text-sm"
+            >
+              {isSignUp
+                ? "Já tem uma conta? Entre aqui"
+                : "Não tem conta? Cadastre-se"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
