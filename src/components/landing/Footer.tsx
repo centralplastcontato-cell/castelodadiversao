@@ -1,13 +1,16 @@
 import { campaignConfig } from "@/config/campaignConfig";
+import logoCastelo from "@/assets/logo-castelo.jpeg";
 
 export function Footer() {
   return (
     <footer className="bg-foreground text-primary-foreground py-12">
       <div className="section-container">
         <div className="text-center">
-          <h3 className="text-3xl font-display font-bold mb-4">
-            🏰 Castelo da Diversão
-          </h3>
+          <img 
+            src={logoCastelo} 
+            alt="Castelo da Diversão" 
+            className="w-32 md:w-40 mx-auto mb-4"
+          />
           <p className="text-primary-foreground/70 mb-6 max-w-md mx-auto">
             Transformando sonhos em festas inesquecíveis há mais de 15 anos.
           </p>

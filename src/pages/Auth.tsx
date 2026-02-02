@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Lock, Mail, ArrowLeft } from "lucide-react";
 import { z } from "zod";
+import logoCastelo from "@/assets/logo-castelo.jpeg";
 
 const emailSchema = z.string().email("Email inválido");
 const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres");
@@ -116,9 +117,11 @@ export default function Auth() {
 
         <div className="bg-card rounded-2xl shadow-floating p-8">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-hero rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-8 h-8 text-primary-foreground" />
-            </div>
+            <img 
+              src={logoCastelo} 
+              alt="Castelo da Diversão" 
+              className="w-32 mx-auto mb-4"
+            />
             <h1 className="font-display text-2xl font-bold text-foreground">
               Área Administrativa
             </h1>
