@@ -53,7 +53,8 @@ export default function UsersPage() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<AppRole>("comercial");
 
-  const { isAdmin, isLoading: isLoadingRole, hasFetched } = useUserRole(user?.id);
+  const { isAdmin, isLoading: isLoadingRole, hasFetched, error: roleError } = useUserRole(user?.id);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -80,16 +81,29 @@ export default function UsersPage() {
   }, [isLoading, user, navigate]);
 
   useEffect(() => {
-    // Only check access after we've actually fetched the role
-    if (!isLoadingRole && hasFetched && !isAdmin && user) {
-      toast({
-        title: "Acesso negado",
-        description: "Você não tem permissão para acessar esta página.",
-        variant: "destructive",
-      });
-      navigate("/admin");
+    // Only check access after we've actually fetched the role AND have a definitive answer
+    if (!isLoadingRole && hasFetched && user && !accessChecked) {
+      console.log('[Users] Access check - isAdmin:', isAdmin, 'hasFetched:', hasFetched, 'roleError:', roleError);
+      
+      if (!isAdmin) {
+        // Add a small delay to ensure we're not in a race condition
+        const timeoutId = setTimeout(() => {
+          console.log('[Users] Confirmed non-admin, redirecting...');
+          toast({
+            title: "Acesso negado",
+            description: "Você não tem permissão para acessar esta página.",
+            variant: "destructive",
+          });
+          navigate("/admin");
+        }, 300);
+        
+        return () => clearTimeout(timeoutId);
+      } else {
+        console.log('[Users] Admin access confirmed');
+        setAccessChecked(true);
+      }
     }
-  }, [isLoadingRole, hasFetched, isAdmin, user, navigate]);
+  }, [isLoadingRole, hasFetched, isAdmin, user, navigate, accessChecked, roleError]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -261,15 +275,17 @@ export default function UsersPage() {
     }
   };
 
-  if (isLoading || isLoadingRole) {
+  // Show loading while checking authentication and role
+  if (isLoading || isLoadingRole || (!accessChecked && !roleError)) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Verificando permissões...</p>
       </div>
     );
   }
 
-  if (!user || !isAdmin) {
+  if (!user || (!isAdmin && hasFetched)) {
     return null;
   }
 
