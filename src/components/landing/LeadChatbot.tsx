@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, MessageCircle } from "lucide-react";
+import { X, Send, MessageCircle, Loader2 } from "lucide-react";
 import { campaignConfig } from "@/config/campaignConfig";
-
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 interface Message {
   id: string;
   type: "bot" | "user";
@@ -31,6 +32,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
   const [inputValue, setInputValue] = useState("");
   const [inputType, setInputType] = useState<"name" | "whatsapp" | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -120,8 +122,8 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
     }, 500);
   };
 
-  const handleInputSubmit = () => {
-    if (!inputValue.trim()) return;
+  const handleInputSubmit = async () => {
+    if (!inputValue.trim() || isSaving) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -135,12 +137,25 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
       setInputValue("");
       setInputType("whatsapp");
     } else if (inputType === "whatsapp") {
-      setLeadData((prev) => ({ ...prev, whatsapp: inputValue }));
+      const whatsappValue = inputValue;
       setInputValue("");
       setInputType(null);
+      setIsSaving(true);
 
-      // Complete the flow
-      setTimeout(() => {
+      try {
+        // Salvar lead no banco de dados
+        const { error } = await supabase.from("campaign_leads").insert({
+          name: leadData.name,
+          whatsapp: whatsappValue,
+          month: leadData.month,
+          day_preference: leadData.day,
+          guests: leadData.guests,
+          campaign_id: campaignConfig.campaignId,
+          campaign_name: campaignConfig.campaignName,
+        });
+
+        if (error) throw error;
+
         setMessages((prev) => [
           ...prev,
           {
@@ -150,14 +165,18 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
           },
         ]);
         setIsComplete(true);
-
-        // Here you would typically send the lead data to your backend
-        console.log("Lead captured:", {
-          ...leadData,
-          whatsapp: inputValue,
-          campaign: campaignConfig.campaignId,
+      } catch (error) {
+        console.error("Erro ao salvar lead:", error);
+        toast({
+          title: "Erro ao enviar",
+          description: "Tente novamente em alguns instantes.",
+          variant: "destructive",
         });
-      }, 500);
+        setInputType("whatsapp");
+        setInputValue(whatsappValue);
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -168,6 +187,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
     setInputValue("");
     setInputType(null);
     setIsComplete(false);
+    setIsSaving(false);
   };
 
   if (!isOpen) return null;
@@ -267,9 +287,10 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
                 />
                 <button
                   onClick={handleInputSubmit}
-                  className="bg-primary text-primary-foreground p-3 rounded-full hover:bg-primary/90 transition-colors"
+                  disabled={isSaving}
+                  className="bg-primary text-primary-foreground p-3 rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
-                  <Send className="w-5 h-5" />
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </button>
               </div>
             </motion.div>
