@@ -103,13 +103,9 @@ export default function Auth() {
           Voltar ao site
         </Button>
 
-        {/* Soft cream card */}
+        {/* Gradient card with festive colors */}
         <div 
-          className="rounded-3xl p-8 border border-secondary/30"
-          style={{ 
-            backgroundColor: 'hsl(40 40% 96%)',
-            boxShadow: '0 25px 50px -12px rgba(245, 158, 11, 0.15)' 
-          }}
+          className="rounded-3xl p-8 border border-primary/20 bg-gradient-to-br from-primary/10 via-secondary/20 to-festive/10 backdrop-blur-sm shadow-floating"
         >
           <div className="text-center mb-8">
             <img 
