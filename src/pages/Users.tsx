@@ -53,7 +53,7 @@ export default function UsersPage() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<AppRole>("comercial");
 
-  const { isAdmin, isLoading: isLoadingRole } = useUserRole(user?.id);
+  const { isAdmin, isLoading: isLoadingRole, hasFetched } = useUserRole(user?.id);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -80,7 +80,8 @@ export default function UsersPage() {
   }, [isLoading, user, navigate]);
 
   useEffect(() => {
-    if (!isLoadingRole && !isAdmin && user) {
+    // Only check access after we've actually fetched the role
+    if (!isLoadingRole && hasFetched && !isAdmin && user) {
       toast({
         title: "Acesso negado",
         description: "Você não tem permissão para acessar esta página.",
@@ -88,7 +89,7 @@ export default function UsersPage() {
       });
       navigate("/admin");
     }
-  }, [isLoadingRole, isAdmin, user, navigate]);
+  }, [isLoadingRole, hasFetched, isAdmin, user, navigate]);
 
   useEffect(() => {
     if (isAdmin) {
