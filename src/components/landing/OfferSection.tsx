@@ -36,29 +36,39 @@ export function OfferSection({ onCtaClick }: OfferSectionProps) {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="card-festive p-8"
+            className="relative p-8 rounded-3xl overflow-hidden border-2 border-primary/20 shadow-xl"
           >
-            <h3 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
-              <Star className="w-6 h-6 text-secondary" />
-              O que está incluso
-            </h3>
-            <ul className="space-y-4">
-              {campaignConfig.offer.benefits.map((benefit, index) => (
-                <motion.li
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                  className="flex items-start gap-3"
-                >
-                  <span className="flex-shrink-0 w-6 h-6 bg-accent rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-accent-foreground" />
-                  </span>
-                  <span className="text-lg text-foreground">{benefit}</span>
-                </motion.li>
-              ))}
-            </ul>
+            {/* Gradient Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/10 to-secondary/10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+            
+            {/* Decorative circles */}
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-2xl" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-accent/20 rounded-full blur-2xl" />
+
+            <div className="relative z-10">
+              <h3 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
+                <Star className="w-6 h-6 text-secondary fill-secondary" />
+                O que está incluso
+              </h3>
+              <ul className="space-y-4">
+                {campaignConfig.offer.benefits.map((benefit, index) => (
+                  <motion.li
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 + index * 0.1 }}
+                    className="flex items-start gap-3"
+                  >
+                    <span className="flex-shrink-0 w-6 h-6 bg-accent rounded-full flex items-center justify-center shadow-md">
+                      <Check className="w-4 h-4 text-accent-foreground" />
+                    </span>
+                    <span className="text-lg text-foreground font-medium">{benefit}</span>
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
           </motion.div>
 
           {/* CTA Card */}
@@ -67,36 +77,51 @@ export function OfferSection({ onCtaClick }: OfferSectionProps) {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="card-festive p-8 bg-gradient-to-br from-primary/5 to-castle/5 border-primary/20"
+            className="relative p-8 rounded-3xl overflow-hidden border-2 border-festive/30 shadow-xl"
           >
-            <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-hero rounded-full flex items-center justify-center mx-auto mb-6">
-                <Gift className="w-10 h-10 text-primary-foreground" />
+            {/* Vibrant Gradient Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-festive/20 via-secondary/15 to-castle/10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/70 to-transparent" />
+            
+            {/* Decorative elements */}
+            <div className="absolute -top-16 -right-16 w-40 h-40 bg-festive/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-secondary/30 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-castle/10 rounded-full blur-2xl" />
+
+            <div className="relative z-10">
+              <div className="text-center">
+                <motion.div 
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="w-20 h-20 bg-gradient-to-br from-festive to-castle rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg"
+                >
+                  <Gift className="w-10 h-10 text-festive-foreground" />
+                </motion.div>
+                
+                <h3 className="text-2xl font-display font-bold text-foreground mb-4">
+                  Garanta sua data!
+                </h3>
+                
+                <p className="text-muted-foreground mb-6">
+                  As vagas são limitadas e o Carnaval NÃO ESPERA! 🎭💃
+                </p>
+
+                <button onClick={onCtaClick} className="btn-cta w-full">
+                  Quero Esta Oferta! 🎁
+                </button>
               </div>
-              
-              <h3 className="text-2xl font-display font-bold text-foreground mb-4">
-                Garanta sua data!
-              </h3>
-              
-              <p className="text-muted-foreground mb-6">
-                As vagas são limitadas e o Carnaval NÃO ESPERA! 🎭💃
-              </p>
 
-              <button onClick={onCtaClick} className="btn-cta w-full">
-                Quero Esta Oferta! 🎁
-              </button>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-border">
-              <p className="text-sm text-muted-foreground font-medium mb-3">Condições:</p>
-              <ul className="space-y-2">
-                {campaignConfig.offer.conditions.map((condition, index) => (
-                  <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    {condition}
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-8 pt-6 border-t border-foreground/10">
+                <p className="text-sm text-muted-foreground font-medium mb-3">Condições:</p>
+                <ul className="space-y-2">
+                  {campaignConfig.offer.conditions.map((condition, index) => (
+                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                      <span className="text-festive">•</span>
+                      {condition}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </motion.div>
         </div>
