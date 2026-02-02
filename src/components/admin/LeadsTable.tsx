@@ -3,6 +3,13 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  Lead,
+  LEAD_STATUS_LABELS,
+  LEAD_STATUS_COLORS,
+  LeadStatus,
+  UserWithRole,
+} from "@/types/crm";
+import {
   Table,
   TableBody,
   TableCell,
@@ -10,6 +17,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,88 +38,52 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ExternalLink, Phone, Users, Calendar, Loader2, MapPin, Trash2 } from "lucide-react";
-import { LeadFilters } from "@/pages/Admin";
+import {
+  ExternalLink,
+  Phone,
+  Users,
+  Calendar,
+  Loader2,
+  MapPin,
+  Trash2,
+  MessageSquare,
+  Eye,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-interface Lead {
-  id: string;
-  name: string;
-  whatsapp: string;
-  unit: string | null;
-  month: string | null;
-  day_preference: string | null;
-  guests: string | null;
-  campaign_id: string;
-  campaign_name: string | null;
-  created_at: string;
-}
-
 interface LeadsTableProps {
-  filters: LeadFilters;
-  refreshKey: number;
+  leads: Lead[];
+  isLoading: boolean;
+  totalCount: number;
+  responsaveis: UserWithRole[];
+  onLeadClick: (lead: Lead) => void;
+  onStatusChange: (leadId: string, newStatus: LeadStatus) => void;
   onRefresh: () => void;
+  canEdit: boolean;
+  isAdmin: boolean;
+  currentUserId: string;
+  currentUserName: string;
 }
 
-export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+export function LeadsTable({
+  leads,
+  isLoading,
+  totalCount,
+  responsaveis,
+  onLeadClick,
+  onStatusChange,
+  onRefresh,
+  canEdit,
+  isAdmin,
+  currentUserId,
+  currentUserName,
+}: LeadsTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const fetchLeads = async () => {
-      setIsLoading(true);
-
-      let query = supabase
-        .from("campaign_leads")
-        .select("*", { count: "exact" })
-        .order("created_at", { ascending: false });
-
-      // Apply filters
-      if (filters.unit && filters.unit !== "all") {
-        query = query.eq("unit", filters.unit);
-      }
-
-      if (filters.campaign && filters.campaign !== "all") {
-        query = query.eq("campaign_id", filters.campaign);
-      }
-
-      if (filters.startDate) {
-        query = query.gte(
-          "created_at",
-          filters.startDate.toISOString()
-        );
-      }
-
-      if (filters.endDate) {
-        const endOfDay = new Date(filters.endDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        query = query.lte("created_at", endOfDay.toISOString());
-      }
-
-      if (filters.search) {
-        query = query.or(
-          `name.ilike.%${filters.search}%,whatsapp.ilike.%${filters.search}%`
-        );
-      }
-
-      const { data, count, error } = await query;
-
-      if (error) {
-        console.error("Erro ao buscar leads:", error);
-      } else {
-        setLeads(data || []);
-        setTotalCount(count || 0);
-      }
-
-      setIsLoading(false);
-    };
-
-    fetchLeads();
-    setSelectedIds(new Set()); // Clear selection on refresh
-  }, [filters, refreshKey]);
+    setSelectedIds(new Set());
+  }, [leads]);
 
   const formatWhatsAppLink = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, "");
@@ -113,6 +91,12 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
       ? cleanPhone
       : `55${cleanPhone}`;
     return `https://wa.me/${phoneWithCountry}`;
+  };
+
+  const getResponsavelName = (responsavelId: string | null) => {
+    if (!responsavelId) return null;
+    const r = responsaveis.find((r) => r.user_id === responsavelId);
+    return r?.full_name || null;
   };
 
   const toggleSelectAll = () => {
@@ -131,6 +115,22 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
       newSet.add(id);
     }
     setSelectedIds(newSet);
+  };
+
+  const addHistoryEntry = async (
+    leadId: string,
+    action: string,
+    oldValue: string | null,
+    newValue: string | null
+  ) => {
+    await supabase.from("lead_history").insert({
+      lead_id: leadId,
+      user_id: currentUserId,
+      user_name: currentUserName,
+      action,
+      old_value: oldValue,
+      new_value: newValue,
+    });
   };
 
   const handleDeleteSingle = async (id: string) => {
@@ -182,6 +182,33 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
     setIsDeleting(false);
   };
 
+  const handleStatusChangeInline = async (lead: Lead, newStatus: LeadStatus) => {
+    try {
+      await addHistoryEntry(
+        lead.id,
+        "Alteração de status",
+        LEAD_STATUS_LABELS[lead.status],
+        LEAD_STATUS_LABELS[newStatus]
+      );
+
+      const { error } = await supabase
+        .from("campaign_leads")
+        .update({ status: newStatus })
+        .eq("id", lead.id);
+
+      if (error) throw error;
+
+      onStatusChange(lead.id, newStatus);
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Erro ao atualizar status",
+        description: "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="bg-card rounded-xl border border-border p-8 flex items-center justify-center">
@@ -198,9 +225,7 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
           Nenhum lead encontrado
         </h3>
         <p className="text-muted-foreground">
-          {filters.search || filters.campaign !== "all" || filters.unit !== "all" || filters.startDate || filters.endDate
-            ? "Tente ajustar os filtros para ver mais resultados."
-            : "Os leads capturados aparecerão aqui."}
+          Tente ajustar os filtros para ver mais resultados.
         </p>
       </div>
     );
@@ -217,7 +242,7 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
           </span>
         </div>
 
-        {selectedIds.size > 0 && (
+        {isAdmin && selectedIds.size > 0 && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" disabled={isDeleting}>
@@ -233,7 +258,8 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirmar exclusão em lote</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza que deseja excluir {selectedIds.size} lead(s)? Esta ação não pode ser desfeita.
+                  Tem certeza que deseja excluir {selectedIds.size} lead(s)? Esta
+                  ação não pode ser desfeita.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -254,35 +280,49 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedIds.size === leads.length && leads.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                  aria-label="Selecionar todos"
-                />
-              </TableHead>
+              {isAdmin && (
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedIds.size === leads.length && leads.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
+              )}
               <TableHead>Nome</TableHead>
               <TableHead>WhatsApp</TableHead>
               <TableHead>Unidade</TableHead>
-              <TableHead>Mês</TableHead>
-              <TableHead>Dia</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Responsável</TableHead>
+              <TableHead>Mês/Dia</TableHead>
               <TableHead>Convidados</TableHead>
-              <TableHead>Campanha</TableHead>
               <TableHead>Data</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {leads.map((lead) => (
-              <TableRow key={lead.id} className={selectedIds.has(lead.id) ? "bg-muted/50" : ""}>
+              <TableRow
+                key={lead.id}
+                className={selectedIds.has(lead.id) ? "bg-muted/50" : ""}
+              >
+                {isAdmin && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(lead.id)}
+                      onCheckedChange={() => toggleSelect(lead.id)}
+                      aria-label={`Selecionar ${lead.name}`}
+                    />
+                  </TableCell>
+                )}
                 <TableCell>
-                  <Checkbox
-                    checked={selectedIds.has(lead.id)}
-                    onCheckedChange={() => toggleSelect(lead.id)}
-                    aria-label={`Selecionar ${lead.name}`}
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{lead.name}</span>
+                    {lead.observacoes && (
+                      <MessageSquare className="w-3 h-3 text-primary" />
+                    )}
+                  </div>
                 </TableCell>
-                <TableCell className="font-medium">{lead.name}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
@@ -300,15 +340,54 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
                   )}
                 </TableCell>
                 <TableCell>
-                  {lead.month ? (
-                    <Badge variant="secondary">{lead.month}</Badge>
+                  {canEdit ? (
+                    <Select
+                      value={lead.status}
+                      onValueChange={(v) =>
+                        handleStatusChangeInline(lead, v as LeadStatus)
+                      }
+                    >
+                      <SelectTrigger className="w-40 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(LEAD_STATUS_LABELS).map(
+                          ([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-2 h-2 rounded-full ${
+                                    LEAD_STATUS_COLORS[value as LeadStatus]
+                                  }`}
+                                />
+                                {label}
+                              </div>
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
                   ) : (
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          LEAD_STATUS_COLORS[lead.status]
+                        }`}
+                      />
+                      {LEAD_STATUS_LABELS[lead.status]}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {getResponsavelName(lead.responsavel_id) || (
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
                 <TableCell>
-                  {lead.day_preference ? (
-                    <Badge variant="outline">{lead.day_preference}</Badge>
+                  {lead.month ? (
+                    <Badge variant="secondary">
+                      {lead.day_of_month || lead.day_preference || "-"}/{lead.month}
+                    </Badge>
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}
@@ -324,14 +403,9 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
-                    {lead.campaign_id}
-                  </Badge>
-                </TableCell>
-                <TableCell>
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Calendar className="w-4 h-4" />
-                    {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm", {
+                    {format(new Date(lead.created_at), "dd/MM/yyyy", {
                       locale: ptBR,
                     })}
                   </div>
@@ -339,44 +413,54 @@ export function LeadsTable({ filters, refreshKey, onRefresh }: LeadsTableProps) 
                 <TableCell>
                   <div className="flex items-center justify-end gap-2">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      asChild
+                      onClick={() => onLeadClick(lead)}
                     >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
                       <a
                         href={formatWhatsAppLink(lead.whatsapp)}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                        WhatsApp
+                        <ExternalLink className="w-4 h-4" />
                       </a>
                     </Button>
 
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir o lead de <strong>{lead.name}</strong>? Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteSingle(lead.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    {isAdmin && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir o lead de{" "}
+                              <strong>{lead.name}</strong>? Esta ação não pode ser
+                              desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteSingle(lead.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
