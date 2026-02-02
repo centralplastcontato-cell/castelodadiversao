@@ -8,13 +8,13 @@ interface UrgencySectionProps {
 
 export function UrgencySection({ onCtaClick }: UrgencySectionProps) {
   return (
-    <section className="py-16 bg-gradient-to-br from-primary/20 to-primary/40 relative overflow-hidden">
+    <section className="py-16 bg-gradient-to-br from-accent via-accent/90 to-accent/70 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(10)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-20 h-20 rounded-full bg-primary-foreground/10"
+            className="absolute w-20 h-20 rounded-full bg-accent-foreground/10"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -43,13 +43,13 @@ export function UrgencySection({ onCtaClick }: UrgencySectionProps) {
           <motion.div
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="inline-flex items-center gap-2 bg-primary-foreground/20 backdrop-blur-sm text-primary-foreground px-6 py-3 rounded-full mb-6"
+            className="inline-flex items-center gap-2 bg-accent-foreground/20 backdrop-blur-sm text-accent-foreground px-6 py-3 rounded-full mb-6"
           >
             <AlertTriangle className="w-5 h-5" />
             <span className="font-bold text-lg">ATENÇÃO!</span>
           </motion.div>
 
-          <h2 className="text-3xl md:text-5xl font-display font-bold text-primary-foreground mb-4">
+          <h2 className="text-3xl md:text-5xl font-display font-bold text-accent-foreground mb-4">
             {campaignConfig.urgency.message}
           </h2>
 
@@ -57,21 +57,21 @@ export function UrgencySection({ onCtaClick }: UrgencySectionProps) {
             <motion.div
               animate={{ y: [0, -5, 0] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="bg-primary-foreground/20 backdrop-blur-sm rounded-2xl p-6 text-center min-w-[150px]"
+              className="bg-accent-foreground/20 backdrop-blur-sm rounded-2xl p-6 text-center min-w-[150px]"
             >
-              <p className="text-5xl font-display font-bold text-primary-foreground">
+              <p className="text-5xl font-display font-bold text-accent-foreground">
                 {campaignConfig.urgency.spotsLeft}
               </p>
-              <p className="text-primary-foreground/80 font-medium">vagas restantes</p>
+              <p className="text-accent-foreground/80 font-medium">vagas restantes</p>
             </motion.div>
 
-            <div className="bg-primary-foreground/20 backdrop-blur-sm rounded-2xl p-6 text-center flex items-center gap-3">
-              <Clock className="w-8 h-8 text-primary-foreground" />
+            <div className="bg-accent-foreground/20 backdrop-blur-sm rounded-2xl p-6 text-center flex items-center gap-3">
+              <Clock className="w-8 h-8 text-accent-foreground" />
               <div className="text-left">
-                <p className="text-xl font-bold text-primary-foreground">
+                <p className="text-xl font-bold text-accent-foreground">
                   {campaignConfig.urgency.deadline}
                 </p>
-                <p className="text-primary-foreground/80 text-sm">Não perca!</p>
+                <p className="text-accent-foreground/80 text-sm">Não perca!</p>
               </div>
             </div>
           </div>
