@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Lock, Mail, ArrowLeft } from "lucide-react";
 import { z } from "zod";
-import logoCastelo from "@/assets/logo-castelo.jpeg";
+import logoCastelo from "@/assets/logo-castelo.png";
 
 const emailSchema = z.string().email("Email inválido");
 const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres");

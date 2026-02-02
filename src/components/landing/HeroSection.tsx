@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { campaignConfig } from "@/config/campaignConfig";
 import heroBg from "@/assets/hero-bg.jpg";
-import logoCastelo from "@/assets/logo-castelo.jpeg";
+import logoCastelo from "@/assets/logo-castelo.png";
 
 interface HeroSectionProps {
   onCtaClick: () => void;
