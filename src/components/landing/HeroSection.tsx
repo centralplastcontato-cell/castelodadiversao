@@ -9,12 +9,16 @@ interface HeroSectionProps {
 
 export function HeroSection({ onCtaClick }: HeroSectionProps) {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroBg})` }}
-      >
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden" aria-label="Seção principal">
+      {/* Background Image - using img for better SEO and lazy loading */}
+      <div className="absolute inset-0">
+        <img 
+          src={heroBg}
+          alt="Espaço de festas do Castelo da Diversão"
+          className="w-full h-full object-cover"
+          loading="eager"
+          fetchPriority="high"
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-primary/60 via-castle/40 to-background/90" />
       </div>
 

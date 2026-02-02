@@ -63,9 +63,9 @@ export const VideoGallerySection = () => {
                     src={unit.video}
                     controls
                     className="w-full h-full object-cover"
-                    poster=""
-                    preload="metadata"
+                    preload="none"
                     playsInline
+                    aria-label={`Vídeo da ${unit.name}`}
                   >
                     Seu navegador não suporta vídeos.
                   </video>
