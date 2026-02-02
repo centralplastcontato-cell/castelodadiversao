@@ -17,7 +17,6 @@ interface LeadData {
   unit?: string;
   month?: string;
   dayOfMonth?: number;
-  day?: string;
   guests?: string;
   name?: string;
   whatsapp?: string;
@@ -87,10 +86,10 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
       setMessages((prev) => [
         ...prev,
         {
-          id: "day",
+          id: "guests",
           type: "bot",
-          content: "Em qual dia da semana você prefere?",
-          options: campaignConfig.chatbot.dayOptions,
+          content: "Para quantas pessoas será a festa?",
+          options: campaignConfig.chatbot.guestOptions,
         },
       ]);
       setCurrentStep(3);
@@ -174,19 +173,6 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
           // Day of month selection (handled separately via handleDayOfMonthSelect)
           break;
         case 3:
-          setLeadData((prev) => ({ ...prev, day: option }));
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: "guests",
-              type: "bot",
-              content: "Para quantas pessoas será a festa?",
-              options: campaignConfig.chatbot.guestOptions,
-            },
-          ]);
-          setCurrentStep(4);
-          break;
-        case 4:
           setLeadData((prev) => ({ ...prev, guests: option }));
           setMessages((prev) => [
             ...prev,
@@ -197,7 +183,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               isInput: true,
             },
           ]);
-          setCurrentStep(5);
+          setCurrentStep(4);
           setInputType("name");
           break;
       }
@@ -232,7 +218,6 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
           unit: leadData.unit,
           month: leadData.month,
           day_of_month: leadData.dayOfMonth,
-          day_preference: leadData.day,
           guests: leadData.guests,
           campaign_id: campaignConfig.campaignId,
           campaign_name: campaignConfig.campaignName,
