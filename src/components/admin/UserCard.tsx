@@ -1,7 +1,11 @@
-import { UserWithRole, AppRole, ROLE_LABELS } from "@/types/crm";
+import { useState } from "react";
+import { UserWithRole, AppRole } from "@/types/crm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,22 +24,58 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { User, Mail } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { User, Mail, Pencil, Trash2, Loader2 } from "lucide-react";
 
 interface UserCardProps {
   user: UserWithRole;
   currentUserId: string;
   onToggleActive: (userId: string, currentStatus: boolean) => void;
   onUpdateRole: (userId: string, newRole: AppRole) => void;
+  onUpdateName: (userId: string, newName: string) => Promise<void>;
+  onDelete: (userId: string) => Promise<void>;
 }
 
 export function UserCard({ 
   user, 
   currentUserId, 
   onToggleActive, 
-  onUpdateRole 
+  onUpdateRole,
+  onUpdateName,
+  onDelete,
 }: UserCardProps) {
   const isCurrentUser = user.user_id === currentUserId;
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editName, setEditName] = useState(user.full_name);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSaveName = async () => {
+    if (!editName.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await onUpdateName(user.user_id, editName.trim());
+      setIsEditOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsSubmitting(true);
+    try {
+      await onDelete(user.user_id);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -82,43 +122,113 @@ export function UserCard({
           </Select>
         </div>
 
-        {/* Active toggle with confirmation */}
-        <div className="flex items-center justify-between pt-2 border-t border-border">
-          <span className="text-sm text-muted-foreground">
-            {isCurrentUser ? "Você não pode se desativar" : "Usuário ativo"}
-          </span>
-          {isCurrentUser ? (
-            <Switch checked={user.is_active} disabled />
-          ) : user.is_active ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Switch checked={user.is_active} />
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    O usuário <strong>{user.full_name}</strong> não poderá mais acessar o sistema. 
-                    Você pode reativá-lo a qualquer momento.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={() => onToggleActive(user.user_id, user.is_active)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Desativar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            <Switch
-              checked={user.is_active}
-              onCheckedChange={() => onToggleActive(user.user_id, user.is_active)}
-            />
-          )}
+        {/* Actions Row */}
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+          <div className="flex items-center gap-1">
+            {/* Edit button */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2">
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar Usuário</DialogTitle>
+                  <DialogDescription>
+                    Altere o nome do usuário.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-name">Nome completo</Label>
+                    <Input
+                      id="edit-name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Nome do usuário"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveName} disabled={isSubmitting || !editName.trim()}>
+                    {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Salvar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Delete button */}
+            {!isCurrentUser && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. O usuário <strong>{user.full_name}</strong> será removido permanentemente do sistema.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+
+          {/* Active toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {isCurrentUser ? "Você" : "Ativo"}
+            </span>
+            {isCurrentUser ? (
+              <Switch checked={user.is_active} disabled />
+            ) : user.is_active ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Switch checked={user.is_active} />
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      O usuário <strong>{user.full_name}</strong> não poderá mais acessar o sistema. 
+                      Você pode reativá-lo a qualquer momento.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => onToggleActive(user.user_id, user.is_active)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Desativar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Switch
+                checked={user.is_active}
+                onCheckedChange={() => onToggleActive(user.user_id, user.is_active)}
+              />
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

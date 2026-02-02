@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Loader2, Users, Shield } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Users, Shield, Pencil, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -60,6 +60,8 @@ export default function UsersPage() {
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
+  const [editName, setEditName] = useState("");
 
   // Form state
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -284,6 +286,69 @@ export default function UsersPage() {
     }
   };
 
+  const handleUpdateName = async (userId: string, newName: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-user", {
+        body: {
+          action: "update",
+          user_id: userId,
+          full_name: newName,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Nome atualizado",
+        description: "O nome do usuário foi alterado com sucesso.",
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error updating name:", error);
+      toast({
+        title: "Erro ao atualizar nome",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-user", {
+        body: {
+          action: "delete",
+          user_id: userId,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Usuário excluído",
+        description: "O usuário foi removido permanentemente.",
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Erro ao excluir usuário",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderDialogContent = () => (
     <DialogContent>
       <DialogHeader>
@@ -458,6 +523,8 @@ export default function UsersPage() {
                   currentUserId={user.id}
                   onToggleActive={handleToggleActive}
                   onUpdateRole={handleUpdateRole}
+                  onUpdateName={handleUpdateName}
+                  onDelete={handleDeleteUser}
                 />
               ))}
               {users.length === 0 && (
@@ -476,7 +543,8 @@ export default function UsersPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Perfil</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ativo</TableHead>
+                    <TableHead>Ativo</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -538,6 +606,92 @@ export default function UsersPage() {
                             onCheckedChange={() => handleToggleActive(u.user_id, u.is_active)}
                           />
                         )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Edit button */}
+                          <Dialog 
+                            open={editingUser?.id === u.id} 
+                            onOpenChange={(open) => {
+                              if (open) {
+                                setEditingUser(u);
+                                setEditName(u.full_name);
+                              } else {
+                                setEditingUser(null);
+                                setEditName("");
+                              }
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Editar Usuário</DialogTitle>
+                                <DialogDescription>
+                                  Altere o nome do usuário.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="edit-name-desktop">Nome completo</Label>
+                                  <Input
+                                    id="edit-name-desktop"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    placeholder="Nome do usuário"
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => setEditingUser(null)}>
+                                  Cancelar
+                                </Button>
+                                <Button 
+                                  onClick={async () => {
+                                    if (editName.trim() && editingUser) {
+                                      await handleUpdateName(editingUser.user_id, editName.trim());
+                                      setEditingUser(null);
+                                    }
+                                  }} 
+                                  disabled={isSubmitting || !editName.trim()}
+                                >
+                                  Salvar
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+
+                          {/* Delete button */}
+                          {u.user_id !== user.id && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. O usuário <strong>{u.full_name}</strong> será removido permanentemente do sistema.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteUser(u.user_id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
