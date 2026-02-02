@@ -104,12 +104,12 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary/20 via-background to-festive/10 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative background elements */}
+    <div className="min-h-screen bg-gradient-to-br from-secondary/20 via-background to-castle/10 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative background elements - warm colors only */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-festive/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/4 right-1/4 w-48 h-48 bg-secondary/15 rounded-full blur-2xl" />
+        <div className="absolute -top-32 -left-32 w-64 h-64 bg-secondary/15 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-castle/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 right-1/4 w-48 h-48 bg-festive/15 rounded-full blur-2xl" />
       </div>
 
       <div className="w-full max-w-md relative z-10">
@@ -123,16 +123,16 @@ export default function Auth() {
         </Button>
 
         <div className="relative rounded-3xl overflow-hidden shadow-floating">
-          {/* Card background with subtle gradient border effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-secondary/10 to-festive/20 p-[2px] rounded-3xl">
+          {/* Card background with warm gradient border effect */}
+          <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 via-festive/20 to-castle/30 p-[2px] rounded-3xl">
             <div className="w-full h-full bg-card rounded-3xl" />
           </div>
           
           {/* Card content */}
-          <div className="relative bg-card/95 backdrop-blur-sm p-8 rounded-3xl border border-border/50">
+          <div className="relative bg-card/95 backdrop-blur-sm p-8 rounded-3xl border border-secondary/20">
             <div className="text-center mb-8">
               <div className="relative inline-block">
-                <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-secondary/20 to-festive/20 rounded-full blur-xl opacity-60" />
+                <div className="absolute -inset-4 bg-gradient-to-r from-secondary/25 via-festive/25 to-castle/25 rounded-full blur-xl opacity-60" />
                 <img 
                   src={logoCastelo} 
                   alt="Castelo da Diversão" 
@@ -158,7 +158,7 @@ export default function Auth() {
                     placeholder="seu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-background/50 border-border/50 focus:border-primary/50"
+                    className="pl-10 bg-background/50 border-secondary/30 focus:border-festive/50"
                     required
                   />
                 </div>
@@ -174,7 +174,7 @@ export default function Auth() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-background/50 border-border/50 focus:border-primary/50"
+                    className="pl-10 bg-background/50 border-secondary/30 focus:border-festive/50"
                     required
                   />
                 </div>
@@ -199,7 +199,7 @@ export default function Auth() {
               <button
                 type="button"
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="text-primary hover:underline text-sm font-medium"
+                className="text-festive hover:underline text-sm font-medium"
               >
                 {isSignUp
                   ? "Já tem uma conta? Entre aqui"
