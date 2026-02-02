@@ -61,7 +61,7 @@ export function OfferSection({ onCtaClick }: OfferSectionProps) {
             </ul>
           </motion.div>
 
-          {/* Price Card */}
+          {/* CTA Card */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -70,16 +70,16 @@ export function OfferSection({ onCtaClick }: OfferSectionProps) {
             className="card-festive p-8 bg-gradient-to-br from-primary/5 to-castle/5 border-primary/20"
           >
             <div className="text-center">
-              <p className="text-lg text-muted-foreground mb-2">De</p>
-              <p className="text-3xl text-muted-foreground line-through mb-4">
-                {campaignConfig.offer.originalPrice}
-              </p>
-              <p className="text-lg text-muted-foreground mb-2">Por apenas</p>
-              <p className="text-6xl font-display font-bold text-primary mb-2">
-                {campaignConfig.offer.promoPrice}
-              </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                Válido até {campaignConfig.offer.validUntil}
+              <div className="w-20 h-20 bg-gradient-hero rounded-full flex items-center justify-center mx-auto mb-6">
+                <Gift className="w-10 h-10 text-primary-foreground" />
+              </div>
+              
+              <h3 className="text-2xl font-display font-bold text-foreground mb-4">
+                Garanta sua data!
+              </h3>
+              
+              <p className="text-muted-foreground mb-6">
+                As vagas são limitadas e o Carnaval NÃO ESPERA! 🎭💃
               </p>
 
               <button onClick={onCtaClick} className="btn-cta w-full">

@@ -6,40 +6,38 @@
 export const campaignConfig = {
   // HERO
   title: "Esquenta de Carnaval",
-  subtitle: "Castelo da Diversão",
-  tagline: "🎭 Festeje o Carnaval com a gente!",
+  subtitle: "Sua festa com vantagem de verdade!",
+  tagline: "🎭 O Carnaval chegou mais cedo!",
   
   // OFERTA PRINCIPAL
   offer: {
-    headline: "Pacote Carnaval Especial",
-    description: "Festas de segunda a quinta-feira no mês de fevereiro com condições imperdíveis!",
+    headline: "Oferta Especial por Tempo Limitado",
+    description: "Vai fazer festa em fevereiro ou março de 2026? Então essa oferta é pra você!",
     benefits: [
-      "20% de desconto no pacote completo",
-      "10 convidados extras grátis",
-      "Decoração temática de Carnaval inclusa",
-      "Mesa de doces personalizada",
+      "10% de desconto à vista",
+      "10 convidados grátis no seu pacote",
+      "Válida para pacotes Castelo, Super e Premium",
+      "Festas realizadas em Fevereiro e Março de 2026",
     ],
-    originalPrice: "R$ 4.500",
-    promoPrice: "R$ 3.600",
-    validUntil: "15 de Fevereiro de 2026",
+    validUntil: "14 de Fevereiro de 2026",
     conditions: [
-      "Válido para festas realizadas em fevereiro/2026",
-      "Segunda a quinta-feira",
-      "Sujeito à disponibilidade de datas",
-      "Não cumulativo com outras promoções",
+      "Válida para os 10 primeiros contratos fechados ou até 14/02",
+      "Pacotes elegíveis: Castelo, Super e Premium",
+      "Festas realizadas em Fevereiro e Março de 2026",
+      "Promoção não cumulativa com outras ofertas",
     ],
   },
 
   // URGÊNCIA
   urgency: {
-    message: "⏰ Últimas vagas para fevereiro!",
-    spotsLeft: 8,
-    deadline: "Promoção válida até 15/02",
+    message: "⏰ Vagas limitadas! Corra antes que acabe!",
+    spotsLeft: 10,
+    deadline: "Válida para os 10 primeiros contratos ou até 14/02",
   },
 
   // CHATBOT - Opções configuráveis
   chatbot: {
-    monthOptions: ["Fevereiro", "Março", "Abril"],
+    monthOptions: ["Fevereiro", "Março"],
     dayOptions: ["Segunda a Quinta", "Sexta", "Sábado", "Domingo"],
     guestOptions: ["Até 50 pessoas", "51-70 pessoas", "71-100 pessoas", "100+ pessoas"],
   },

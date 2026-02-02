@@ -89,16 +89,20 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
             transition={{ delay: 0.8, duration: 0.5 }}
             className="inline-block bg-card/95 backdrop-blur-sm rounded-3xl p-6 md:p-8 shadow-floating mt-8"
           >
-            <p className="text-lg md:text-xl text-muted-foreground mb-2">Pacote especial a partir de</p>
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              <span className="text-2xl text-muted-foreground line-through">
-                {campaignConfig.offer.originalPrice}
-              </span>
-              <span className="text-4xl md:text-5xl font-bold text-primary">
-                {campaignConfig.offer.promoPrice}
-              </span>
+            <p className="text-xl md:text-2xl font-bold text-foreground mb-3">
+              {campaignConfig.offer.headline}
+            </p>
+            <div className="flex flex-col gap-2 text-left">
+              <div className="flex items-center gap-2 text-primary font-semibold">
+                <span>✨</span>
+                <span>10% de desconto à vista</span>
+              </div>
+              <div className="flex items-center gap-2 text-primary font-semibold">
+                <span>🎁</span>
+                <span>+ 10 convidados grátis</span>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-muted-foreground mt-4">
               Válido até {campaignConfig.offer.validUntil}
             </p>
           </motion.div>
