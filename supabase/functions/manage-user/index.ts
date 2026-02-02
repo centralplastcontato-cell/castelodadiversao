@@ -6,7 +6,7 @@ const corsHeaders = {
 }
 
 interface CreateUserRequest {
-  action: 'create' | 'update' | 'toggle_active'
+  action: 'create' | 'update' | 'toggle_active' | 'delete'
   email?: string
   password?: string
   full_name?: string
@@ -220,6 +220,59 @@ Deno.serve(async (req) => {
           success: true, 
           message: body.is_active ? 'Usuário ativado' : 'Usuário desativado' 
         }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (body.action === 'delete') {
+      if (!body.user_id) {
+        return new Response(
+          JSON.stringify({ error: 'user_id é obrigatório' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Prevent self-deletion
+      if (body.user_id === requestingUser.id) {
+        return new Response(
+          JSON.stringify({ error: 'Você não pode excluir sua própria conta' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Delete user role first
+      const { error: roleDeleteError } = await supabaseAdmin
+        .from('user_roles')
+        .delete()
+        .eq('user_id', body.user_id)
+
+      if (roleDeleteError) {
+        console.error('Role delete error:', roleDeleteError)
+      }
+
+      // Delete profile
+      const { error: profileDeleteError } = await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('user_id', body.user_id)
+
+      if (profileDeleteError) {
+        console.error('Profile delete error:', profileDeleteError)
+      }
+
+      // Delete from auth
+      const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(body.user_id)
+
+      if (authDeleteError) {
+        console.error('Auth delete error:', authDeleteError)
+        return new Response(
+          JSON.stringify({ error: 'Erro ao excluir usuário: ' + authDeleteError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Usuário excluído com sucesso' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
