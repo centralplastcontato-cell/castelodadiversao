@@ -101,26 +101,26 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
             <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-primary/15 rounded-full blur-2xl" />
             
             <div className="relative z-10">
-              <p className="text-lg md:text-xl font-bold text-foreground mb-4">
+              <p className="text-base md:text-xl font-bold text-foreground mb-3 md:mb-4">
                 {campaignConfig.offer.headline}
               </p>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 md:gap-3">
                 {/* Benefit 1 - 10% discount */}
-                <div className="flex items-center gap-3 bg-primary/10 rounded-xl px-4 py-3 border border-primary/20">
-                  <span className="text-2xl md:text-3xl">✨</span>
-                  <span className="text-xl md:text-2xl font-bold text-primary">
+                <div className="flex items-center justify-center gap-2 md:gap-3 bg-primary/10 rounded-xl px-3 md:px-4 py-2 md:py-3 border border-primary/20">
+                  <span className="text-xl md:text-3xl">✨</span>
+                  <span className="text-base md:text-2xl font-bold text-primary whitespace-nowrap">
                     10% de desconto à vista
                   </span>
                 </div>
                 {/* Benefit 2 - 10 guests */}
-                <div className="flex items-center gap-3 bg-secondary/20 rounded-xl px-4 py-3 border border-secondary/30">
-                  <span className="text-2xl md:text-3xl">🎁</span>
-                  <span className="text-xl md:text-2xl font-bold text-secondary-foreground">
+                <div className="flex items-center justify-center gap-2 md:gap-3 bg-secondary/20 rounded-xl px-3 md:px-4 py-2 md:py-3 border border-secondary/30">
+                  <span className="text-xl md:text-3xl">🎁</span>
+                  <span className="text-base md:text-2xl font-bold text-secondary-foreground whitespace-nowrap">
                     + 10 convidados grátis
                   </span>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mt-4 text-center">
+              <p className="text-xs md:text-sm text-muted-foreground mt-3 md:mt-4 text-center">
                 Válido até {campaignConfig.offer.validUntil}
               </p>
             </div>
