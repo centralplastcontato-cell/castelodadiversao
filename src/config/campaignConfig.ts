@@ -38,7 +38,9 @@ export const campaignConfig = {
   // CHATBOT - Opções configuráveis
   chatbot: {
     unitOptions: ["Manchester", "Trujilo", "As duas"],
-    monthOptions: ["Fevereiro", "Março"],
+    monthOptions: ["Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
+    promoMonths: ["Fevereiro", "Março"],
+    nonPromoMessage: "Atenção: A promoção Esquenta de Carnaval é válida apenas para festas realizadas em Fevereiro e Março de 2026. Para outros meses, entre em contato para conhecer nossas condições especiais! 😊",
     dayOptions: ["Segunda a Quinta", "Sexta", "Sábado", "Domingo"],
     guestOptions: ["50 pessoas", "60 pessoas", "70 pessoas", "80 pessoas", "90 pessoas", "100 pessoas"],
   },

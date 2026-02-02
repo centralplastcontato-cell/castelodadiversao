@@ -95,15 +95,39 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
           break;
         case 1:
           setLeadData((prev) => ({ ...prev, month: option }));
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: "day",
-              type: "bot",
-              content: "Em qual dia da semana você prefere?",
-              options: campaignConfig.chatbot.dayOptions,
-            },
-          ]);
+          // Check if selected month is outside promo period
+          const isPromoMonth = campaignConfig.chatbot.promoMonths?.includes(option);
+          if (!isPromoMonth && campaignConfig.chatbot.nonPromoMessage) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: "non-promo-warning",
+                type: "bot",
+                content: campaignConfig.chatbot.nonPromoMessage,
+              },
+            ]);
+            setTimeout(() => {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: "day",
+                  type: "bot",
+                  content: "Em qual dia da semana você prefere?",
+                  options: campaignConfig.chatbot.dayOptions,
+                },
+              ]);
+            }, 1500);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: "day",
+                type: "bot",
+                content: "Em qual dia da semana você prefere?",
+                options: campaignConfig.chatbot.dayOptions,
+              },
+            ]);
+          }
           setCurrentStep(2);
           break;
         case 2:
