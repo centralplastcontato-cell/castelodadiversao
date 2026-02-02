@@ -2,16 +2,20 @@ import { Play, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import videoTrujillo from "@/assets/video-trujillo.mp4";
 import videoManchester from "@/assets/video-manchester.mov";
+import thumbTrujillo from "@/assets/thumb-trujillo.jpg";
+import thumbManchester from "@/assets/thumb-manchester.jpg";
 
 const units = [
   {
     name: "Unidade Trujillo",
     video: videoTrujillo,
+    poster: thumbTrujillo,
     location: "Trujillo",
   },
   {
     name: "Unidade Manchester",
     video: videoManchester,
+    poster: thumbManchester,
     location: "Manchester",
   },
 ];
@@ -61,6 +65,7 @@ export const VideoGallerySection = () => {
                 <div className="aspect-[9/16] md:aspect-video relative">
                   <video
                     src={unit.video}
+                    poster={unit.poster}
                     controls
                     className="w-full h-full object-cover"
                     preload="none"
