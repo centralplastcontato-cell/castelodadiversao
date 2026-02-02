@@ -16,6 +16,7 @@ interface Message {
 interface LeadData {
   unit?: string;
   month?: string;
+  dayOfMonth?: number;
   day?: string;
   guests?: string;
   name?: string;
@@ -39,6 +40,61 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Generate day options based on selected month
+  const getDaysInMonth = (month: string): number => {
+    const monthMap: Record<string, number> = {
+      "Fevereiro": 28, // 2026 is not a leap year
+      "Março": 31,
+      "Abril": 30,
+      "Maio": 31,
+      "Junho": 30,
+      "Julho": 31,
+      "Agosto": 31,
+      "Setembro": 30,
+      "Outubro": 31,
+      "Novembro": 30,
+      "Dezembro": 31,
+    };
+    return monthMap[month] || 31;
+  };
+
+  const addDayOfMonthStep = () => {
+    const daysInMonth = getDaysInMonth(leadData.month || "");
+    const dayOptions = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: "day-of-month",
+        type: "bot",
+        content: `Qual dia de ${leadData.month} você prefere?`,
+        options: dayOptions,
+      },
+    ]);
+  };
+
+  const handleDayOfMonthSelect = (day: string) => {
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      type: "user",
+      content: `Dia ${day}`,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setLeadData((prev) => ({ ...prev, dayOfMonth: parseInt(day) }));
+
+    setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: "day",
+          type: "bot",
+          content: "Em qual dia da semana você prefere?",
+          options: campaignConfig.chatbot.dayOptions,
+        },
+      ]);
+      setCurrentStep(3);
+    }, 500);
   };
 
   useEffect(() => {
@@ -107,30 +163,17 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               },
             ]);
             setTimeout(() => {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: "day",
-                  type: "bot",
-                  content: "Em qual dia da semana você prefere?",
-                  options: campaignConfig.chatbot.dayOptions,
-                },
-              ]);
+              addDayOfMonthStep();
             }, 1500);
           } else {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: "day",
-                type: "bot",
-                content: "Em qual dia da semana você prefere?",
-                options: campaignConfig.chatbot.dayOptions,
-              },
-            ]);
+            addDayOfMonthStep();
           }
           setCurrentStep(2);
           break;
         case 2:
+          // Day of month selection (handled separately via handleDayOfMonthSelect)
+          break;
+        case 3:
           setLeadData((prev) => ({ ...prev, day: option }));
           setMessages((prev) => [
             ...prev,
@@ -141,9 +184,9 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               options: campaignConfig.chatbot.guestOptions,
             },
           ]);
-          setCurrentStep(3);
+          setCurrentStep(4);
           break;
-        case 3:
+        case 4:
           setLeadData((prev) => ({ ...prev, guests: option }));
           setMessages((prev) => [
             ...prev,
@@ -154,7 +197,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               isInput: true,
             },
           ]);
-          setCurrentStep(4);
+          setCurrentStep(5);
           setInputType("name");
           break;
       }
@@ -188,6 +231,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
           whatsapp: whatsappValue,
           unit: leadData.unit,
           month: leadData.month,
+          day_of_month: leadData.dayOfMonth,
           day_preference: leadData.day,
           guests: leadData.guests,
           campaign_id: campaignConfig.campaignId,
@@ -293,10 +337,14 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
                         {message.options.map((option) => (
                           <button
                             key={option}
-                            onClick={() => handleOptionSelect(option)}
+                            onClick={() => 
+                              message.id === "day-of-month" 
+                                ? handleDayOfMonthSelect(option) 
+                                : handleOptionSelect(option)
+                            }
                             className="bg-card text-foreground px-4 py-2 rounded-full text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm"
                           >
-                            {option}
+                            {message.id === "day-of-month" ? `Dia ${option}` : option}
                           </button>
                         ))}
                       </div>

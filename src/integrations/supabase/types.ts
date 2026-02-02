@@ -19,6 +19,7 @@ export type Database = {
           campaign_id: string
           campaign_name: string | null
           created_at: string
+          day_of_month: number | null
           day_preference: string | null
           guests: string | null
           id: string
@@ -31,6 +32,7 @@ export type Database = {
           campaign_id: string
           campaign_name?: string | null
           created_at?: string
+          day_of_month?: number | null
           day_preference?: string | null
           guests?: string | null
           id?: string
@@ -43,6 +45,7 @@ export type Database = {
           campaign_id?: string
           campaign_name?: string | null
           created_at?: string
+          day_of_month?: number | null
           day_preference?: string | null
           guests?: string | null
           id?: string
