@@ -11,7 +11,15 @@ import { LeadDetailSheet } from "@/components/admin/LeadDetailSheet";
 import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, ArrowLeft, RefreshCw, LayoutList, Columns, Shield } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import { LogOut, ArrowLeft, RefreshCw, LayoutList, Columns, Shield, Menu, Home, Users as UsersIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 
@@ -50,6 +58,7 @@ export default function Admin() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { role, isLoading: isLoadingRole, isAdmin, canEdit, canManageUsers } = useUserRole(user?.id);
 
@@ -239,54 +248,155 @@ export default function Admin() {
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          {/* Mobile: stacked layout, Desktop: side by side */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            {/* Left side: Back + Logo + Title */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3" onClick={() => navigate("/")}>
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline ml-2">Voltar</span>
+          <div className="flex items-center justify-between gap-2">
+            {/* Left side: Menu (mobile) / Back (desktop) + Logo + Title */}
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+              {/* Mobile: Hamburger menu */}
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:hidden">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                  <SheetHeader className="p-4 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={logoCastelo} 
+                        alt="Castelo da Diversão" 
+                        className="h-10 w-auto"
+                      />
+                      <div>
+                        <SheetTitle className="text-left text-base">Castelo da Diversão</SheetTitle>
+                        <p className="text-xs text-muted-foreground">
+                          {currentUserProfile?.full_name || user.email}
+                        </p>
+                      </div>
+                    </div>
+                  </SheetHeader>
+                  
+                  <nav className="flex flex-col p-2">
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start h-11 px-3"
+                      onClick={() => {
+                        navigate("/");
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      <Home className="w-5 h-5 mr-3" />
+                      Página Inicial
+                    </Button>
+                    
+                    <Button 
+                      variant="secondary" 
+                      className="justify-start h-11 px-3"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <LayoutList className="w-5 h-5 mr-3" />
+                      Gestão de Leads
+                    </Button>
+                    
+                    {canManageUsers && (
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start h-11 px-3"
+                        onClick={() => {
+                          navigate("/users");
+                          setIsMobileMenuOpen(false);
+                        }}
+                      >
+                        <UsersIcon className="w-5 h-5 mr-3" />
+                        Gerenciar Usuários
+                      </Button>
+                    )}
+                    
+                    <Separator className="my-2" />
+                    
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start h-11 px-3"
+                      onClick={() => {
+                        handleRefresh();
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      <RefreshCw className="w-5 h-5 mr-3" />
+                      Atualizar Dados
+                    </Button>
+                    
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start h-11 px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        handleLogout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      <LogOut className="w-5 h-5 mr-3" />
+                      Sair da Conta
+                    </Button>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+
+              {/* Desktop: Back button */}
+              <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => navigate("/")}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
               </Button>
-              <div className="flex items-center gap-2 sm:gap-3">
+
+              {/* Logo + Title */}
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <img 
                   src={logoCastelo} 
                   alt="Castelo da Diversão" 
-                  className="h-8 sm:h-10 w-auto"
+                  className="h-8 sm:h-10 w-auto shrink-0"
                 />
                 <div className="min-w-0">
                   <h1 className="font-display font-bold text-foreground text-sm sm:text-base truncate">
                     Gestão de Leads
                   </h1>
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate hidden sm:block">
                     {currentUserProfile?.full_name || user.email}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Right side: Action buttons */}
-            <div className="flex items-center gap-1 sm:gap-2 justify-end">
+            {/* Right side: Action buttons (desktop only) */}
+            <div className="hidden sm:flex items-center gap-2">
               {canManageUsers && (
-                <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3" onClick={() => navigate("/users")}>
-                  <Shield className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Usuários</span>
+                <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Usuários
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3" onClick={handleRefresh}>
-                <RefreshCw className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Atualizar</span>
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Atualizar
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Sair</span>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
               </Button>
             </div>
+
+            {/* Mobile: Quick refresh button */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-9 w-9 sm:hidden shrink-0"
+              onClick={handleRefresh}
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <LeadsFilters
           filters={filters}
           onFiltersChange={setFilters}
