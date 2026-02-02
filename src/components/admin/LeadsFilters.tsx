@@ -86,32 +86,50 @@ export function LeadsFilters({
     filters.endDate ||
     filters.search;
 
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
+
   return (
-    <div className="bg-card rounded-xl border border-border p-4 mb-6">
-      <div className="flex flex-col gap-4">
+    <div className="bg-card rounded-xl border border-border p-3 sm:p-4 mb-4 sm:mb-6">
+      <div className="flex flex-col gap-3 sm:gap-4">
         {/* Row 1: Search and Export */}
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex gap-2 sm:gap-4">
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou WhatsApp..."
+                placeholder="Buscar..."
                 value={filters.search}
                 onChange={(e) =>
                   onFiltersChange({ ...filters, search: e.target.value })
                 }
-                className="pl-10"
+                className="pl-10 text-sm"
               />
             </div>
           </div>
-          <Button variant="outline" onClick={onExport}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
+          <Button variant="outline" size="sm" className="shrink-0" onClick={onExport}>
+            <Download className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Exportar CSV</span>
           </Button>
         </div>
 
-        {/* Row 2: Filters */}
-        <div className="flex flex-wrap gap-3">
+        {/* Mobile: Toggle filters button */}
+        <div className="sm:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+            className="w-full justify-between text-muted-foreground"
+          >
+            <span>Filtros {hasActiveFilters && `(${Object.values(filters).filter(v => v && v !== 'all').length} ativos)`}</span>
+            <span>{isFiltersExpanded ? '▲' : '▼'}</span>
+          </Button>
+        </div>
+
+        {/* Row 2: Filters - Hidden on mobile unless expanded */}
+        <div className={cn(
+          "flex-col sm:flex sm:flex-row sm:flex-wrap gap-2 sm:gap-3",
+          isFiltersExpanded ? "flex" : "hidden sm:flex"
+        )}>
           {/* Status Filter */}
           <Select
             value={filters.status}
@@ -119,7 +137,7 @@ export function LeadsFilters({
               onFiltersChange({ ...filters, status: value })
             }
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -139,7 +157,7 @@ export function LeadsFilters({
               onFiltersChange({ ...filters, unit: value })
             }
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="Unidade" />
             </SelectTrigger>
             <SelectContent>
@@ -159,7 +177,7 @@ export function LeadsFilters({
               onFiltersChange({ ...filters, campaign: value })
             }
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Campanha" />
             </SelectTrigger>
             <SelectContent>
@@ -179,7 +197,7 @@ export function LeadsFilters({
               onFiltersChange({ ...filters, responsavel: value })
             }
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>
             <SelectContent>
@@ -200,7 +218,7 @@ export function LeadsFilters({
               onFiltersChange({ ...filters, month: value })
             }
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="Mês evento" />
             </SelectTrigger>
             <SelectContent>
@@ -213,71 +231,76 @@ export function LeadsFilters({
             </SelectContent>
           </Select>
 
-          {/* Start Date */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-36 justify-start text-left font-normal",
-                  !filters.startDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.startDate ? (
-                  format(filters.startDate, "dd/MM/yyyy")
-                ) : (
-                  <span>De</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={filters.startDate}
-                onSelect={(date) =>
-                  onFiltersChange({ ...filters, startDate: date })
-                }
-                locale={ptBR}
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
+          {/* Date filters row */}
+          <div className="flex gap-2 w-full sm:w-auto">
+            {/* Start Date */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "flex-1 sm:flex-none sm:w-32 justify-start text-left font-normal text-sm",
+                    !filters.startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                  {filters.startDate ? (
+                    format(filters.startDate, "dd/MM/yy")
+                  ) : (
+                    <span>De</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={filters.startDate}
+                  onSelect={(date) =>
+                    onFiltersChange({ ...filters, startDate: date })
+                  }
+                  locale={ptBR}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
 
-          {/* End Date */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-36 justify-start text-left font-normal",
-                  !filters.endDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.endDate ? (
-                  format(filters.endDate, "dd/MM/yyyy")
-                ) : (
-                  <span>Até</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={filters.endDate}
-                onSelect={(date) =>
-                  onFiltersChange({ ...filters, endDate: date })
-                }
-                locale={ptBR}
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
+            {/* End Date */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "flex-1 sm:flex-none sm:w-32 justify-start text-left font-normal text-sm",
+                    !filters.endDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                  {filters.endDate ? (
+                    format(filters.endDate, "dd/MM/yy")
+                  ) : (
+                    <span>Até</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={filters.endDate}
+                  onSelect={(date) =>
+                    onFiltersChange({ ...filters, endDate: date })
+                  }
+                  locale={ptBR}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
           {/* Clear Filters */}
           {hasActiveFilters && (
-            <Button variant="ghost" onClick={clearFilters}>
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
               <X className="w-4 h-4 mr-2" />
               Limpar
             </Button>
