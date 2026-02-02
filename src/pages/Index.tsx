@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { OfferSection } from "@/components/landing/OfferSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
+import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { UrgencySection } from "@/components/landing/UrgencySection";
 import { LeadChatbot } from "@/components/landing/LeadChatbot";
 import { FloatingCTA } from "@/components/landing/FloatingCTA";
@@ -18,6 +19,7 @@ const Index = () => {
       <HeroSection onCtaClick={openChat} />
       <OfferSection onCtaClick={openChat} />
       <BenefitsSection />
+      <TestimonialsSection />
       <UrgencySection onCtaClick={openChat} />
       <Footer />
       
