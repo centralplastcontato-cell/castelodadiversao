@@ -21,18 +21,18 @@ export function Footer() {
               href="https://www.instagram.com/castelodadiversao?igsh=bXFiaHU5dmxjdGsz&utm_source=qr"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-primary-foreground/70 hover:text-primary-foreground transition-colors text-lg"
+              className="group flex items-center gap-2 text-primary-foreground/70 hover:text-primary-foreground transition-all duration-300 text-lg"
             >
-              <Instagram size={24} />
+              <Instagram size={24} className="transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6" />
               <span>Instagram</span>
             </a>
             <a
               href="https://www.facebook.com/share/1G4d6VRmrF/?mibextid=wwXIfr"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-primary-foreground/70 hover:text-primary-foreground transition-colors text-lg"
+              className="group flex items-center gap-2 text-primary-foreground/70 hover:text-primary-foreground transition-all duration-300 text-lg"
             >
-              <Facebook size={24} />
+              <Facebook size={24} className="transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6" />
               <span>Facebook</span>
             </a>
           </div>
@@ -42,9 +42,9 @@ export function Footer() {
               href="https://wa.me/5515991336278"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-colors text-sm font-medium"
+              className="group flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium hover:scale-105 hover:shadow-lg"
             >
-              <MessageCircle size={18} />
+              <MessageCircle size={18} className="transition-transform duration-300 group-hover:scale-110" />
               <MapPin size={14} />
               <span>WhatsApp Manchester</span>
             </a>
@@ -52,9 +52,9 @@ export function Footer() {
               href="https://wa.me/5515974034646"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-colors text-sm font-medium"
+              className="group flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium hover:scale-105 hover:shadow-lg"
             >
-              <MessageCircle size={18} />
+              <MessageCircle size={18} className="transition-transform duration-300 group-hover:scale-110" />
               <MapPin size={14} />
               <span>WhatsApp Trujilo</span>
             </a>
