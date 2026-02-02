@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Search, X } from "lucide-react";
+import { CalendarIcon, Search, X, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,28 +20,43 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { LeadFilters } from "@/pages/Admin";
+import { LEAD_STATUS_LABELS, UserWithRole } from "@/types/crm";
 
 interface LeadsFiltersProps {
   filters: LeadFilters;
   onFiltersChange: (filters: LeadFilters) => void;
+  responsaveis: UserWithRole[];
+  onExport: () => void;
 }
 
-export function LeadsFilters({ filters, onFiltersChange }: LeadsFiltersProps) {
+export function LeadsFilters({
+  filters,
+  onFiltersChange,
+  responsaveis,
+  onExport,
+}: LeadsFiltersProps) {
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [units, setUnits] = useState<string[]>([]);
+  const [months, setMonths] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchFiltersData = async () => {
       const { data } = await supabase
         .from("campaign_leads")
-        .select("campaign_id, unit")
+        .select("campaign_id, unit, month")
         .order("campaign_id");
 
       if (data) {
         const uniqueCampaigns = [...new Set(data.map((d) => d.campaign_id))];
-        const uniqueUnits = [...new Set(data.map((d) => d.unit).filter(Boolean))] as string[];
+        const uniqueUnits = [
+          ...new Set(data.map((d) => d.unit).filter(Boolean)),
+        ] as string[];
+        const uniqueMonths = [
+          ...new Set(data.map((d) => d.month).filter(Boolean)),
+        ] as string[];
         setCampaigns(uniqueCampaigns);
         setUnits(uniqueUnits);
+        setMonths(uniqueMonths);
       }
     };
 
@@ -52,6 +67,9 @@ export function LeadsFilters({ filters, onFiltersChange }: LeadsFiltersProps) {
     onFiltersChange({
       campaign: "all",
       unit: "all",
+      status: "all",
+      responsavel: "all",
+      month: "all",
       startDate: undefined,
       endDate: undefined,
       search: "",
@@ -61,37 +79,67 @@ export function LeadsFilters({ filters, onFiltersChange }: LeadsFiltersProps) {
   const hasActiveFilters =
     filters.campaign !== "all" ||
     filters.unit !== "all" ||
+    filters.status !== "all" ||
+    filters.responsavel !== "all" ||
+    filters.month !== "all" ||
     filters.startDate ||
     filters.endDate ||
     filters.search;
 
   return (
     <div className="bg-card rounded-xl border border-border p-4 mb-6">
-      <div className="flex flex-col lg:flex-row gap-4">
-        {/* Search */}
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome ou WhatsApp..."
-              value={filters.search}
-              onChange={(e) =>
-                onFiltersChange({ ...filters, search: e.target.value })
-              }
-              className="pl-10"
-            />
+      <div className="flex flex-col gap-4">
+        {/* Row 1: Search and Export */}
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome ou WhatsApp..."
+                value={filters.search}
+                onChange={(e) =>
+                  onFiltersChange({ ...filters, search: e.target.value })
+                }
+                className="pl-10"
+              />
+            </div>
           </div>
+          <Button variant="outline" onClick={onExport}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar CSV
+          </Button>
         </div>
 
-        {/* Unit Filter */}
-        <div className="w-full lg:w-40">
+        {/* Row 2: Filters */}
+        <div className="flex flex-wrap gap-3">
+          {/* Status Filter */}
+          <Select
+            value={filters.status}
+            onValueChange={(value) =>
+              onFiltersChange({ ...filters, status: value })
+            }
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              {Object.entries(LEAD_STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Unit Filter */}
           <Select
             value={filters.unit}
             onValueChange={(value) =>
               onFiltersChange({ ...filters, unit: value })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Unidade" />
             </SelectTrigger>
             <SelectContent>
@@ -103,17 +151,15 @@ export function LeadsFilters({ filters, onFiltersChange }: LeadsFiltersProps) {
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        {/* Campaign Filter */}
-        <div className="w-full lg:w-48">
+          {/* Campaign Filter */}
           <Select
             value={filters.campaign}
             onValueChange={(value) =>
               onFiltersChange({ ...filters, campaign: value })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-44">
               <SelectValue placeholder="Campanha" />
             </SelectTrigger>
             <SelectContent>
@@ -125,77 +171,118 @@ export function LeadsFilters({ filters, onFiltersChange }: LeadsFiltersProps) {
               ))}
             </SelectContent>
           </Select>
+
+          {/* Responsavel Filter */}
+          <Select
+            value={filters.responsavel}
+            onValueChange={(value) =>
+              onFiltersChange({ ...filters, responsavel: value })
+            }
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos responsáveis</SelectItem>
+              <SelectItem value="unassigned">Não atribuído</SelectItem>
+              {responsaveis.map((r) => (
+                <SelectItem key={r.user_id} value={r.user_id}>
+                  {r.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Month Filter */}
+          <Select
+            value={filters.month}
+            onValueChange={(value) =>
+              onFiltersChange({ ...filters, month: value })
+            }
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Mês evento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos meses</SelectItem>
+              {months.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Start Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-36 justify-start text-left font-normal",
+                  !filters.startDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {filters.startDate ? (
+                  format(filters.startDate, "dd/MM/yyyy")
+                ) : (
+                  <span>De</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={filters.startDate}
+                onSelect={(date) =>
+                  onFiltersChange({ ...filters, startDate: date })
+                }
+                locale={ptBR}
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* End Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-36 justify-start text-left font-normal",
+                  !filters.endDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {filters.endDate ? (
+                  format(filters.endDate, "dd/MM/yyyy")
+                ) : (
+                  <span>Até</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={filters.endDate}
+                onSelect={(date) =>
+                  onFiltersChange({ ...filters, endDate: date })
+                }
+                locale={ptBR}
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <Button variant="ghost" onClick={clearFilters}>
+              <X className="w-4 h-4 mr-2" />
+              Limpar
+            </Button>
+          )}
         </div>
-
-        {/* Start Date */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full lg:w-40 justify-start text-left font-normal",
-                !filters.startDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {filters.startDate ? (
-                format(filters.startDate, "dd/MM/yyyy")
-              ) : (
-                <span>Data início</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={filters.startDate}
-              onSelect={(date) =>
-                onFiltersChange({ ...filters, startDate: date })
-              }
-              locale={ptBR}
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-
-        {/* End Date */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full lg:w-40 justify-start text-left font-normal",
-                !filters.endDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {filters.endDate ? (
-                format(filters.endDate, "dd/MM/yyyy")
-              ) : (
-                <span>Data fim</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={filters.endDate}
-              onSelect={(date) =>
-                onFiltersChange({ ...filters, endDate: date })
-              }
-              locale={ptBR}
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-
-        {/* Clear Filters */}
-        {hasActiveFilters && (
-          <Button variant="ghost" onClick={clearFilters}>
-            <X className="w-4 h-4 mr-2" />
-            Limpar
-          </Button>
-        )}
       </div>
     </div>
   );
