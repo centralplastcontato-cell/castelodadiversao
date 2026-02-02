@@ -104,90 +104,108 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-secondary/20 via-background to-festive/10 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -left-32 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-festive/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 right-1/4 w-48 h-48 bg-secondary/15 rounded-full blur-2xl" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         <Button
           variant="ghost"
           onClick={() => navigate("/")}
-          className="mb-6"
+          className="mb-6 hover:bg-card/50"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar ao site
         </Button>
 
-        <div className="bg-card rounded-2xl shadow-floating p-8">
-          <div className="text-center mb-8">
-            <img 
-              src={logoCastelo} 
-              alt="Castelo da Diversão" 
-              className="w-32 mx-auto mb-4"
-            />
-            <h1 className="font-display text-2xl font-bold text-foreground">
-              Área Administrativa
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              {isSignUp ? "Crie sua conta" : "Entre para gerenciar leads"}
-            </p>
+        <div className="relative rounded-3xl overflow-hidden shadow-floating">
+          {/* Card background with subtle gradient border effect */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-secondary/10 to-festive/20 p-[2px] rounded-3xl">
+            <div className="w-full h-full bg-card rounded-3xl" />
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
+          
+          {/* Card content */}
+          <div className="relative bg-card/95 backdrop-blur-sm p-8 rounded-3xl border border-border/50">
+            <div className="text-center mb-8">
+              <div className="relative inline-block">
+                <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-secondary/20 to-festive/20 rounded-full blur-xl opacity-60" />
+                <img 
+                  src={logoCastelo} 
+                  alt="Castelo da Diversão" 
+                  className="w-32 mx-auto mb-4 relative drop-shadow-lg"
                 />
               </div>
+              <h1 className="font-display text-2xl font-bold text-foreground">
+                Área Administrativa
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                {isSignUp ? "Crie sua conta" : "Entre para gerenciar leads"}
+              </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-background/50 border-border/50 focus:border-primary/50"
+                    required
+                  />
+                </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 bg-background/50 border-border/50 focus:border-primary/50"
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-gradient-cta hover:opacity-90 text-white font-semibold py-5 rounded-xl shadow-button hover:shadow-floating transition-all duration-300"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : isSignUp ? (
+                  "Criar conta"
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-primary hover:underline text-sm font-medium"
+              >
+                {isSignUp
+                  ? "Já tem uma conta? Entre aqui"
+                  : "Não tem conta? Cadastre-se"}
+              </button>
             </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-gradient-hero hover:opacity-90"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : isSignUp ? (
-                "Criar conta"
-              ) : (
-                "Entrar"
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-primary hover:underline text-sm"
-            >
-              {isSignUp
-                ? "Já tem uma conta? Entre aqui"
-                : "Não tem conta? Cadastre-se"}
-            </button>
           </div>
         </div>
       </div>
