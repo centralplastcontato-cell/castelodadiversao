@@ -86,29 +86,38 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
             {campaignConfig.title}
           </motion.h1>
 
-          {/* Offer Preview */}
+          {/* Offer Preview - Glassmorphism */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.8, duration: 0.5 }}
-            className="inline-block bg-card/95 backdrop-blur-sm rounded-3xl p-6 md:p-8 shadow-floating mt-8"
+            className="relative inline-block overflow-hidden rounded-3xl p-6 md:p-8 mt-8 border border-white/30 shadow-floating backdrop-blur-xl bg-white/20"
           >
-            <p className="text-xl md:text-2xl font-bold text-foreground mb-3">
-              {campaignConfig.offer.headline}
-            </p>
-            <div className="flex flex-col gap-2 text-left">
-              <div className="flex items-center gap-2 text-primary font-semibold">
-                <span>✨</span>
-                <span>10% de desconto à vista</span>
+            {/* Subtle gradient overlay for depth */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-white/10 pointer-events-none" />
+            
+            {/* Decorative blur circles */}
+            <div className="absolute -top-8 -right-8 w-24 h-24 bg-secondary/20 rounded-full blur-2xl" />
+            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-primary/15 rounded-full blur-2xl" />
+            
+            <div className="relative z-10">
+              <p className="text-xl md:text-2xl font-bold text-foreground mb-3">
+                {campaignConfig.offer.headline}
+              </p>
+              <div className="flex flex-col gap-2 text-left">
+                <div className="flex items-center gap-2 text-primary font-semibold">
+                  <span>✨</span>
+                  <span>10% de desconto à vista</span>
+                </div>
+                <div className="flex items-center gap-2 text-primary font-semibold">
+                  <span>🎁</span>
+                  <span>+ 10 convidados grátis</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-primary font-semibold">
-                <span>🎁</span>
-                <span>+ 10 convidados grátis</span>
-              </div>
+              <p className="text-sm text-muted-foreground mt-4">
+                Válido até {campaignConfig.offer.validUntil}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground mt-4">
-              Válido até {campaignConfig.offer.validUntil}
-            </p>
           </motion.div>
 
           {/* CTA Button */}
