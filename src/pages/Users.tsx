@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Loader2, Users, Shield, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -61,7 +61,9 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserWithRole | null>(null);
   const [editName, setEditName] = useState("");
+  const [desktopNewPassword, setDesktopNewPassword] = useState("");
 
   // Form state
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -349,6 +351,36 @@ export default function UsersPage() {
     }
   };
 
+  const handleResetPassword = async (userId: string, newPassword: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-user", {
+        body: {
+          action: "reset_password",
+          user_id: userId,
+          new_password: newPassword,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Senha alterada",
+        description: "A nova senha foi definida com sucesso.",
+      });
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Erro ao resetar senha",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderDialogContent = () => (
     <DialogContent>
       <DialogHeader>
@@ -525,6 +557,7 @@ export default function UsersPage() {
                   onUpdateRole={handleUpdateRole}
                   onUpdateName={handleUpdateName}
                   onDelete={handleDeleteUser}
+                  onResetPassword={handleResetPassword}
                 />
               ))}
               {users.length === 0 && (
@@ -663,6 +696,65 @@ export default function UsersPage() {
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>
+
+                          {/* Password reset button */}
+                          {u.user_id !== user.id && (
+                            <Dialog 
+                              open={resetPasswordUser?.id === u.id} 
+                              onOpenChange={(open) => {
+                                if (open) {
+                                  setResetPasswordUser(u);
+                                  setDesktopNewPassword("");
+                                } else {
+                                  setResetPasswordUser(null);
+                                  setDesktopNewPassword("");
+                                }
+                              }}
+                            >
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <KeyRound className="w-4 h-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Resetar Senha</DialogTitle>
+                                  <DialogDescription>
+                                    Defina uma nova senha para <strong>{u.full_name}</strong>.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="reset-password-desktop">Nova senha</Label>
+                                    <Input
+                                      id="reset-password-desktop"
+                                      type="password"
+                                      value={desktopNewPassword}
+                                      onChange={(e) => setDesktopNewPassword(e.target.value)}
+                                      placeholder="Mínimo 6 caracteres"
+                                    />
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => setResetPasswordUser(null)}>
+                                    Cancelar
+                                  </Button>
+                                  <Button 
+                                    onClick={async () => {
+                                      if (desktopNewPassword.length >= 6 && resetPasswordUser) {
+                                        await handleResetPassword(resetPasswordUser.user_id, desktopNewPassword);
+                                        setResetPasswordUser(null);
+                                        setDesktopNewPassword("");
+                                      }
+                                    }} 
+                                    disabled={isSubmitting || desktopNewPassword.length < 6}
+                                  >
+                                    Salvar Senha
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          )}
 
                           {/* Delete button */}
                           {u.user_id !== user.id && (
