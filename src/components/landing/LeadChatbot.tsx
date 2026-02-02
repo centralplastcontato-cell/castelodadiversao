@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Loader2 } from "lucide-react";
+import { X, Send, Loader2, MessageCircle, MapPin } from "lucide-react";
 import { campaignConfig } from "@/config/campaignConfig";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -304,8 +304,33 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 border-t border-border"
+              className="p-4 border-t border-border space-y-3"
             >
+              <p className="text-sm text-muted-foreground text-center mb-2">
+                Ou fale diretamente com uma unidade:
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <a
+                  href="https://wa.me/5515991336278"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium hover:scale-105"
+                >
+                  <MessageCircle size={16} className="transition-transform duration-300 group-hover:scale-110" />
+                  <MapPin size={12} />
+                  <span>Manchester</span>
+                </a>
+                <a
+                  href="https://wa.me/5515974034646"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium hover:scale-105"
+                >
+                  <MessageCircle size={16} className="transition-transform duration-300 group-hover:scale-110" />
+                  <MapPin size={12} />
+                  <span>Trujilo</span>
+                </a>
+              </div>
               <button
                 onClick={resetChat}
                 className="w-full bg-muted text-foreground py-3 rounded-full font-medium hover:bg-muted/80 transition-colors"
