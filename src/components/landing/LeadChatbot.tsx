@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, MessageCircle, Loader2 } from "lucide-react";
+import { X, Send, Loader2 } from "lucide-react";
 import { campaignConfig } from "@/config/campaignConfig";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import logoCastelo from "@/assets/logo-castelo.png";
 interface Message {
   id: string;
   type: "bot" | "user";
@@ -212,9 +213,11 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
           {/* Header */}
           <div className="bg-gradient-hero p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-foreground/20 rounded-full flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-primary-foreground" />
-              </div>
+              <img 
+                src={logoCastelo} 
+                alt="Castelo da Diversão" 
+                className="h-10 w-auto"
+              />
               <div>
                 <h3 className="font-display font-bold text-primary-foreground">Castelo da Diversão</h3>
                 <p className="text-sm text-primary-foreground/80">Online agora</p>
