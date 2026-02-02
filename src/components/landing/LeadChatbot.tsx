@@ -338,23 +338,28 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
                           ? "grid grid-cols-7 gap-1" 
                           : "flex flex-wrap gap-2"
                       }`}>
-                        {message.options.map((option) => (
-                          <button
-                            key={option}
-                            onClick={() => 
-                              message.id === "day-of-month" 
-                                ? handleDayOfMonthSelect(option) 
-                                : handleOptionSelect(option)
-                            }
-                            className={`${
-                              message.id === "day-of-month"
-                                ? "bg-card text-foreground w-9 h-9 rounded-lg text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm flex items-center justify-center"
-                                : "bg-card text-foreground px-4 py-2 rounded-full text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm"
-                            }`}
-                          >
-                            {option}
-                          </button>
-                        ))}
+                        {message.options.map((option) => {
+                          const isPromoMonth = message.id === "month" && campaignConfig.chatbot.promoMonths?.includes(option);
+                          return (
+                            <button
+                              key={option}
+                              onClick={() => 
+                                message.id === "day-of-month" 
+                                  ? handleDayOfMonthSelect(option) 
+                                  : handleOptionSelect(option)
+                              }
+                              className={`${
+                                message.id === "day-of-month"
+                                  ? "bg-card text-foreground w-9 h-9 rounded-lg text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm flex items-center justify-center"
+                                  : isPromoMonth
+                                    ? "bg-gradient-to-r from-primary to-festive text-primary-foreground px-4 py-2 rounded-full text-sm font-bold hover:opacity-90 transition-all shadow-md ring-2 ring-primary/30"
+                                    : "bg-card text-foreground px-4 py-2 rounded-full text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm"
+                              }`}
+                            >
+                              {isPromoMonth ? `🎉 ${option}` : option}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
