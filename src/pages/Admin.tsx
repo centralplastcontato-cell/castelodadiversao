@@ -8,6 +8,7 @@ import { LeadsTable } from "@/components/admin/LeadsTable";
 import { LeadsFilters } from "@/components/admin/LeadsFilters";
 import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { LeadDetailSheet } from "@/components/admin/LeadDetailSheet";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,10 +19,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, ArrowLeft, RefreshCw, LayoutList, Columns, Shield, Menu, Home, Users as UsersIcon } from "lucide-react";
+import { LogOut, RefreshCw, LayoutList, Columns, Menu, Home, Users as UsersIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface LeadFilters {
   campaign: string;
@@ -243,250 +246,223 @@ export default function Admin() {
     return null;
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          <div className="flex items-center justify-between gap-2">
-            {/* Left side: Menu (mobile) / Back (desktop) + Logo + Title */}
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-              {/* Mobile: Hamburger menu */}
-              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 sm:hidden">
-                    <Menu className="w-5 h-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0">
-                  <SheetHeader className="p-4 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={logoCastelo} 
-                        alt="Castelo da Diversão" 
-                        className="h-10 w-auto"
-                      />
-                      <div>
-                        <SheetTitle className="text-left text-base">Castelo da Diversão</SheetTitle>
-                        <p className="text-xs text-muted-foreground">
-                          {currentUserProfile?.full_name || user.email}
-                        </p>
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  // Mobile layout with Sheet
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Mobile Header */}
+        <header className="bg-card border-b border-border sticky top-0 z-10">
+          <div className="px-3 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                      <Menu className="w-5 h-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-72 p-0">
+                    <SheetHeader className="p-4 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <img src={logoCastelo} alt="Castelo da Diversão" className="h-10 w-auto" />
+                        <div>
+                          <SheetTitle className="text-left text-base">Castelo da Diversão</SheetTitle>
+                          <p className="text-xs text-muted-foreground">
+                            {currentUserProfile?.full_name || user.email}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </SheetHeader>
-                  
-                  <nav className="flex flex-col p-2">
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start h-11 px-3"
-                      onClick={() => {
-                        navigate("/");
-                        setIsMobileMenuOpen(false);
-                      }}
-                    >
-                      <Home className="w-5 h-5 mr-3" />
-                      Página Inicial
-                    </Button>
+                    </SheetHeader>
                     
-                    <Button 
-                      variant="secondary" 
-                      className="justify-start h-11 px-3"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <LayoutList className="w-5 h-5 mr-3" />
-                      Gestão de Leads
-                    </Button>
-                    
-                    {canManageUsers && (
-                      <Button 
-                        variant="ghost" 
-                        className="justify-start h-11 px-3"
-                        onClick={() => {
-                          navigate("/users");
-                          setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        <UsersIcon className="w-5 h-5 mr-3" />
-                        Gerenciar Usuários
+                    <nav className="flex flex-col p-2">
+                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/"); setIsMobileMenuOpen(false); }}>
+                        <Home className="w-5 h-5 mr-3" />
+                        Página Inicial
                       </Button>
-                    )}
-                    
-                    <Separator className="my-2" />
-                    
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start h-11 px-3"
-                      onClick={() => {
-                        handleRefresh();
-                        setIsMobileMenuOpen(false);
-                      }}
-                    >
-                      <RefreshCw className="w-5 h-5 mr-3" />
-                      Atualizar Dados
-                    </Button>
-                    
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start h-11 px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => {
-                        handleLogout();
-                        setIsMobileMenuOpen(false);
-                      }}
-                    >
-                      <LogOut className="w-5 h-5 mr-3" />
-                      Sair da Conta
-                    </Button>
-                  </nav>
-                </SheetContent>
-              </Sheet>
+                      
+                      <Button variant="secondary" className="justify-start h-11 px-3" onClick={() => setIsMobileMenuOpen(false)}>
+                        <LayoutList className="w-5 h-5 mr-3" />
+                        Gestão de Leads
+                      </Button>
+                      
+                      {canManageUsers && (
+                        <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/users"); setIsMobileMenuOpen(false); }}>
+                          <UsersIcon className="w-5 h-5 mr-3" />
+                          Gerenciar Usuários
+                        </Button>
+                      )}
+                      
+                      <Separator className="my-2" />
+                      
+                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { handleRefresh(); setIsMobileMenuOpen(false); }}>
+                        <RefreshCw className="w-5 h-5 mr-3" />
+                        Atualizar Dados
+                      </Button>
+                      
+                      <Button variant="ghost" className="justify-start h-11 px-3 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>
+                        <LogOut className="w-5 h-5 mr-3" />
+                        Sair da Conta
+                      </Button>
+                    </nav>
+                  </SheetContent>
+                </Sheet>
 
-              {/* Desktop: Back button */}
-              <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => navigate("/")}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar
-              </Button>
-
-              {/* Logo + Title */}
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <img 
-                  src={logoCastelo} 
-                  alt="Castelo da Diversão" 
-                  className="h-8 sm:h-10 w-auto shrink-0"
-                />
-                <div className="min-w-0">
-                  <h1 className="font-display font-bold text-foreground text-sm sm:text-base truncate">
-                    Gestão de Leads
-                  </h1>
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate hidden sm:block">
-                    {currentUserProfile?.full_name || user.email}
-                  </p>
+                <div className="flex items-center gap-2 min-w-0">
+                  <img src={logoCastelo} alt="Castelo da Diversão" className="h-8 w-auto shrink-0" />
+                  <h1 className="font-display font-bold text-foreground text-sm truncate">Gestão de Leads</h1>
                 </div>
               </div>
-            </div>
 
-            {/* Right side: Action buttons (desktop only) */}
-            <div className="hidden sm:flex items-center gap-2">
-              {canManageUsers && (
-                <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
-                  <Shield className="w-4 h-4 mr-2" />
-                  Usuários
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={handleRefresh}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Atualizar
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={handleRefresh}>
+                <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
-
-            {/* Mobile: Quick refresh button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-9 w-9 sm:hidden shrink-0"
-              onClick={handleRefresh}
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        <LeadsFilters
-          filters={filters}
-          onFiltersChange={setFilters}
-          responsaveis={responsaveis}
-          onExport={handleExport}
+        <main className="px-3 py-4">
+          <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
+
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="mb-4">
+            <TabsList>
+              <TabsTrigger value="list" className="flex items-center gap-2">
+                <LayoutList className="w-4 h-4" />
+                Lista
+              </TabsTrigger>
+              <TabsTrigger value="kanban" className="flex items-center gap-2">
+                <Columns className="w-4 h-4" />
+                Kanban
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="list" className="mt-4">
+              <LeadsTable
+                leads={leads}
+                isLoading={isLoadingLeads}
+                totalCount={totalCount}
+                responsaveis={responsaveis}
+                onLeadClick={handleLeadClick}
+                onStatusChange={handleStatusChange}
+                onRefresh={handleRefresh}
+                canEdit={canEdit}
+                isAdmin={isAdmin}
+                currentUserId={user.id}
+                currentUserName={currentUserProfile?.full_name || user.email || ""}
+              />
+            </TabsContent>
+
+            <TabsContent value="kanban" className="mt-4">
+              <LeadsKanban
+                leads={leads}
+                responsaveis={responsaveis}
+                onLeadClick={handleLeadClick}
+                onStatusChange={async (leadId, newStatus) => {
+                  try {
+                    const lead = leads.find((l) => l.id === leadId);
+                    if (!lead) return;
+                    await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de status", old_value: lead.status, new_value: newStatus });
+                    const { error } = await supabase.from("campaign_leads").update({ status: newStatus }).eq("id", leadId);
+                    if (error) throw error;
+                    handleStatusChange(leadId, newStatus);
+                  } catch (error) {
+                    console.error("Error updating status:", error);
+                    toast({ title: "Erro ao atualizar status", description: "Tente novamente.", variant: "destructive" });
+                  }
+                }}
+                canEdit={canEdit}
+              />
+            </TabsContent>
+          </Tabs>
+        </main>
+
+        <LeadDetailSheet lead={selectedLead} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} onUpdate={handleRefresh} responsaveis={responsaveis} currentUserId={user.id} currentUserName={currentUserProfile?.full_name || user.email || ""} canEdit={canEdit} />
+      </div>
+    );
+  }
+
+  // Desktop layout with Sidebar
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AdminSidebar 
+          canManageUsers={canManageUsers} 
+          currentUserName={currentUserProfile?.full_name || user.email || ""} 
+          onRefresh={handleRefresh} 
+          onLogout={handleLogout} 
         />
+        
+        <SidebarInset className="flex-1">
+          {/* Desktop Header */}
+          <header className="bg-card border-b border-border sticky top-0 z-10">
+            <div className="px-4 py-3 flex items-center gap-4">
+              <SidebarTrigger />
+              <div>
+                <h1 className="font-display font-bold text-foreground text-lg">Gestão de Leads</h1>
+                <p className="text-sm text-muted-foreground">{currentUserProfile?.full_name || user.email}</p>
+              </div>
+            </div>
+          </header>
 
-        {/* View Mode Tabs */}
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="mb-4">
-          <TabsList>
-            <TabsTrigger value="list" className="flex items-center gap-2">
-              <LayoutList className="w-4 h-4" />
-              Lista
-            </TabsTrigger>
-            <TabsTrigger value="kanban" className="flex items-center gap-2">
-              <Columns className="w-4 h-4" />
-              Kanban
-            </TabsTrigger>
-          </TabsList>
+          <main className="p-6">
+            <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
 
-          <TabsContent value="list" className="mt-4">
-            <LeadsTable
-              leads={leads}
-              isLoading={isLoadingLeads}
-              totalCount={totalCount}
-              responsaveis={responsaveis}
-              onLeadClick={handleLeadClick}
-              onStatusChange={handleStatusChange}
-              onRefresh={handleRefresh}
-              canEdit={canEdit}
-              isAdmin={isAdmin}
-              currentUserId={user.id}
-              currentUserName={currentUserProfile?.full_name || user.email || ""}
-            />
-          </TabsContent>
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="mb-4">
+              <TabsList>
+                <TabsTrigger value="list" className="flex items-center gap-2">
+                  <LayoutList className="w-4 h-4" />
+                  Lista
+                </TabsTrigger>
+                <TabsTrigger value="kanban" className="flex items-center gap-2">
+                  <Columns className="w-4 h-4" />
+                  Kanban
+                </TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="kanban" className="mt-4">
-            <LeadsKanban
-              leads={leads}
-              responsaveis={responsaveis}
-              onLeadClick={handleLeadClick}
-              onStatusChange={async (leadId, newStatus) => {
-                try {
-                  const lead = leads.find((l) => l.id === leadId);
-                  if (!lead) return;
+              <TabsContent value="list" className="mt-4">
+                <LeadsTable
+                  leads={leads}
+                  isLoading={isLoadingLeads}
+                  totalCount={totalCount}
+                  responsaveis={responsaveis}
+                  onLeadClick={handleLeadClick}
+                  onStatusChange={handleStatusChange}
+                  onRefresh={handleRefresh}
+                  canEdit={canEdit}
+                  isAdmin={isAdmin}
+                  currentUserId={user.id}
+                  currentUserName={currentUserProfile?.full_name || user.email || ""}
+                />
+              </TabsContent>
 
-                  // Add history entry
-                  await supabase.from("lead_history").insert({
-                    lead_id: leadId,
-                    user_id: user.id,
-                    user_name: currentUserProfile?.full_name || user.email,
-                    action: "Alteração de status",
-                    old_value: lead.status,
-                    new_value: newStatus,
-                  });
+              <TabsContent value="kanban" className="mt-4">
+                <LeadsKanban
+                  leads={leads}
+                  responsaveis={responsaveis}
+                  onLeadClick={handleLeadClick}
+                  onStatusChange={async (leadId, newStatus) => {
+                    try {
+                      const lead = leads.find((l) => l.id === leadId);
+                      if (!lead) return;
+                      await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de status", old_value: lead.status, new_value: newStatus });
+                      const { error } = await supabase.from("campaign_leads").update({ status: newStatus }).eq("id", leadId);
+                      if (error) throw error;
+                      handleStatusChange(leadId, newStatus);
+                    } catch (error) {
+                      console.error("Error updating status:", error);
+                      toast({ title: "Erro ao atualizar status", description: "Tente novamente.", variant: "destructive" });
+                    }
+                  }}
+                  canEdit={canEdit}
+                />
+              </TabsContent>
+            </Tabs>
+          </main>
 
-                  const { error } = await supabase
-                    .from("campaign_leads")
-                    .update({ status: newStatus })
-                    .eq("id", leadId);
-
-                  if (error) throw error;
-
-                  handleStatusChange(leadId, newStatus);
-                } catch (error) {
-                  console.error("Error updating status:", error);
-                  toast({
-                    title: "Erro ao atualizar status",
-                    description: "Tente novamente.",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              canEdit={canEdit}
-            />
-          </TabsContent>
-        </Tabs>
-      </main>
-
-      {/* Lead Detail Sheet */}
-      <LeadDetailSheet
-        lead={selectedLead}
-        isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
-        onUpdate={handleRefresh}
-        responsaveis={responsaveis}
-        currentUserId={user.id}
-        currentUserName={currentUserProfile?.full_name || user.email || ""}
-        canEdit={canEdit}
-      />
-    </div>
+          <LeadDetailSheet lead={selectedLead} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} onUpdate={handleRefresh} responsaveis={responsaveis} currentUserId={user.id} currentUserName={currentUserProfile?.full_name || user.email || ""} canEdit={canEdit} />
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
