@@ -15,7 +15,6 @@ const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres
 export default function Auth() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -57,31 +56,14 @@ export default function Auth() {
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin`,
-          },
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast({
-          title: "Conta criada!",
-          description: "Verifique seu email para confirmar o cadastro.",
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        navigate("/admin");
-      }
+      navigate("/admin");
     } catch (error: any) {
       let message = "Ocorreu um erro. Tente novamente.";
       
@@ -139,7 +121,7 @@ export default function Auth() {
               Área Administrativa
             </h1>
             <p className="text-muted-foreground mt-2">
-              {isSignUp ? "Crie sua conta" : "Entre para gerenciar leads"}
+              Entre para gerenciar leads
             </p>
           </div>
 
@@ -183,25 +165,11 @@ export default function Auth() {
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
-              ) : isSignUp ? (
-                "Criar conta"
               ) : (
                 "Entrar"
               )}
             </Button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-festive hover:underline text-sm font-medium"
-            >
-              {isSignUp
-                ? "Já tem uma conta? Entre aqui"
-                : "Não tem conta? Cadastre-se"}
-            </button>
-          </div>
         </div>
       </div>
     </div>
