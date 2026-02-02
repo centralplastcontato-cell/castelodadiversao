@@ -37,6 +37,7 @@ export const campaignConfig = {
 
   // CHATBOT - Opções configuráveis
   chatbot: {
+    unitOptions: ["Manchester", "Trujilo"],
     monthOptions: ["Fevereiro", "Março"],
     dayOptions: ["Segunda a Quinta", "Sexta", "Sábado", "Domingo"],
     guestOptions: ["50 pessoas", "60 pessoas", "70 pessoas", "80 pessoas", "90 pessoas", "100 pessoas"],

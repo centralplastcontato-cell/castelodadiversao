@@ -11,6 +11,7 @@ import logoCastelo from "@/assets/logo-castelo.png";
 
 export interface LeadFilters {
   campaign: string;
+  unit: string;
   startDate: Date | undefined;
   endDate: Date | undefined;
   search: string;
@@ -23,6 +24,7 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<LeadFilters>({
     campaign: "all",
+    unit: "all",
     startDate: undefined,
     endDate: undefined,
     search: "",

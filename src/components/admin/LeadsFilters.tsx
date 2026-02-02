@@ -28,26 +28,30 @@ interface LeadsFiltersProps {
 
 export function LeadsFilters({ filters, onFiltersChange }: LeadsFiltersProps) {
   const [campaigns, setCampaigns] = useState<string[]>([]);
+  const [units, setUnits] = useState<string[]>([]);
 
   useEffect(() => {
-    const fetchCampaigns = async () => {
+    const fetchFiltersData = async () => {
       const { data } = await supabase
         .from("campaign_leads")
-        .select("campaign_id")
+        .select("campaign_id, unit")
         .order("campaign_id");
 
       if (data) {
         const uniqueCampaigns = [...new Set(data.map((d) => d.campaign_id))];
+        const uniqueUnits = [...new Set(data.map((d) => d.unit).filter(Boolean))] as string[];
         setCampaigns(uniqueCampaigns);
+        setUnits(uniqueUnits);
       }
     };
 
-    fetchCampaigns();
+    fetchFiltersData();
   }, []);
 
   const clearFilters = () => {
     onFiltersChange({
       campaign: "all",
+      unit: "all",
       startDate: undefined,
       endDate: undefined,
       search: "",
@@ -56,6 +60,7 @@ export function LeadsFilters({ filters, onFiltersChange }: LeadsFiltersProps) {
 
   const hasActiveFilters =
     filters.campaign !== "all" ||
+    filters.unit !== "all" ||
     filters.startDate ||
     filters.endDate ||
     filters.search;
@@ -76,6 +81,28 @@ export function LeadsFilters({ filters, onFiltersChange }: LeadsFiltersProps) {
               className="pl-10"
             />
           </div>
+        </div>
+
+        {/* Unit Filter */}
+        <div className="w-full lg:w-40">
+          <Select
+            value={filters.unit}
+            onValueChange={(value) =>
+              onFiltersChange({ ...filters, unit: value })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Unidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas unidades</SelectItem>
+              {units.map((unit) => (
+                <SelectItem key={unit} value={unit}>
+                  {unit}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Campaign Filter */}
