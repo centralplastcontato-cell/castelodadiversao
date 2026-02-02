@@ -121,7 +121,7 @@ export default function Admin() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <LeadsFilters filters={filters} onFiltersChange={setFilters} />
-        <LeadsTable filters={filters} refreshKey={refreshKey} />
+        <LeadsTable filters={filters} refreshKey={refreshKey} onRefresh={handleRefresh} />
       </main>
     </div>
   );
