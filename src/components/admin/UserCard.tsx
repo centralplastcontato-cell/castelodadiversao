@@ -33,7 +33,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { User, Mail, Pencil, Trash2, Loader2 } from "lucide-react";
+import { User, Mail, Pencil, Trash2, Loader2, KeyRound } from "lucide-react";
 
 interface UserCardProps {
   user: UserWithRole;
@@ -42,6 +42,7 @@ interface UserCardProps {
   onUpdateRole: (userId: string, newRole: AppRole) => void;
   onUpdateName: (userId: string, newName: string) => Promise<void>;
   onDelete: (userId: string) => Promise<void>;
+  onResetPassword: (userId: string, newPassword: string) => Promise<void>;
 }
 
 export function UserCard({ 
@@ -51,10 +52,13 @@ export function UserCard({
   onUpdateRole,
   onUpdateName,
   onDelete,
+  onResetPassword,
 }: UserCardProps) {
   const isCurrentUser = user.user_id === currentUserId;
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [editName, setEditName] = useState(user.full_name);
+  const [newPassword, setNewPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSaveName = async () => {
@@ -63,6 +67,18 @@ export function UserCard({
     try {
       await onUpdateName(user.user_id, editName.trim());
       setIsEditOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) return;
+    setIsSubmitting(true);
+    try {
+      await onResetPassword(user.user_id, newPassword);
+      setIsPasswordOpen(false);
+      setNewPassword("");
     } finally {
       setIsSubmitting(false);
     }
@@ -161,6 +177,49 @@ export function UserCard({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Password reset button */}
+            {!isCurrentUser && (
+              <Dialog open={isPasswordOpen} onOpenChange={(open) => {
+                setIsPasswordOpen(open);
+                if (!open) setNewPassword("");
+              }}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <KeyRound className="w-4 h-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Resetar Senha</DialogTitle>
+                    <DialogDescription>
+                      Defina uma nova senha para <strong>{user.full_name}</strong>.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">Nova senha</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsPasswordOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleResetPassword} disabled={isSubmitting || newPassword.length < 6}>
+                      {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Salvar Senha
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
 
             {/* Delete button */}
             {!isCurrentUser && (

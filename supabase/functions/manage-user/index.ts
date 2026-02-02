@@ -6,13 +6,14 @@ const corsHeaders = {
 }
 
 interface CreateUserRequest {
-  action: 'create' | 'update' | 'toggle_active' | 'delete'
+  action: 'create' | 'update' | 'toggle_active' | 'delete' | 'reset_password'
   email?: string
   password?: string
   full_name?: string
   role?: 'admin' | 'comercial' | 'visualizacao'
   user_id?: string
   is_active?: boolean
+  new_password?: string
 }
 
 Deno.serve(async (req) => {
@@ -273,6 +274,42 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, message: 'Usuário excluído com sucesso' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (body.action === 'reset_password') {
+      if (!body.user_id || !body.new_password) {
+        return new Response(
+          JSON.stringify({ error: 'user_id e new_password são obrigatórios' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (body.new_password.length < 6) {
+        return new Response(
+          JSON.stringify({ error: 'A senha deve ter pelo menos 6 caracteres' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const { error: resetError } = await supabaseAdmin.auth.admin.updateUserById(
+        body.user_id,
+        { password: body.new_password }
+      )
+
+      if (resetError) {
+        console.error('Password reset error:', resetError)
+        return new Response(
+          JSON.stringify({ error: 'Erro ao resetar senha: ' + resetError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      console.log('Password reset successfully for user:', body.user_id)
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Senha alterada com sucesso' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
