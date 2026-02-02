@@ -396,7 +396,9 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 <a
-                  href="https://wa.me/5515991336278"
+                  href={`https://wa.me/5515991336278?text=${encodeURIComponent(
+                    `Olá! 🎉\n\nVim pelo site do Castelo da Diversão e gostaria de saber mais sobre a promoção!\n\n📋 *Meus dados:*\n👤 Nome: ${leadData.name || ''}\n📍 Unidade: ${leadData.unit || ''}\n📅 Data: ${leadData.dayOfMonth || ''}/${leadData.month || ''}\n👥 Convidados: ${leadData.guests || ''}\n\nAguardo retorno! 😊`
+                  )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium hover:scale-105"
@@ -406,7 +408,9 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
                   <span>Manchester</span>
                 </a>
                 <a
-                  href="https://wa.me/5515974034646"
+                  href={`https://wa.me/5515974034646?text=${encodeURIComponent(
+                    `Olá! 🎉\n\nVim pelo site do Castelo da Diversão e gostaria de saber mais sobre a promoção!\n\n📋 *Meus dados:*\n👤 Nome: ${leadData.name || ''}\n📍 Unidade: ${leadData.unit || ''}\n📅 Data: ${leadData.dayOfMonth || ''}/${leadData.month || ''}\n👥 Convidados: ${leadData.guests || ''}\n\nAguardo retorno! 😊`
+                  )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium hover:scale-105"
