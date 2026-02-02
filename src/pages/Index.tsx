@@ -1,12 +1,28 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { HeroSection } from "@/components/landing/HeroSection";
+import { OfferSection } from "@/components/landing/OfferSection";
+import { BenefitsSection } from "@/components/landing/BenefitsSection";
+import { UrgencySection } from "@/components/landing/UrgencySection";
+import { LeadChatbot } from "@/components/landing/LeadChatbot";
+import { FloatingCTA } from "@/components/landing/FloatingCTA";
+import { Footer } from "@/components/landing/Footer";
 
 const Index = () => {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const openChat = () => setIsChatOpen(true);
+  const closeChat = () => setIsChatOpen(false);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <HeroSection onCtaClick={openChat} />
+      <OfferSection onCtaClick={openChat} />
+      <BenefitsSection />
+      <UrgencySection onCtaClick={openChat} />
+      <Footer />
+      
+      <FloatingCTA onClick={openChat} />
+      <LeadChatbot isOpen={isChatOpen} onClose={closeChat} />
     </div>
   );
 };
