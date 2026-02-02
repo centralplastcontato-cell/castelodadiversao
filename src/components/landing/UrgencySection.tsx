@@ -8,7 +8,7 @@ interface UrgencySectionProps {
 
 export function UrgencySection({ onCtaClick }: UrgencySectionProps) {
   return (
-    <section className="py-16 bg-castle relative overflow-hidden">
+    <section className="py-16 bg-gradient-to-br from-festive/90 to-secondary relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(10)].map((_, i) => (
