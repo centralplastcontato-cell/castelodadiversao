@@ -10,6 +10,7 @@ import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { LeadDetailSheet } from "@/components/admin/LeadDetailSheet";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { exportLeadsToCSV } from "@/components/admin/exportLeads";
+import { MetricsCards } from "@/components/admin/MetricsCards";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -323,6 +324,7 @@ export default function Admin() {
         </header>
 
         <main className="px-3 py-4">
+          <MetricsCards leads={leads} isLoading={isLoadingLeads} />
           <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
 
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="mb-4">
@@ -406,6 +408,7 @@ export default function Admin() {
           </header>
 
           <main className="p-6">
+            <MetricsCards leads={leads} isLoading={isLoadingLeads} />
             <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
 
             <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="mb-4">
