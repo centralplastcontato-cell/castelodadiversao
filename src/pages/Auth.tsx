@@ -121,10 +121,13 @@ export default function Auth() {
           Voltar ao site
         </Button>
 
-        {/* Red card */}
+        {/* Soft cream card */}
         <div 
-          className="bg-castle rounded-3xl p-8"
-          style={{ boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.4)' }}
+          className="rounded-3xl p-8 border border-secondary/30"
+          style={{ 
+            backgroundColor: 'hsl(40 40% 96%)',
+            boxShadow: '0 25px 50px -12px rgba(245, 158, 11, 0.15)' 
+          }}
         >
           <div className="text-center mb-8">
             <img 
@@ -132,42 +135,42 @@ export default function Auth() {
               alt="Castelo da Diversão" 
               className="w-32 mx-auto mb-4"
             />
-            <h1 className="font-display text-2xl font-bold text-white">
+            <h1 className="font-display text-2xl font-bold text-foreground">
               Área Administrativa
             </h1>
-            <p className="text-white/80 mt-2">
+            <p className="text-muted-foreground mt-2">
               {isSignUp ? "Crie sua conta" : "Entre para gerenciar leads"}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">Email</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-castle/60" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-white border-white/20 text-foreground"
+                  className="pl-10 bg-white border-secondary/20"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">Senha</Label>
+              <Label htmlFor="password">Senha</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-castle/60" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 bg-white border-white/20 text-foreground"
+                  className="pl-10 bg-white border-secondary/20"
                   required
                 />
               </div>
@@ -175,7 +178,7 @@ export default function Auth() {
 
             <Button
               type="submit"
-              className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold py-5 rounded-xl transition-all duration-300"
+              className="w-full bg-festive hover:bg-festive/90 text-white font-semibold py-5 rounded-xl transition-all duration-300"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -192,7 +195,7 @@ export default function Auth() {
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-white hover:underline text-sm font-medium"
+              className="text-festive hover:underline text-sm font-medium"
             >
               {isSignUp
                 ? "Já tem uma conta? Entre aqui"
