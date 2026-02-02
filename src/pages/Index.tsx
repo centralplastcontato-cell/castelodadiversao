@@ -4,6 +4,7 @@ import { OfferSection } from "@/components/landing/OfferSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { UrgencySection } from "@/components/landing/UrgencySection";
+import { InstagramSection } from "@/components/landing/InstagramSection";
 import { LeadChatbot } from "@/components/landing/LeadChatbot";
 import { FloatingCTA } from "@/components/landing/FloatingCTA";
 import { Footer } from "@/components/landing/Footer";
@@ -20,6 +21,7 @@ const Index = () => {
       <OfferSection onCtaClick={openChat} />
       <BenefitsSection />
       <TestimonialsSection />
+      <InstagramSection />
       <UrgencySection onCtaClick={openChat} />
       <Footer />
       
