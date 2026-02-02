@@ -30,22 +30,20 @@ export function OfferSection({ onCtaClick }: OfferSectionProps) {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* Benefits Card */}
+          {/* Benefits Card - Glassmorphism */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative p-8 rounded-3xl overflow-hidden border-2 border-primary/30 shadow-2xl"
+            className="relative p-8 rounded-3xl overflow-hidden border border-white/30 shadow-2xl backdrop-blur-xl bg-white/10"
           >
-            {/* Vibrant Gradient Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-secondary/20 to-accent/25" />
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent" />
+            {/* Subtle gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-white/10" />
             
             {/* Decorative circles */}
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-secondary/40 rounded-full blur-3xl" />
-            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-primary/30 rounded-full blur-3xl" />
-            <div className="absolute top-1/2 right-0 w-24 h-24 bg-accent/20 rounded-full blur-2xl" />
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-secondary/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl" />
             <div className="relative z-10">
               <h3 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
                 <Star className="w-6 h-6 text-secondary fill-secondary" />
@@ -71,22 +69,20 @@ export function OfferSection({ onCtaClick }: OfferSectionProps) {
             </div>
           </motion.div>
 
-          {/* CTA Card */}
+          {/* CTA Card - Glassmorphism */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="relative p-8 rounded-3xl overflow-hidden border-2 border-festive/30 shadow-xl"
+            className="relative p-8 rounded-3xl overflow-hidden border border-white/30 shadow-xl backdrop-blur-xl bg-white/10"
           >
-            {/* Vibrant Gradient Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-festive/20 via-secondary/15 to-castle/10" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/70 to-transparent" />
+            {/* Subtle gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-white/10" />
             
             {/* Decorative elements */}
-            <div className="absolute -top-16 -right-16 w-40 h-40 bg-festive/30 rounded-full blur-3xl" />
-            <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-secondary/30 rounded-full blur-3xl" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-castle/10 rounded-full blur-2xl" />
+            <div className="absolute -top-16 -right-16 w-40 h-40 bg-festive/20 rounded-full blur-3xl" />
+            <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-secondary/20 rounded-full blur-3xl" />
 
             <div className="relative z-10">
               <div className="text-center">
