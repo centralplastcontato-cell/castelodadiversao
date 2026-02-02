@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { campaignConfig } from "@/config/campaignConfig";
 import heroBg from "@/assets/hero-bg.jpg";
+import logoCastelo from "@/assets/logo-castelo.jpeg";
 
 interface HeroSectionProps {
   onCtaClick: () => void;
@@ -51,11 +52,21 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
           transition={{ duration: 0.8 }}
           className="space-y-6"
         >
+          {/* Logo */}
+          <motion.img
+            src={logoCastelo}
+            alt="Castelo da Diversão"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="w-48 md:w-64 lg:w-80 mx-auto drop-shadow-lg"
+          />
+
           {/* Tag */}
           <motion.span
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
             className="inline-block bg-secondary text-secondary-foreground px-6 py-2 rounded-full text-lg font-bold shadow-card"
           >
             {campaignConfig.tagline}
@@ -65,21 +76,11 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
             className="text-5xl md:text-7xl lg:text-8xl font-display font-bold text-primary-foreground drop-shadow-lg"
           >
             {campaignConfig.title}
           </motion.h1>
-
-          {/* Subtitle */}
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            className="text-2xl md:text-3xl lg:text-4xl font-display text-primary-foreground/90"
-          >
-            {campaignConfig.subtitle}
-          </motion.p>
 
           {/* Offer Preview */}
           <motion.div
