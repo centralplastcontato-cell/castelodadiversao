@@ -238,44 +238,49 @@ export default function Admin() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-            <div className="flex items-center gap-3">
-              <img 
-                src={logoCastelo} 
-                alt="Castelo da Diversão" 
-                className="h-10 w-auto"
-              />
-              <div>
-                <h1 className="font-display font-bold text-foreground">
-                  Gestão de Leads
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {currentUserProfile?.full_name || user.email}
-                </p>
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          {/* Mobile: stacked layout, Desktop: side by side */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {/* Left side: Back + Logo + Title */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3" onClick={() => navigate("/")}>
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline ml-2">Voltar</span>
+              </Button>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <img 
+                  src={logoCastelo} 
+                  alt="Castelo da Diversão" 
+                  className="h-8 sm:h-10 w-auto"
+                />
+                <div className="min-w-0">
+                  <h1 className="font-display font-bold text-foreground text-sm sm:text-base truncate">
+                    Gestão de Leads
+                  </h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                    {currentUserProfile?.full_name || user.email}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            {canManageUsers && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
-                <Shield className="w-4 h-4 mr-2" />
-                Usuários
+            {/* Right side: Action buttons */}
+            <div className="flex items-center gap-1 sm:gap-2 justify-end">
+              {canManageUsers && (
+                <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3" onClick={() => navigate("/users")}>
+                  <Shield className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Usuários</span>
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3" onClick={handleRefresh}>
+                <RefreshCw className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Atualizar</span>
               </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Atualizar
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
+              <Button variant="ghost" size="sm" className="h-8 text-xs sm:text-sm px-2 sm:px-3" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sair</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
