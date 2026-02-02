@@ -24,6 +24,7 @@ export type Database = {
           id: string
           month: string | null
           name: string
+          unit: string | null
           whatsapp: string
         }
         Insert: {
@@ -35,6 +36,7 @@ export type Database = {
           id?: string
           month?: string | null
           name: string
+          unit?: string | null
           whatsapp: string
         }
         Update: {
@@ -46,6 +48,7 @@ export type Database = {
           id?: string
           month?: string | null
           name?: string
+          unit?: string | null
           whatsapp?: string
         }
         Relationships: []

@@ -12,13 +12,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Phone, Users, Calendar, Loader2 } from "lucide-react";
+import { ExternalLink, Phone, Users, Calendar, Loader2, MapPin } from "lucide-react";
 import { LeadFilters } from "@/pages/Admin";
 
 interface Lead {
   id: string;
   name: string;
   whatsapp: string;
+  unit: string | null;
   month: string | null;
   day_preference: string | null;
   guests: string | null;
@@ -47,6 +48,10 @@ export function LeadsTable({ filters, refreshKey }: LeadsTableProps) {
         .order("created_at", { ascending: false });
 
       // Apply filters
+      if (filters.unit && filters.unit !== "all") {
+        query = query.eq("unit", filters.unit);
+      }
+
       if (filters.campaign && filters.campaign !== "all") {
         query = query.eq("campaign_id", filters.campaign);
       }
@@ -109,7 +114,7 @@ export function LeadsTable({ filters, refreshKey }: LeadsTableProps) {
           Nenhum lead encontrado
         </h3>
         <p className="text-muted-foreground">
-          {filters.search || filters.campaign !== "all" || filters.startDate || filters.endDate
+          {filters.search || filters.campaign !== "all" || filters.unit !== "all" || filters.startDate || filters.endDate
             ? "Tente ajustar os filtros para ver mais resultados."
             : "Os leads capturados aparecerão aqui."}
         </p>
@@ -135,6 +140,7 @@ export function LeadsTable({ filters, refreshKey }: LeadsTableProps) {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>WhatsApp</TableHead>
+              <TableHead>Unidade</TableHead>
               <TableHead>Mês</TableHead>
               <TableHead>Dia</TableHead>
               <TableHead>Convidados</TableHead>
@@ -152,6 +158,16 @@ export function LeadsTable({ filters, refreshKey }: LeadsTableProps) {
                     <Phone className="w-4 h-4 text-muted-foreground" />
                     {lead.whatsapp}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {lead.unit ? (
+                    <Badge variant="default" className="flex items-center gap-1 w-fit">
+                      <MapPin className="w-3 h-3" />
+                      {lead.unit}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {lead.month ? (

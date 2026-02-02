@@ -14,6 +14,7 @@ interface Message {
 }
 
 interface LeadData {
+  unit?: string;
   month?: string;
   day?: string;
   guests?: string;
@@ -58,10 +59,10 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
           setMessages((prev) => [
             ...prev,
             {
-              id: "month",
+              id: "unit",
               type: "bot",
-              content: "Para qual mês você pretende realizar a festa?",
-              options: campaignConfig.chatbot.monthOptions,
+              content: "Em qual unidade você deseja fazer sua festa?",
+              options: campaignConfig.chatbot.unitOptions,
             },
           ]);
         }, 800);
@@ -80,19 +81,32 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
     setTimeout(() => {
       switch (currentStep) {
         case 0:
+          setLeadData((prev) => ({ ...prev, unit: option }));
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: "month",
+              type: "bot",
+              content: "Perfeito! Para qual mês você pretende realizar a festa?",
+              options: campaignConfig.chatbot.monthOptions,
+            },
+          ]);
+          setCurrentStep(1);
+          break;
+        case 1:
           setLeadData((prev) => ({ ...prev, month: option }));
           setMessages((prev) => [
             ...prev,
             {
               id: "day",
               type: "bot",
-              content: "Perfeito! Em qual dia da semana você prefere?",
+              content: "Em qual dia da semana você prefere?",
               options: campaignConfig.chatbot.dayOptions,
             },
           ]);
-          setCurrentStep(1);
+          setCurrentStep(2);
           break;
-        case 1:
+        case 2:
           setLeadData((prev) => ({ ...prev, day: option }));
           setMessages((prev) => [
             ...prev,
@@ -103,9 +117,9 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               options: campaignConfig.chatbot.guestOptions,
             },
           ]);
-          setCurrentStep(2);
+          setCurrentStep(3);
           break;
-        case 2:
+        case 3:
           setLeadData((prev) => ({ ...prev, guests: option }));
           setMessages((prev) => [
             ...prev,
@@ -116,7 +130,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               isInput: true,
             },
           ]);
-          setCurrentStep(3);
+          setCurrentStep(4);
           setInputType("name");
           break;
       }
@@ -148,6 +162,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
         const { error } = await supabase.from("campaign_leads").insert({
           name: leadData.name,
           whatsapp: whatsappValue,
+          unit: leadData.unit,
           month: leadData.month,
           day_preference: leadData.day,
           guests: leadData.guests,
