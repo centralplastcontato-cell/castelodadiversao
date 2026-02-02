@@ -70,11 +70,17 @@ export const InstagramSection = () => {
             <div className="absolute -inset-1 bg-gradient-to-r from-primary via-secondary to-accent rounded-2xl blur opacity-30" />
             
             <div className="relative bg-card rounded-xl overflow-hidden shadow-2xl border border-border/50">
+              {/* Header overlay to cover Elfsight branding */}
+              <div className="absolute top-0 left-0 right-0 z-10 bg-background h-14 flex items-center justify-center gap-2 border-b border-border/30">
+                <Instagram className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-foreground">@castelodadiversao</span>
+              </div>
+              
               <iframe
                 src="https://16022b612da14f75bbc525aa62325a1f.elf.site"
                 title="Feed do Instagram"
                 className="w-full border-0"
-                style={{ minHeight: "600px" }}
+                style={{ minHeight: "650px", marginTop: "0" }}
                 loading="lazy"
               />
             </div>
