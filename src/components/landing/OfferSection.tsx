@@ -36,16 +36,16 @@ export function OfferSection({ onCtaClick }: OfferSectionProps) {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative p-8 rounded-3xl overflow-hidden border-2 border-primary/20 shadow-xl"
+            className="relative p-8 rounded-3xl overflow-hidden border-2 border-primary/30 shadow-2xl"
           >
-            {/* Gradient Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/10 to-secondary/10" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+            {/* Vibrant Gradient Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-secondary/20 to-accent/25" />
+            <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent" />
             
             {/* Decorative circles */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-2xl" />
-            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-accent/20 rounded-full blur-2xl" />
-
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-secondary/40 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-primary/30 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 right-0 w-24 h-24 bg-accent/20 rounded-full blur-2xl" />
             <div className="relative z-10">
               <h3 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
                 <Star className="w-6 h-6 text-secondary fill-secondary" />
