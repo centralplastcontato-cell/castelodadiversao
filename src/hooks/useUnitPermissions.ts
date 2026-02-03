@@ -55,6 +55,10 @@ export function useUnitPermissions(userId: string | undefined) {
         if (canViewTrujillo) {
           allowedUnits.push('Trujillo');
         }
+        // If user has permission for at least one unit, also include 'As duas'
+        if (canViewManchester || canViewTrujillo) {
+          allowedUnits.push('As duas');
+        }
       }
 
       setUnitPermissions({
