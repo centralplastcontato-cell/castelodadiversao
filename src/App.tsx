@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CentralAtendimento from "./pages/CentralAtendimento";
+import Configuracoes from "./pages/Configuracoes";
 import Users from "./pages/Users";
 import UserSettings from "./pages/UserSettings";
 import LandingPage from "./pages/LandingPage";
@@ -23,7 +24,7 @@ const App = () => (
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/atendimento" element={<CentralAtendimento />} />
-          <Route path="/configuracoes" element={<UserSettings />} />
+          <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="/dashboard" element={<Index />} />
           <Route path="/users" element={<Users />} />
           <Route path="/promo" element={<LandingPage />} />

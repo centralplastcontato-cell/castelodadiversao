@@ -3,11 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useUnitPermissions } from "@/hooks/useUnitPermissions";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
+import { WhatsAppConfig } from "@/components/whatsapp/WhatsAppConfig";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { MessageSquare, Menu } from "lucide-react";
+import { Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -28,16 +27,15 @@ interface Profile {
   is_active: boolean;
 }
 
-export default function WhatsApp() {
+export default function Configuracoes() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [_session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const { role, isLoading: isLoadingRole, canManageUsers } = useUserRole(user?.id);
-  const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
+  const { role, isLoading: isLoadingRole, canManageUsers, isAdmin } = useUserRole(user?.id);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -91,7 +89,7 @@ export default function WhatsApp() {
     window.location.reload();
   };
 
-  if (isLoading || isLoadingRole || isLoadingUnitPerms) {
+  if (isLoading || isLoadingRole) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -134,13 +132,13 @@ export default function WhatsApp() {
                     </SheetHeader>
                     
                     <nav className="flex flex-col p-2">
-                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/admin"); setIsMobileMenuOpen(false); }}>
-                        Gestão de Leads
+                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/atendimento"); setIsMobileMenuOpen(false); }}>
+                        Central de Atendimento
                       </Button>
                       
                       <Button variant="secondary" className="justify-start h-11 px-3" onClick={() => setIsMobileMenuOpen(false)}>
-                        <MessageSquare className="w-5 h-5 mr-3" />
-                        WhatsApp
+                        <Settings className="w-5 h-5 mr-3" />
+                        Configurações
                       </Button>
                       
                       {canManageUsers && (
@@ -160,15 +158,15 @@ export default function WhatsApp() {
 
                 <div className="flex items-center gap-2 min-w-0">
                   <img src={logoCastelo} alt="Castelo da Diversão" className="h-8 w-auto shrink-0" />
-                  <h1 className="font-display font-bold text-foreground text-sm truncate">WhatsApp</h1>
+                  <h1 className="font-display font-bold text-foreground text-sm truncate">Configurações</h1>
                 </div>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col">
-          <WhatsAppChat userId={user.id} allowedUnits={canViewAll ? ['all'] : allowedUnits} />
+        <main className="flex-1 p-3 overflow-auto">
+          <WhatsAppConfig userId={user.id} isAdmin={isAdmin} />
         </main>
       </div>
     );
@@ -191,14 +189,14 @@ export default function WhatsApp() {
             <div className="px-4 py-3 flex items-center gap-4">
               <SidebarTrigger />
               <div>
-                <h1 className="font-display font-bold text-foreground text-lg">WhatsApp</h1>
+                <h1 className="font-display font-bold text-foreground text-lg">Configurações</h1>
                 <p className="text-sm text-muted-foreground">{currentUserProfile?.full_name || user.email}</p>
               </div>
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col p-6">
-            <WhatsAppChat userId={user.id} allowedUnits={canViewAll ? ['all'] : allowedUnits} />
+          <main className="flex-1 p-6 overflow-auto">
+            <WhatsAppConfig userId={user.id} isAdmin={isAdmin} />
           </main>
         </SidebarInset>
       </div>
