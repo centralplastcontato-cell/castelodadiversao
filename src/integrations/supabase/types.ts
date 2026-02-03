@@ -382,6 +382,7 @@ export type Database = {
           created_at: string
           from_me: boolean
           id: string
+          media_key: string | null
           media_url: string | null
           message_id: string | null
           message_type: string
@@ -394,6 +395,7 @@ export type Database = {
           created_at?: string
           from_me?: boolean
           id?: string
+          media_key?: string | null
           media_url?: string | null
           message_id?: string | null
           message_type?: string
@@ -406,6 +408,7 @@ export type Database = {
           created_at?: string
           from_me?: boolean
           id?: string
+          media_key?: string | null
           media_url?: string | null
           message_id?: string | null
           message_type?: string

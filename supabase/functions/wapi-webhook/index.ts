@@ -14,10 +14,20 @@ async function downloadAndStoreMedia(
   instanceToken: string,
   messageId: string,
   mediaType: 'image' | 'audio' | 'video' | 'document',
-  fileName?: string
+  fileName?: string,
+  mediaKey?: string | null
 ): Promise<string | null> {
   try {
-    console.log(`Downloading media for message ${messageId}, type: ${mediaType}`);
+    console.log(`Downloading media for message ${messageId}, type: ${mediaType}, hasMediaKey: ${!!mediaKey}`);
+    
+    // Build request body - include mediaKey if available
+    const requestBody: Record<string, string> = {
+      messageId: messageId,
+    };
+    
+    if (mediaKey) {
+      requestBody.mediaKey = mediaKey;
+    }
     
     // Call W-API download media endpoint
     const downloadResponse = await fetch(
@@ -28,9 +38,7 @@ async function downloadAndStoreMedia(
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${instanceToken}`,
         },
-        body: JSON.stringify({
-          messageId: messageId,
-        }),
+        body: JSON.stringify(requestBody),
       }
     );
 
@@ -392,6 +400,7 @@ Deno.serve(async (req) => {
         let content = '';
         let messageType = 'text';
         let mediaUrl = null;
+        let mediaKey: string | null = null;
         let shouldDownloadMedia = false;
         let mediaFileName: string | undefined;
 
@@ -403,25 +412,34 @@ Deno.serve(async (req) => {
           messageType = 'image';
           content = msgContent.imageMessage.caption || '[Imagem]';
           mediaUrl = msgContent.imageMessage.url || msgContent.imageMessage.directPath || null;
+          mediaKey = msgContent.imageMessage.mediaKey || null;
           shouldDownloadMedia = true;
         } else if (msgContent.videoMessage) {
           messageType = 'video';
           content = msgContent.videoMessage.caption || '[Vídeo]';
           mediaUrl = msgContent.videoMessage.url || msgContent.videoMessage.directPath || null;
+          mediaKey = msgContent.videoMessage.mediaKey || null;
           shouldDownloadMedia = true;
         } else if (msgContent.audioMessage) {
           messageType = 'audio';
           content = '[Áudio]';
           mediaUrl = msgContent.audioMessage.url || msgContent.audioMessage.directPath || null;
+          mediaKey = msgContent.audioMessage.mediaKey || null;
           shouldDownloadMedia = true;
         } else if (msgContent.documentMessage) {
           messageType = 'document';
           content = msgContent.documentMessage.fileName || '[Documento]';
           mediaFileName = msgContent.documentMessage.fileName;
           mediaUrl = msgContent.documentMessage.url || msgContent.documentMessage.directPath || null;
+          mediaKey = msgContent.documentMessage.mediaKey || null;
           shouldDownloadMedia = true;
         } else if (message.body || message.text) {
           content = message.body || message.text;
+        }
+        
+        // Log media key availability for debugging
+        if (shouldDownloadMedia) {
+          console.log(`Media message received - type: ${messageType}, hasMediaKey: ${!!mediaKey}, hasUrl: ${!!mediaUrl}`);
         }
 
         // For incoming messages with media, try to download and store in our storage
@@ -434,18 +452,21 @@ Deno.serve(async (req) => {
             instance.instance_token,
             messageId,
             messageType as 'image' | 'audio' | 'video' | 'document',
-            mediaFileName
+            mediaFileName,
+            mediaKey
           );
           
           if (storedUrl) {
             mediaUrl = storedUrl;
+            // Clear media key since we successfully downloaded
+            mediaKey = null;
             console.log(`Media stored successfully, new URL: ${storedUrl}`);
           } else {
-            console.log('Media download failed, keeping original URL (may expire)');
+            console.log('Media download failed, keeping original URL (may expire) and mediaKey for later retry');
           }
         }
 
-        // Insert message
+        // Insert message (include media_key for later retry if initial download failed)
         const { error: msgError } = await supabase
           .from('wapi_messages')
           .insert({
@@ -455,6 +476,7 @@ Deno.serve(async (req) => {
             message_type: messageType,
             content: content,
             media_url: mediaUrl,
+            media_key: mediaKey,
             status: fromMe ? 'sent' : 'received',
             timestamp: message.messageTimestamp 
               ? new Date(message.messageTimestamp * 1000).toISOString() 
@@ -466,7 +488,7 @@ Deno.serve(async (req) => {
         if (msgError) {
           console.error('Error inserting message:', msgError);
         } else {
-          console.log('Message saved:', messageId, 'content:', content.substring(0, 50), 'mediaUrl:', mediaUrl ? 'yes' : 'no');
+          console.log('Message saved:', messageId, 'content:', content.substring(0, 50), 'mediaUrl:', mediaUrl ? 'yes' : 'no', 'mediaKey:', mediaKey ? 'yes' : 'no');
         }
         break;
       }
