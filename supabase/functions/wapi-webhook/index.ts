@@ -87,14 +87,34 @@ Deno.serve(async (req) => {
           .eq('remote_jid', remoteJid)
           .single();
 
+        // Extract message content for preview
+        let previewContent = '';
+        if (message.message?.conversation) {
+          previewContent = message.message.conversation;
+        } else if (message.message?.extendedTextMessage?.text) {
+          previewContent = message.message.extendedTextMessage.text;
+        } else if (message.message?.imageMessage) {
+          previewContent = '📷 Imagem';
+        } else if (message.message?.videoMessage) {
+          previewContent = '🎥 Vídeo';
+        } else if (message.message?.audioMessage) {
+          previewContent = '🎤 Áudio';
+        } else if (message.message?.documentMessage) {
+          previewContent = '📄 ' + (message.message.documentMessage.fileName || 'Documento');
+        } else if (message.body || message.text) {
+          previewContent = message.body || message.text;
+        }
+
         if (existingConv) {
           conversation = existingConv;
-          // Update last message timestamp
+          // Update last message timestamp and preview
           await supabase
             .from('wapi_conversations')
             .update({ 
               last_message_at: new Date().toISOString(),
-              unread_count: fromMe ? existingConv.unread_count : (existingConv.unread_count || 0) + 1
+              unread_count: fromMe ? existingConv.unread_count : (existingConv.unread_count || 0) + 1,
+              last_message_content: previewContent.substring(0, 100),
+              last_message_from_me: fromMe,
             })
             .eq('id', existingConv.id);
         } else {
@@ -108,6 +128,8 @@ Deno.serve(async (req) => {
               contact_name: message.pushName || message.verifiedBizName || contactPhone,
               last_message_at: new Date().toISOString(),
               unread_count: fromMe ? 0 : 1,
+              last_message_content: previewContent.substring(0, 100),
+              last_message_from_me: fromMe,
             })
             .select()
             .single();

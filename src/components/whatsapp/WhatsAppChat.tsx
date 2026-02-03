@@ -8,10 +8,26 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Send, Search, MessageSquare, Phone, Check, CheckCheck, Clock, WifiOff, ArrowLeft, Building2 } from "lucide-react";
+import { 
+  Send, Search, MessageSquare, Phone, Check, CheckCheck, Clock, WifiOff, 
+  ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile
+} from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface WapiInstance {
   id: string;
@@ -30,6 +46,16 @@ interface Conversation {
   contact_phone: string;
   last_message_at: string | null;
   unread_count: number;
+  is_favorite: boolean;
+  last_message_content: string | null;
+  last_message_from_me: boolean;
+}
+
+interface MessageTemplate {
+  id: string;
+  name: string;
+  template: string;
+  is_active: boolean;
 }
 
 interface Message {
@@ -59,11 +85,27 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<'all' | 'unread' | 'favorites'>('all');
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchInstances();
+    fetchTemplates();
   }, [userId, allowedUnits]);
+
+  const fetchTemplates = async () => {
+    const { data } = await supabase
+      .from("message_templates")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    if (data) {
+      setTemplates(data as MessageTemplate[]);
+    }
+  };
 
   useEffect(() => {
     if (selectedInstance) {
@@ -251,11 +293,63 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     }
   };
 
-  const filteredConversations = conversations.filter((conv) =>
-    (conv.contact_name || conv.contact_phone)
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  const toggleFavorite = async (conv: Conversation) => {
+    const newValue = !conv.is_favorite;
+    
+    await supabase
+      .from('wapi_conversations')
+      .update({ is_favorite: newValue })
+      .eq('id', conv.id);
+
+    setConversations(prev => 
+      prev.map(c => c.id === conv.id ? { ...c, is_favorite: newValue } : c)
+    );
+
+    toast({
+      title: newValue ? "Adicionado aos favoritos" : "Removido dos favoritos",
+      description: conv.contact_name || conv.contact_phone,
+    });
+  };
+
+  const applyTemplate = (template: MessageTemplate) => {
+    let message = template.template;
+    
+    // Replace placeholders with conversation data
+    if (selectedConversation) {
+      message = message
+        .replace(/\{nome\}/gi, selectedConversation.contact_name || '')
+        .replace(/\{telefone\}/gi, selectedConversation.contact_phone || '');
+    }
+    
+    setNewMessage(message);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Common emojis for quick access
+  const commonEmojis = ['😊', '👍', '❤️', '🎉', '👋', '🙏', '😄', '🎂', '🎈', '⭐', '✨', '🔥'];
+
+  const filteredConversations = conversations
+    .filter((conv) => {
+      // Apply text search
+      const matchesSearch = (conv.contact_name || conv.contact_phone)
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      
+      // Apply filter
+      if (filter === 'unread') return matchesSearch && conv.unread_count > 0;
+      if (filter === 'favorites') return matchesSearch && conv.is_favorite;
+      return matchesSearch;
+    })
+    .sort((a, b) => {
+      // Favorites first, then by last message
+      if (a.is_favorite && !b.is_favorite) return -1;
+      if (!a.is_favorite && b.is_favorite) return 1;
+      return 0;
+    });
 
   const handleInstanceChange = (instanceId: string) => {
     const instance = instances.find(i => i.id === instanceId);
@@ -360,7 +454,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
             "w-full md:w-72 lg:w-80 border-r flex flex-col min-h-0",
             selectedConversation && "hidden md:flex"
           )}>
-            <div className="p-3 border-b">
+            <div className="p-3 border-b space-y-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -369,6 +463,40 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
                 />
+              </div>
+              
+              {/* Filter Tabs */}
+              <div className="flex gap-1">
+                <Button 
+                  variant={filter === 'all' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('all')}
+                >
+                  Tudo
+                </Button>
+                <Button 
+                  variant={filter === 'unread' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('unread')}
+                >
+                  Não lidas
+                  {conversations.filter(c => c.unread_count > 0).length > 0 && (
+                    <Badge className="ml-1 h-4 min-w-4 p-0 text-[10px]">
+                      {conversations.filter(c => c.unread_count > 0).length}
+                    </Badge>
+                  )}
+                </Button>
+                <Button 
+                  variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('favorites')}
+                >
+                  <Star className="w-3 h-3 mr-1" />
+                  Favoritos
+                </Button>
               </div>
             </div>
 
@@ -386,35 +514,68 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     key={conv.id}
                     onClick={() => setSelectedConversation(conv)}
                     className={cn(
-                      "w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors text-left border-b",
+                      "w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors text-left border-b group",
                       selectedConversation?.id === conv.id && "bg-accent",
                       conv.unread_count > 0 && "bg-primary/5"
                     )}
                   >
-                    <Avatar className="shrink-0">
-                      <AvatarFallback className={cn(
-                        "text-primary",
-                        conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
-                      )}>
-                        {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="shrink-0">
+                        <AvatarFallback className={cn(
+                          "text-primary",
+                          conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
+                        )}>
+                          {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {conv.is_favorite && (
+                        <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className={cn(
-                          "truncate",
-                          conv.unread_count > 0 ? "font-bold" : "font-medium"
-                        )}>
-                          {conv.contact_name || conv.contact_phone}
-                        </p>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {formatConversationDate(conv.last_message_at)}
-                        </span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <p className={cn(
+                            "truncate",
+                            conv.unread_count > 0 ? "font-bold" : "font-medium"
+                          )}>
+                            {conv.contact_name || conv.contact_phone}
+                          </p>
+                          {conv.lead_id && (
+                            <Link2 className="w-3 h-3 text-primary shrink-0" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(conv);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
+                          >
+                            {conv.is_favorite ? (
+                              <StarOff className="w-3 h-3 text-muted-foreground" />
+                            ) : (
+                              <Star className="w-3 h-3 text-muted-foreground" />
+                            )}
+                          </button>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatConversationDate(conv.last_message_at)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between gap-2 mt-1">
-                        <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
-                          <Phone className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{conv.contact_phone}</span>
+                      {/* Last message preview */}
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <p className={cn(
+                          "text-xs truncate flex items-center gap-1",
+                          conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
+                        )}>
+                          {conv.last_message_from_me && (
+                            <CheckCheck className="w-3 h-3 shrink-0 text-primary" />
+                          )}
+                          <span className="truncate">
+                            {conv.last_message_content || conv.contact_phone}
+                          </span>
                         </p>
                         {conv.unread_count > 0 && (
                           <Badge className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0">
@@ -454,19 +615,44 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate text-sm sm:text-base">
-                      {selectedConversation.contact_name || selectedConversation.contact_phone}
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <p className="font-medium truncate text-sm sm:text-base">
+                        {selectedConversation.contact_name || selectedConversation.contact_phone}
+                      </p>
+                      {selectedConversation.lead_id && (
+                        <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                          <Link2 className="w-2.5 h-2.5 mr-0.5" />
+                          Lead
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {selectedConversation.contact_phone}
                     </p>
                   </div>
-                  {selectedInstance && (
-                    <Badge variant="outline" className="hidden sm:flex shrink-0">
-                      <Building2 className="w-3 h-3 mr-1" />
-                      {selectedInstance.unit}
-                    </Badge>
-                  )}
+                  
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Favorite toggle */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => toggleFavorite(selectedConversation)}
+                    >
+                      {selectedConversation.is_favorite ? (
+                        <Star className="w-4 h-4 text-secondary fill-secondary" />
+                      ) : (
+                        <Star className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+
+                    {selectedInstance && (
+                      <Badge variant="outline" className="hidden sm:flex">
+                        <Building2 className="w-3 h-3 mr-1" />
+                        {selectedInstance.unit}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 {/* Messages */}
@@ -521,14 +707,70 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       e.preventDefault();
                       handleSendMessage();
                     }}
-                    className="flex gap-2"
+                    className="flex gap-2 items-end"
                   >
+                    {/* Templates Button */}
+                    {templates.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon"
+                            className="shrink-0 h-9 w-9"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-64">
+                          <DropdownMenuLabel>Templates Rápidos</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {templates.map((template) => (
+                            <DropdownMenuItem 
+                              key={template.id}
+                              onClick={() => applyTemplate(template)}
+                            >
+                              <span className="truncate">{template.name}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+
+                    {/* Emoji Button */}
+                    <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                      <PopoverTrigger asChild>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon"
+                          className="shrink-0 h-9 w-9"
+                        >
+                          <Smile className="w-4 h-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-2" align="start">
+                        <div className="grid grid-cols-6 gap-1">
+                          {commonEmojis.map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => insertEmoji(emoji)}
+                              className="text-xl p-1 hover:bg-muted rounded transition-colors"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
                     <Input
                       placeholder="Digite uma mensagem..."
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       disabled={isSending}
-                      className="text-base sm:text-sm"
+                      className="text-base sm:text-sm flex-1"
                     />
                     <Button 
                       type="submit" 
