@@ -590,13 +590,15 @@ export default function UsersPage() {
                       {u.is_active ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center">
                     {u.user_id === user!.id ? (
                       <Switch checked={u.is_active} disabled />
                     ) : u.is_active ? (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Switch checked={u.is_active} />
+                          <button type="button" className="inline-flex">
+                            <Switch checked={u.is_active} />
+                          </button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
