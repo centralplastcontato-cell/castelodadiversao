@@ -54,7 +54,7 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/s
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound, Lock, Menu, LayoutList } from "lucide-react";
+import { Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound, Lock, Menu, LayoutList, MessageSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -854,6 +854,11 @@ export default function UsersPage() {
                       <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/admin"); setIsMobileMenuOpen(false); }}>
                         <LayoutList className="w-5 h-5 mr-3" />
                         Gestão de Leads
+                      </Button>
+                      
+                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/whatsapp"); setIsMobileMenuOpen(false); }}>
+                        <MessageSquare className="w-5 h-5 mr-3" />
+                        WhatsApp
                       </Button>
                       
                       <Button variant="secondary" className="justify-start h-11 px-3" onClick={() => setIsMobileMenuOpen(false)}>
