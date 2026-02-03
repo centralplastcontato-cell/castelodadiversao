@@ -954,7 +954,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-220px)] sm:h-[calc(100vh-200px)] min-h-[400px] max-h-[800px]">
       {/* Header with Unit Tabs and Notifications Toggle */}
-      <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="flex items-center justify-between gap-2 mt-3 mb-2">
         {/* Unit Tabs - only show if multiple instances */}
         {instances.length > 1 ? (
           <Tabs 
