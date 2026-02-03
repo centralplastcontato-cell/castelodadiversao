@@ -17,6 +17,7 @@ import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
 import { WhatsAppConfig } from "@/components/whatsapp/WhatsAppConfig";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -68,6 +69,7 @@ export default function CentralAtendimento() {
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "leads" | "config">("chat");
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const { role, isLoading: isLoadingRole, isAdmin, canEdit, canManageUsers } = useUserRole(user?.id);
   const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
@@ -254,6 +256,42 @@ export default function CentralAtendimento() {
     }
   }, [leads, isLoadingLeads, searchParams, setSearchParams]);
 
+  // Fetch unread messages count with realtime updates
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      const { data } = await supabase
+        .from("wapi_conversations")
+        .select("unread_count");
+      
+      if (data) {
+        const total = data.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+        setUnreadCount(total);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('unread-count-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wapi_conversations',
+        },
+        () => {
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({
@@ -370,9 +408,17 @@ export default function CentralAtendimento() {
         <main className="flex-1 flex flex-col">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads" | "config")} className="flex-1 flex flex-col">
             <TabsList className="mx-3 mt-3 grid grid-cols-3">
-              <TabsTrigger value="chat" className="flex items-center gap-1.5 text-xs">
+              <TabsTrigger value="chat" className="flex items-center gap-1.5 text-xs relative">
                 <MessageSquare className="w-4 h-4" />
                 Chat
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center rounded-full"
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="leads" className="flex items-center gap-1.5 text-xs">
                 <LayoutList className="w-4 h-4" />
@@ -501,9 +547,17 @@ export default function CentralAtendimento() {
           <main className="flex-1 flex flex-col p-6">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads" | "config")} className="flex-1 flex flex-col">
               <TabsList className="w-fit">
-                <TabsTrigger value="chat" className="flex items-center gap-2">
+                <TabsTrigger value="chat" className="flex items-center gap-2 relative">
                   <MessageSquare className="w-4 h-4" />
                   Chat
+                  {unreadCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] flex items-center justify-center"
+                    >
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="leads" className="flex items-center gap-2">
                   <LayoutList className="w-4 h-4" />
