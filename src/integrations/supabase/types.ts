@@ -265,7 +265,10 @@ export type Database = {
           created_at: string
           id: string
           instance_id: string
+          is_favorite: boolean | null
           last_message_at: string | null
+          last_message_content: string | null
+          last_message_from_me: boolean | null
           lead_id: string | null
           remote_jid: string
           unread_count: number | null
@@ -277,7 +280,10 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id: string
+          is_favorite?: boolean | null
           last_message_at?: string | null
+          last_message_content?: string | null
+          last_message_from_me?: boolean | null
           lead_id?: string | null
           remote_jid: string
           unread_count?: number | null
@@ -289,7 +295,10 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id?: string
+          is_favorite?: boolean | null
           last_message_at?: string | null
+          last_message_content?: string | null
+          last_message_from_me?: boolean | null
           lead_id?: string | null
           remote_jid?: string
           unread_count?: number | null
