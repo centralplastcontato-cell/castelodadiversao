@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               phone: phone,
-              base64: imageBase64,
+              image: imageBase64,
               caption: caption || '',
             }),
           }
