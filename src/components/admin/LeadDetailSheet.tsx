@@ -43,6 +43,8 @@ import {
   Loader2,
   History,
   Send,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -74,6 +76,8 @@ export function LeadDetailSheet({
   const [history, setHistory] = useState<LeadHistory[]>([]);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [sendingTemplate, setSendingTemplate] = useState<string | null>(null);
+  const [wapiInstance, setWapiInstance] = useState<{ instance_id: string; instance_token: string; id: string } | null>(null);
 
   useEffect(() => {
     if (lead) {
@@ -82,8 +86,33 @@ export function LeadDetailSheet({
       setObservacoes(lead.observacoes || "");
       fetchHistory(lead.id);
       fetchTemplates();
+      fetchWapiInstance(lead.unit);
     }
   }, [lead]);
+
+  const fetchWapiInstance = async (unit: string | null) => {
+    // Fetch W-API instance for the lead's unit
+    let query = supabase.from('wapi_instances').select('id, instance_id, instance_token, unit, status');
+    
+    if (unit) {
+      // Try to find instance for this specific unit
+      const { data: unitInstance } = await query.eq('unit', unit).eq('status', 'connected').limit(1).single();
+      if (unitInstance) {
+        setWapiInstance(unitInstance);
+        return;
+      }
+    }
+    
+    // Fallback: any connected instance
+    const { data: anyInstance } = await supabase
+      .from('wapi_instances')
+      .select('id, instance_id, instance_token, unit, status')
+      .eq('status', 'connected')
+      .limit(1)
+      .single();
+    
+    setWapiInstance(anyInstance || null);
+  };
 
   const fetchHistory = async (leadId: string) => {
     setIsLoadingHistory(true);
@@ -202,6 +231,11 @@ export function LeadDetailSheet({
     return message ? `${baseUrl}?text=${encodeURIComponent(message)}` : baseUrl;
   };
 
+  const formatPhoneForWapi = (phone: string) => {
+    const cleanPhone = phone.replace(/\D/g, "");
+    return cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+  };
+
   const processTemplate = (template: string) => {
     if (!lead) return template;
 
@@ -212,6 +246,53 @@ export function LeadDetailSheet({
       .replace(/\{\{convidados\}\}/g, lead.guests || "")
       .replace(/\{\{campanha\}\}/g, lead.campaign_name || lead.campaign_id || "")
       .replace(/\{\{unidade\}\}/g, lead.unit || "");
+  };
+
+  const sendDirectMessage = async (templateId: string, message: string) => {
+    if (!lead || !wapiInstance) return;
+
+    setSendingTemplate(templateId);
+
+    try {
+      const phone = formatPhoneForWapi(lead.whatsapp);
+      
+      const { data, error } = await supabase.functions.invoke('wapi-send', {
+        body: {
+          action: 'send-text',
+          phone,
+          message,
+          instanceId: wapiInstance.instance_id,
+          instanceToken: wapiInstance.instance_token,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Log to history
+      await addHistoryEntry(
+        lead.id,
+        "Mensagem enviada via WhatsApp",
+        null,
+        message.substring(0, 100) + (message.length > 100 ? "..." : "")
+      );
+
+      toast({
+        title: "Mensagem enviada!",
+        description: "A mensagem foi enviada diretamente pelo WhatsApp.",
+      });
+
+      fetchHistory(lead.id);
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Erro ao enviar mensagem",
+        description: error.message || "Tente novamente ou abra o WhatsApp Web.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingTemplate(null);
+    }
   };
 
   if (!lead) return null;
@@ -263,6 +344,12 @@ export function LeadDetailSheet({
             <Label className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
               Contato via WhatsApp
+              {wapiInstance && (
+                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/30">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Conectado
+                </Badge>
+              )}
             </Label>
             <Button
               variant="outline"
@@ -281,32 +368,68 @@ export function LeadDetailSheet({
 
             {templates.length > 0 && (
               <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">
+                <Label className="text-sm text-muted-foreground flex items-center gap-2">
                   Mensagens rápidas:
+                  {wapiInstance ? (
+                    <span className="text-xs text-green-600">(envio direto)</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground/70">(abre WhatsApp Web)</span>
+                  )}
                 </Label>
                 <div className="grid gap-2">
-                  {templates.map((t) => (
-                    <Button
-                      key={t.id}
-                      variant="secondary"
-                      size="sm"
-                      className="justify-start text-left h-auto py-2"
-                      asChild
-                    >
-                      <a
-                        href={formatWhatsAppLink(
-                          lead.whatsapp,
-                          processTemplate(t.template)
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                  {templates.map((t) => {
+                    const isSending = sendingTemplate === t.id;
+                    const processedMessage = processTemplate(t.template);
+                    
+                    if (wapiInstance) {
+                      // Direct send via W-API
+                      return (
+                        <Button
+                          key={t.id}
+                          variant="secondary"
+                          size="sm"
+                          className="justify-start text-left h-auto py-2"
+                          onClick={() => sendDirectMessage(t.id, processedMessage)}
+                          disabled={isSending}
+                        >
+                          {isSending ? (
+                            <Loader2 className="w-4 h-4 mr-2 flex-shrink-0 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4 mr-2 flex-shrink-0" />
+                          )}
+                          <span className="truncate">{t.name}</span>
+                        </Button>
+                      );
+                    }
+                    
+                    // Fallback: Open WhatsApp Web
+                    return (
+                      <Button
+                        key={t.id}
+                        variant="secondary"
+                        size="sm"
+                        className="justify-start text-left h-auto py-2"
+                        asChild
                       >
-                        <Send className="w-4 h-4 mr-2 flex-shrink-0" />
-                        <span className="truncate">{t.name}</span>
-                      </a>
-                    </Button>
-                  ))}
+                        <a
+                          href={formatWhatsAppLink(lead.whatsapp, processedMessage)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Send className="w-4 h-4 mr-2 flex-shrink-0" />
+                          <span className="truncate">{t.name}</span>
+                        </a>
+                      </Button>
+                    );
+                  })}
                 </div>
+                
+                {!wapiInstance && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Conecte uma instância W-API para envio direto
+                  </p>
+                )}
               </div>
             )}
           </div>
