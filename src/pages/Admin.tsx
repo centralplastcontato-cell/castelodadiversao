@@ -70,6 +70,7 @@ export default function Admin() {
   const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
   const { hasPermission } = usePermissions(user?.id);
   const canEditName = isAdmin || hasPermission('leads.edit.name');
+  const canEditDescription = isAdmin || hasPermission('leads.edit.description');
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -392,8 +393,18 @@ export default function Admin() {
                   setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, name: newName } : l));
                   toast({ title: "Nome atualizado", description: `O nome foi alterado para "${newName}".` });
                 }}
+                onDescriptionUpdate={async (leadId, newDescription) => {
+                  const lead = leads.find((l) => l.id === leadId);
+                  if (!lead) return;
+                  await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de observações", old_value: lead.observacoes || "", new_value: newDescription });
+                  const { error } = await supabase.from("campaign_leads").update({ observacoes: newDescription }).eq("id", leadId);
+                  if (error) throw error;
+                  setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, observacoes: newDescription } : l));
+                  toast({ title: "Observação atualizada", description: "A observação foi salva com sucesso." });
+                }}
                 canEdit={canEdit}
                 canEditName={canEditName}
+                canEditDescription={canEditDescription}
               />
             </TabsContent>
           </Tabs>
@@ -486,8 +497,18 @@ export default function Admin() {
                     setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, name: newName } : l));
                     toast({ title: "Nome atualizado", description: `O nome foi alterado para "${newName}".` });
                   }}
+                  onDescriptionUpdate={async (leadId, newDescription) => {
+                    const lead = leads.find((l) => l.id === leadId);
+                    if (!lead) return;
+                    await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de observações", old_value: lead.observacoes || "", new_value: newDescription });
+                    const { error } = await supabase.from("campaign_leads").update({ observacoes: newDescription }).eq("id", leadId);
+                    if (error) throw error;
+                    setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, observacoes: newDescription } : l));
+                    toast({ title: "Observação atualizada", description: "A observação foi salva com sucesso." });
+                  }}
                   canEdit={canEdit}
                   canEditName={canEditName}
+                  canEditDescription={canEditDescription}
                 />
               </TabsContent>
             </Tabs>

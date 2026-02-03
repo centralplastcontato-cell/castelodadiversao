@@ -10,8 +10,10 @@ interface LeadsKanbanProps {
   onLeadClick: (lead: Lead) => void;
   onStatusChange: (leadId: string, newStatus: LeadStatus) => void;
   onNameUpdate?: (leadId: string, newName: string) => Promise<void>;
+  onDescriptionUpdate?: (leadId: string, newDescription: string) => Promise<void>;
   canEdit: boolean;
   canEditName?: boolean;
+  canEditDescription?: boolean;
 }
 
 export function LeadsKanban({
@@ -20,8 +22,10 @@ export function LeadsKanban({
   onLeadClick,
   onStatusChange,
   onNameUpdate,
+  onDescriptionUpdate,
   canEdit,
   canEditName = false,
+  canEditDescription = false,
 }: LeadsKanbanProps) {
   const columns: LeadStatus[] = [
     "novo",
@@ -76,6 +80,12 @@ export function LeadsKanban({
     }
   };
 
+  const handleDescriptionUpdate = async (leadId: string, newDescription: string) => {
+    if (onDescriptionUpdate) {
+      await onDescriptionUpdate(leadId, newDescription);
+    }
+  };
+
   return (
     <div className="flex gap-4 overflow-x-auto pb-4">
       {columns.map((status) => {
@@ -119,9 +129,11 @@ export function LeadsKanban({
                         responsavelName={getResponsavelName(lead.responsavel_id)}
                         canEdit={canEdit}
                         canEditName={canEditName}
+                        canEditDescription={canEditDescription}
                         onLeadClick={onLeadClick}
                         onStatusChange={onStatusChange}
                         onNameUpdate={handleNameUpdate}
+                        onDescriptionUpdate={handleDescriptionUpdate}
                         getPreviousStatus={getPreviousStatus}
                         getNextStatus={getNextStatus}
                       />
