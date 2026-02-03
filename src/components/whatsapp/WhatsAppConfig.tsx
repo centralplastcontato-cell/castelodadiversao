@@ -712,23 +712,27 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
             
             <div className="space-y-3">
               <div className="flex gap-2">
-                <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-input">
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-input shrink-0">
                   <span className="text-lg">🇧🇷</span>
                   <span className="text-sm font-medium">+55</span>
                 </div>
                 <Input
                   type="tel"
-                  inputMode="numeric"
+                  inputMode="tel"
+                  pattern="[0-9]*"
                   placeholder="11999999999"
                   value={phoneNumber}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '');
-                    console.log("Phone input changed:", value);
                     setPhoneNumber(value);
                   }}
-                  className="flex-1 text-base"
+                  onFocus={(e) => e.target.select()}
+                  className="flex-1 text-base min-w-0"
                   maxLength={11}
-                  autoComplete="tel"
+                  autoComplete="tel-national"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
               
