@@ -427,14 +427,6 @@ export default function CentralAtendimento() {
                   <h1 className="font-display font-bold text-foreground text-sm truncate">Central de Atendimento</h1>
                 </div>
               </div>
-              
-              {/* User Avatar Mobile */}
-              <Avatar className="h-9 w-9 border-2 border-primary/20" onClick={() => navigate("/configuracoes")}>
-                <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                  {getInitials(currentUserProfile?.full_name || user.email || "U")}
-                </AvatarFallback>
-              </Avatar>
             </div>
           </div>
         </header>
