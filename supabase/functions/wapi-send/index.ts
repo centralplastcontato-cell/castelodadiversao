@@ -459,6 +459,18 @@ Deno.serve(async (req) => {
             const result = await response.json();
             console.log('W-API QR response:', JSON.stringify(result));
             
+            // Check if instance is already connected
+            if (result.connected === true) {
+              return new Response(JSON.stringify({ 
+                connected: true,
+                message: 'Instância já está conectada',
+                success: true
+              }), {
+                status: 200,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            
             if (result.error) {
               return new Response(JSON.stringify({ 
                 error: result.message || 'Erro ao obter QR Code',

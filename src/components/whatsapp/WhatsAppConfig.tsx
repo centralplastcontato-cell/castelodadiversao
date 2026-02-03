@@ -285,20 +285,52 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
         },
       });
 
+      console.log("QR Code response:", response);
+
       if (response.error) {
         throw new Error(response.error.message);
+      }
+
+      // Check if instance is already connected
+      if (response.data?.connected === true || response.data?.details?.connected === true) {
+        toast({
+          title: "Já conectado!",
+          description: "Esta instância já está conectada ao WhatsApp.",
+        });
+        // Update local status and close dialog
+        await supabase
+          .from("wapi_instances")
+          .update({ 
+            status: 'connected',
+            connected_at: new Date().toISOString(),
+          })
+          .eq("id", instance.id);
+        setQrDialogOpen(false);
+        setQrPolling(false);
+        fetchInstances();
+        return;
       }
 
       if (response.data?.qrCode) {
         setQrCode(response.data.qrCode);
       } else if (response.data?.error) {
-        // Instance might be already connected or there's an issue
-        toast({
-          title: "Aviso",
-          description: response.data.error,
-          variant: "destructive",
-        });
-        setQrDialogOpen(false);
+        // Check if error message indicates already connected
+        const errorMessage = response.data.error?.toLowerCase() || '';
+        if (errorMessage.includes('conectad') || errorMessage.includes('connected')) {
+          toast({
+            title: "Já conectado",
+            description: "A instância já está conectada ao WhatsApp.",
+          });
+          setQrDialogOpen(false);
+          setQrPolling(false);
+          fetchInstances();
+        } else {
+          toast({
+            title: "Aviso",
+            description: response.data.error,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error: any) {
       console.error("Error fetching QR code:", error);
@@ -310,7 +342,7 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
     }
 
     setQrLoading(false);
-  }, []);
+  }, [fetchInstances]);
 
   // Poll for connection status
   const pollConnectionStatus = useCallback(async (instance: WapiInstance) => {
@@ -576,16 +608,23 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
             
             <div className="space-y-3">
               <div className="flex gap-2">
-                <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border">
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-input">
                   <span className="text-lg">🇧🇷</span>
                   <span className="text-sm font-medium">+55</span>
                 </div>
                 <Input
-                  placeholder="DDD + Número"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="11999999999"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                  className="flex-1"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    console.log("Phone input changed:", value);
+                    setPhoneNumber(value);
+                  }}
+                  className="flex-1 text-base"
                   maxLength={11}
+                  autoComplete="tel"
                 />
               </div>
               
