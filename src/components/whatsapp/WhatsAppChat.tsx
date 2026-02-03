@@ -13,7 +13,8 @@ import { toast } from "@/hooks/use-toast";
 import { 
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile, ExternalLink,
-  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff
+  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
+  AlertTriangle
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -1205,6 +1206,25 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                 </Button>
               </div>
             </div>
+            
+            {/* Alert Banner for Pending Conversations */}
+            {unclassifiedCount >= 3 && filter !== 'unclassified' && (
+              <button
+                onClick={() => setFilter('unclassified')}
+                className="mx-2 mb-2 p-2 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center gap-2 text-left hover:bg-destructive/20 transition-colors"
+              >
+                <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-destructive">
+                    {unclassifiedCount} conversas pendentes
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    Clique para ver e classificar
+                  </p>
+                </div>
+              </button>
+            )}
+            
             <ScrollArea className="flex-1">
               {filteredConversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-center p-4">
@@ -1373,6 +1393,25 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </Button>
                   </div>
                 </div>
+                
+                {/* Alert Banner for Pending Conversations - Desktop */}
+                {unclassifiedCount >= 3 && filter !== 'unclassified' && (
+                  <button
+                    onClick={() => setFilter('unclassified')}
+                    className="mx-2 mb-2 p-2 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center gap-2 text-left hover:bg-destructive/20 transition-colors"
+                  >
+                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-destructive">
+                        {unclassifiedCount} conversas pendentes de classificação
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        Clique para ver e classificar rapidamente
+                      </p>
+                    </div>
+                  </button>
+                )}
+                
                 <ScrollArea className="flex-1">
                   {filteredConversations.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-48 text-center p-4">
