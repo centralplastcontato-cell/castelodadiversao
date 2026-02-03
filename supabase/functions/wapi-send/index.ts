@@ -318,7 +318,30 @@ Deno.serve(async (req) => {
           }
         );
 
-        const result = await response.json();
+        // Handle non-JSON responses (HTML error pages)
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('W-API send-audio returned HTML:', htmlText.substring(0, 200));
+          return new Response(JSON.stringify({ 
+            error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis.' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        let result;
+        try {
+          result = await response.json();
+        } catch (parseErr) {
+          console.error('Failed to parse W-API send-audio response:', parseErr);
+          return new Response(JSON.stringify({ error: 'Resposta inválida da W-API' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
         console.log('W-API send-audio response:', result);
 
         if (!response.ok || result.error) {
@@ -382,7 +405,7 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               phone: phone,
-              url: docMediaUrl,
+              document: docMediaUrl, // W-API expects 'document' field with URL
               fileName: docFileName || 'document',
             }),
           }
