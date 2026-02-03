@@ -9,9 +9,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { 
-  Send, Search, MessageSquare, Phone, Check, CheckCheck, Clock, WifiOff, 
+  Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
-  Image as ImageIcon, Mic, Paperclip, X, Loader2
+  Image as ImageIcon, Mic, Paperclip, Loader2
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -58,6 +58,14 @@ interface Conversation {
   last_message_from_me: boolean;
 }
 
+interface Lead {
+  id: string;
+  name: string;
+  whatsapp: string;
+  unit: string | null;
+  status: string;
+}
+
 interface MessageTemplate {
   id: string;
   name: string;
@@ -102,6 +110,11 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     preview?: string;
   } | null>(null);
   const [mediaCaption, setMediaCaption] = useState("");
+  const [showLinkLeadModal, setShowLinkLeadModal] = useState(false);
+  const [leadSearchQuery, setLeadSearchQuery] = useState("");
+  const [searchedLeads, setSearchedLeads] = useState<Lead[]>([]);
+  const [isSearchingLeads, setIsSearchingLeads] = useState(false);
+  const [linkedLead, setLinkedLead] = useState<Lead | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -154,6 +167,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
+      fetchLinkedLead(selectedConversation.lead_id);
 
       // Subscribe to realtime updates for messages
       const messagesChannel = supabase
@@ -181,6 +195,8 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       return () => {
         supabase.removeChannel(messagesChannel);
       };
+    } else {
+      setLinkedLead(null);
     }
   }, [selectedConversation]);
 
@@ -235,6 +251,110 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     if (data) {
       setMessages(data as Message[]);
     }
+  };
+
+  const fetchLinkedLead = async (leadId: string | null) => {
+    if (!leadId) {
+      setLinkedLead(null);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("campaign_leads")
+      .select("id, name, whatsapp, unit, status")
+      .eq("id", leadId)
+      .single();
+
+    if (data) {
+      setLinkedLead(data as Lead);
+    } else {
+      setLinkedLead(null);
+    }
+  };
+
+  const searchLeads = async (query: string) => {
+    if (!query.trim() || !selectedInstance) {
+      setSearchedLeads([]);
+      return;
+    }
+
+    setIsSearchingLeads(true);
+
+    const { data } = await supabase
+      .from("campaign_leads")
+      .select("id, name, whatsapp, unit, status")
+      .or(`name.ilike.%${query}%,whatsapp.ilike.%${query}%`)
+      .eq("unit", selectedInstance.unit)
+      .limit(10);
+
+    if (data) {
+      setSearchedLeads(data as Lead[]);
+    }
+
+    setIsSearchingLeads(false);
+  };
+
+  const linkLeadToConversation = async (lead: Lead) => {
+    if (!selectedConversation) return;
+
+    const { error } = await supabase
+      .from('wapi_conversations')
+      .update({ lead_id: lead.id })
+      .eq('id', selectedConversation.id);
+
+    if (error) {
+      toast({
+        title: "Erro ao vincular",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update local state
+    setSelectedConversation({ ...selectedConversation, lead_id: lead.id });
+    setConversations(prev => 
+      prev.map(c => c.id === selectedConversation.id ? { ...c, lead_id: lead.id } : c)
+    );
+    setLinkedLead(lead);
+    setShowLinkLeadModal(false);
+    setLeadSearchQuery("");
+    setSearchedLeads([]);
+
+    toast({
+      title: "Lead vinculado",
+      description: `Conversa vinculada a ${lead.name}`,
+    });
+  };
+
+  const unlinkLead = async () => {
+    if (!selectedConversation) return;
+
+    const { error } = await supabase
+      .from('wapi_conversations')
+      .update({ lead_id: null })
+      .eq('id', selectedConversation.id);
+
+    if (error) {
+      toast({
+        title: "Erro ao desvincular",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update local state
+    setSelectedConversation({ ...selectedConversation, lead_id: null });
+    setConversations(prev => 
+      prev.map(c => c.id === selectedConversation.id ? { ...c, lead_id: null } : c)
+    );
+    setLinkedLead(null);
+
+    toast({
+      title: "Lead desvinculado",
+      description: "A conversa não está mais vinculada a nenhum lead.",
+    });
   };
 
   const handleSendMessage = async () => {
@@ -766,10 +886,14 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       <p className="font-medium truncate text-sm sm:text-base">
                         {selectedConversation.contact_name || selectedConversation.contact_phone}
                       </p>
-                      {selectedConversation.lead_id && (
-                        <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                      {linkedLead && (
+                        <Badge 
+                          variant="secondary" 
+                          className="text-[10px] h-4 px-1 cursor-pointer hover:bg-secondary/80"
+                          onClick={() => setShowLinkLeadModal(true)}
+                        >
                           <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                          Lead
+                          {linkedLead.name.split(' ')[0]}
                         </Badge>
                       )}
                     </div>
@@ -779,6 +903,20 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   </div>
                   
                   <div className="flex items-center gap-1 shrink-0">
+                    {/* Link to lead button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setShowLinkLeadModal(true)}
+                      title={linkedLead ? "Gerenciar vínculo com lead" : "Vincular a um lead"}
+                    >
+                      <Link2 className={cn(
+                        "w-4 h-4",
+                        linkedLead ? "text-primary" : "text-muted-foreground"
+                      )} />
+                    </Button>
+
                     {/* Favorite toggle */}
                     <Button
                       variant="ghost"
@@ -1110,6 +1248,103 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                 )}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Link Lead Modal */}
+      <Dialog open={showLinkLeadModal} onOpenChange={(open) => {
+        setShowLinkLeadModal(open);
+        if (!open) {
+          setLeadSearchQuery("");
+          setSearchedLeads([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {linkedLead ? "Lead vinculado" : "Vincular a um lead"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Show linked lead if exists */}
+            {linkedLead && (
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {linkedLead.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{linkedLead.name}</p>
+                    <p className="text-xs text-muted-foreground">{linkedLead.whatsapp}</p>
+                  </div>
+                </div>
+                <Button variant="destructive" size="sm" onClick={unlinkLead}>
+                  Desvincular
+                </Button>
+              </div>
+            )}
+
+            {/* Search leads */}
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {linkedLead ? "Ou vincular a outro lead:" : "Buscar lead por nome ou telefone:"}
+              </p>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Digite para buscar..."
+                  value={leadSearchQuery}
+                  onChange={(e) => {
+                    setLeadSearchQuery(e.target.value);
+                    searchLeads(e.target.value);
+                  }}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            {/* Search results */}
+            {isSearchingLeads && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!isSearchingLeads && searchedLeads.length > 0 && (
+              <ScrollArea className="max-h-48">
+                <div className="space-y-1">
+                  {searchedLeads.map((lead) => (
+                    <button
+                      key={lead.id}
+                      onClick={() => linkLeadToConversation(lead)}
+                      className="w-full flex items-center gap-3 p-2 hover:bg-accent rounded-lg transition-colors text-left"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                          {lead.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{lead.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{lead.whatsapp}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">
+                        {lead.status}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+
+            {!isSearchingLeads && leadSearchQuery && searchedLeads.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum lead encontrado para "{leadSearchQuery}"
+              </p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
