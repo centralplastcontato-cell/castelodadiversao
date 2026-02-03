@@ -251,7 +251,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
-      fetchLinkedLead(selectedConversation.lead_id);
+      fetchLinkedLead(selectedConversation.lead_id, selectedConversation);
 
       // Subscribe to realtime updates for messages
       const messagesChannel = supabase
@@ -337,23 +337,66 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     }
   };
 
-  const fetchLinkedLead = async (leadId: string | null) => {
-    if (!leadId) {
-      setLinkedLead(null);
+  const fetchLinkedLead = async (leadId: string | null, conversation?: Conversation | null) => {
+    if (leadId) {
+      // Lead already linked, just fetch it
+      const { data } = await supabase
+        .from("campaign_leads")
+        .select("id, name, whatsapp, unit, status")
+        .eq("id", leadId)
+        .single();
+
+      if (data) {
+        setLinkedLead(data as Lead);
+      } else {
+        setLinkedLead(null);
+      }
       return;
     }
 
-    const { data } = await supabase
-      .from("campaign_leads")
-      .select("id, name, whatsapp, unit, status")
-      .eq("id", leadId)
-      .single();
+    // No lead linked - try to auto-link by phone number
+    if (conversation && selectedInstance) {
+      const contactPhone = conversation.contact_phone.replace(/\D/g, '');
+      const phoneVariants = [
+        contactPhone,
+        contactPhone.replace(/^55/, ''), // Remove Brazil country code
+        `55${contactPhone}`, // Add Brazil country code
+      ];
 
-    if (data) {
-      setLinkedLead(data as Lead);
-    } else {
-      setLinkedLead(null);
+      // Search for a lead matching this phone number in the same unit
+      const { data: matchingLead } = await supabase
+        .from("campaign_leads")
+        .select("id, name, whatsapp, unit, status")
+        .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
+        .eq("unit", selectedInstance.unit)
+        .limit(1)
+        .single();
+
+      if (matchingLead) {
+        // Auto-link the conversation to the lead
+        const { error } = await supabase
+          .from('wapi_conversations')
+          .update({ lead_id: matchingLead.id })
+          .eq('id', conversation.id);
+
+        if (!error) {
+          setLinkedLead(matchingLead as Lead);
+          // Update local state
+          setConversations(prev => 
+            prev.map(c => c.id === conversation.id ? { ...c, lead_id: matchingLead.id } : c)
+          );
+          setSelectedConversation({ ...conversation, lead_id: matchingLead.id });
+          
+          toast({
+            title: "Lead vinculado automaticamente",
+            description: `Conversa vinculada a ${matchingLead.name}`,
+          });
+        }
+        return;
+      }
     }
+
+    setLinkedLead(null);
   };
 
   const searchLeads = async (query: string) => {

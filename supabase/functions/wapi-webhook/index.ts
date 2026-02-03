@@ -166,7 +166,32 @@ Deno.serve(async (req) => {
             .update(updateData)
             .eq('id', existingConv.id);
         } else {
-          // Create new conversation
+          // Try to find a matching lead by phone number
+          let matchedLeadId = null;
+          
+          // Normalize phone number for comparison (remove common prefixes/formats)
+          const normalizedPhone = contactPhone.replace(/\D/g, '');
+          const phoneVariants = [
+            normalizedPhone,
+            normalizedPhone.replace(/^55/, ''), // Remove Brazil country code
+            `55${normalizedPhone}`, // Add Brazil country code
+          ];
+          
+          // Search for a lead matching this phone number in the same unit as the instance
+          const { data: matchingLead } = await supabase
+            .from('campaign_leads')
+            .select('id, whatsapp, unit')
+            .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
+            .eq('unit', instance.unit)
+            .limit(1)
+            .single();
+          
+          if (matchingLead) {
+            matchedLeadId = matchingLead.id;
+            console.log('Auto-linked conversation to lead:', matchingLead.id);
+          }
+          
+          // Create new conversation with optional lead link
           const { data: newConv, error: convError } = await supabase
             .from('wapi_conversations')
             .insert({
@@ -179,6 +204,7 @@ Deno.serve(async (req) => {
               unread_count: fromMe ? 0 : 1,
               last_message_content: previewContent.substring(0, 100),
               last_message_from_me: fromMe,
+              lead_id: matchedLeadId,
             })
             .select()
             .single();
