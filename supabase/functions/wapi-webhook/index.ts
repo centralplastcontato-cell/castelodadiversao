@@ -1,9 +1,131 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const WAPI_BASE_URL = 'https://api.w-api.app/v1';
+
+// Helper function to download media from W-API and upload to storage
+async function downloadAndStoreMedia(
+  supabase: SupabaseClient,
+  instanceId: string,
+  instanceToken: string,
+  messageId: string,
+  mediaType: 'image' | 'audio' | 'video' | 'document',
+  fileName?: string
+): Promise<string | null> {
+  try {
+    console.log(`Downloading media for message ${messageId}, type: ${mediaType}`);
+    
+    // Call W-API download media endpoint
+    const downloadResponse = await fetch(
+      `${WAPI_BASE_URL}/message/download-media?instanceId=${instanceId}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${instanceToken}`,
+        },
+        body: JSON.stringify({
+          messageId: messageId,
+        }),
+      }
+    );
+
+    if (!downloadResponse.ok) {
+      const errorText = await downloadResponse.text();
+      console.error(`W-API download failed: ${downloadResponse.status} - ${errorText}`);
+      return null;
+    }
+
+    const result = await downloadResponse.json();
+    console.log('W-API download response keys:', Object.keys(result));
+    
+    // W-API returns base64 data
+    const base64Data = result.base64 || result.data || result.media;
+    const mimeType = result.mimetype || result.mimeType || getMimeType(mediaType);
+    
+    if (!base64Data) {
+      console.error('No base64 data in W-API response');
+      return null;
+    }
+    
+    // Generate unique filename
+    const extension = getExtension(mimeType, fileName);
+    const uniqueFileName = `${messageId}.${extension}`;
+    const storagePath = `received/${mediaType}s/${uniqueFileName}`;
+    
+    // Convert base64 to binary
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('whatsapp-media')
+      .upload(storagePath, bytes, {
+        contentType: mimeType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      return null;
+    }
+    
+    // Get public URL
+    const { data: publicUrl } = supabase.storage
+      .from('whatsapp-media')
+      .getPublicUrl(storagePath);
+    
+    console.log(`Media stored successfully: ${publicUrl.publicUrl}`);
+    return publicUrl.publicUrl;
+  } catch (err) {
+    console.error('Error downloading/storing media:', err);
+    return null;
+  }
+}
+
+function getMimeType(mediaType: string): string {
+  switch (mediaType) {
+    case 'image': return 'image/jpeg';
+    case 'audio': return 'audio/ogg';
+    case 'video': return 'video/mp4';
+    case 'document': return 'application/octet-stream';
+    default: return 'application/octet-stream';
+  }
+}
+
+function getExtension(mimeType: string, fileName?: string): string {
+  // Try to get extension from filename first
+  if (fileName) {
+    const parts = fileName.split('.');
+    if (parts.length > 1) {
+      return parts[parts.length - 1].toLowerCase();
+    }
+  }
+  
+  // Fallback to mime type
+  const mimeMap: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'video/mp4': 'mp4',
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  };
+  
+  return mimeMap[mimeType] || 'bin';
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -220,6 +342,8 @@ Deno.serve(async (req) => {
         let content = '';
         let messageType = 'text';
         let mediaUrl = null;
+        let shouldDownloadMedia = false;
+        let mediaFileName: string | undefined;
 
         if (msgContent.conversation) {
           content = msgContent.conversation;
@@ -229,20 +353,46 @@ Deno.serve(async (req) => {
           messageType = 'image';
           content = msgContent.imageMessage.caption || '[Imagem]';
           mediaUrl = msgContent.imageMessage.url || msgContent.imageMessage.directPath || null;
+          shouldDownloadMedia = true;
         } else if (msgContent.videoMessage) {
           messageType = 'video';
           content = msgContent.videoMessage.caption || '[Vídeo]';
           mediaUrl = msgContent.videoMessage.url || msgContent.videoMessage.directPath || null;
+          shouldDownloadMedia = true;
         } else if (msgContent.audioMessage) {
           messageType = 'audio';
           content = '[Áudio]';
           mediaUrl = msgContent.audioMessage.url || msgContent.audioMessage.directPath || null;
+          shouldDownloadMedia = true;
         } else if (msgContent.documentMessage) {
           messageType = 'document';
           content = msgContent.documentMessage.fileName || '[Documento]';
+          mediaFileName = msgContent.documentMessage.fileName;
           mediaUrl = msgContent.documentMessage.url || msgContent.documentMessage.directPath || null;
+          shouldDownloadMedia = true;
         } else if (message.body || message.text) {
           content = message.body || message.text;
+        }
+
+        // For incoming messages with media, try to download and store in our storage
+        // This ensures we have a permanent copy since WhatsApp URLs expire
+        if (shouldDownloadMedia && !fromMe && messageId) {
+          console.log(`Attempting to download and store media for message: ${messageId}, type: ${messageType}`);
+          const storedUrl = await downloadAndStoreMedia(
+            supabase,
+            instance.instance_id,
+            instance.instance_token,
+            messageId,
+            messageType as 'image' | 'audio' | 'video' | 'document',
+            mediaFileName
+          );
+          
+          if (storedUrl) {
+            mediaUrl = storedUrl;
+            console.log(`Media stored successfully, new URL: ${storedUrl}`);
+          } else {
+            console.log('Media download failed, keeping original URL (may expire)');
+          }
         }
 
         // Insert message
@@ -266,7 +416,7 @@ Deno.serve(async (req) => {
         if (msgError) {
           console.error('Error inserting message:', msgError);
         } else {
-          console.log('Message saved:', messageId, 'content:', content.substring(0, 50));
+          console.log('Message saved:', messageId, 'content:', content.substring(0, 50), 'mediaUrl:', mediaUrl ? 'yes' : 'no');
         }
         break;
       }
