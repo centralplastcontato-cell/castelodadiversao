@@ -365,8 +365,9 @@ Deno.serve(async (req) => {
 
       case 'get-status': {
         try {
+          // Try connection-state endpoint first (correct W-API endpoint)
           const response = await fetch(
-            `${WAPI_BASE_URL}/instance/info?instanceId=${instance_id}`,
+            `${WAPI_BASE_URL}/instance/connection-state?instanceId=${instance_id}`,
             {
               method: 'GET',
               headers: {
@@ -381,11 +382,40 @@ Deno.serve(async (req) => {
           if (contentType?.includes('text/html')) {
             const htmlText = await response.text();
             console.error('W-API returned HTML instead of JSON:', htmlText.substring(0, 200));
+            
+            // Try fallback to qr-code endpoint to check if connected
+            console.log('Trying fallback via QR code endpoint...');
+            const qrResponse = await fetch(
+              `${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}`,
+              {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${instance_token}`,
+                },
+              }
+            );
+            
+            if (qrResponse.ok) {
+              const qrResult = await qrResponse.json();
+              console.log('QR fallback result:', JSON.stringify(qrResult));
+              
+              // If instance is connected, qr-code returns connected:true
+              if (qrResult.connected === true) {
+                return new Response(JSON.stringify({ 
+                  status: 'connected',
+                  phoneNumber: qrResult.phone || null,
+                }), {
+                  status: 200,
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
+              }
+            }
+            
             return new Response(JSON.stringify({ 
               error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis no painel w-api.app',
-              status: 'error',
+              status: 'disconnected',
             }), {
-              status: 503,
+              status: 200,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
@@ -393,24 +423,32 @@ Deno.serve(async (req) => {
           if (!response.ok) {
             const errorText = await response.text();
             console.error('W-API get-status failed:', response.status, errorText);
+            
+            // Return disconnected status instead of error
             return new Response(JSON.stringify({ 
+              status: 'disconnected',
               error: `W-API retornou erro: ${response.status}`,
-              status: 'error',
             }), {
-              status: response.status,
+              status: 200,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
 
           const result = await response.json();
-          console.log('W-API instance info:', result);
+          console.log('W-API connection state:', result);
 
-          const status = result.connected ? 'connected' : 'disconnected';
+          // W-API connection-state returns state: 'open' | 'connecting' | 'close'
+          let status = 'disconnected';
+          if (result.state === 'open' || result.connected === true) {
+            status = 'connected';
+          } else if (result.state === 'connecting') {
+            status = 'connecting';
+          }
           
           return new Response(JSON.stringify({ 
             ...result, 
             status,
-            phoneNumber: result.phone || null,
+            phoneNumber: result.phone || result.phoneNumber || null,
           }), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -419,9 +457,9 @@ Deno.serve(async (req) => {
           console.error('Error getting status:', err);
           return new Response(JSON.stringify({ 
             error: 'Erro ao comunicar com W-API.',
-            status: 'error',
+            status: 'disconnected',
           }), {
-            status: 500,
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
