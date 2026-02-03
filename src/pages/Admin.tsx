@@ -342,7 +342,7 @@ export default function Admin() {
               </TabsTrigger>
               <TabsTrigger value="kanban" className="flex items-center gap-2">
                 <Columns className="w-4 h-4" />
-                Kanban
+                CRM
               </TabsTrigger>
             </TabsList>
 
@@ -424,10 +424,10 @@ export default function Admin() {
                   <LayoutList className="w-4 h-4" />
                   Lista
                 </TabsTrigger>
-                <TabsTrigger value="kanban" className="flex items-center gap-2">
-                  <Columns className="w-4 h-4" />
-                  Kanban
-                </TabsTrigger>
+              <TabsTrigger value="kanban" className="flex items-center gap-2">
+                <Columns className="w-4 h-4" />
+                CRM
+              </TabsTrigger>
               </TabsList>
 
               <TabsContent value="list" className="mt-4">
