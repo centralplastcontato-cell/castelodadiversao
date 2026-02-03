@@ -1,45 +1,52 @@
-import { useState } from "react";
-import { Wifi, MessageSquare, Bell, Bot, Settings } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Wifi, MessageSquare, Bell, Bot, Settings, Lock } from "lucide-react";
 import { ConnectionSection } from "./settings/ConnectionSection";
 import { MessagesSection } from "./settings/MessagesSection";
 import { NotificationsSection } from "./settings/NotificationsSection";
 import { AutomationsSection } from "./settings/AutomationsSection";
 import { AdvancedSection } from "./settings/AdvancedSection";
+import { useConfigPermissions } from "@/hooks/useConfigPermissions";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface WhatsAppConfigProps {
   userId: string;
   isAdmin: boolean;
 }
 
-const configSections = [
+const allConfigSections = [
   {
     id: "connection",
+    permissionKey: "connection" as const,
     title: "Conexão",
     description: "Status e QR Code",
     icon: Wifi,
   },
   {
     id: "messages",
+    permissionKey: "messages" as const,
     title: "Mensagens",
     description: "Templates rápidos",
     icon: MessageSquare,
   },
   {
     id: "notifications",
+    permissionKey: "notifications" as const,
     title: "Notificações",
     description: "Som e alertas",
     icon: Bell,
   },
   {
     id: "automations",
+    permissionKey: "automations" as const,
     title: "Automações",
     description: "Chatbot e respostas",
     icon: Bot,
   },
   {
     id: "advanced",
+    permissionKey: "advanced" as const,
     title: "Avançado",
     description: "Sincronização e logs",
     icon: Settings,
@@ -47,7 +54,21 @@ const configSections = [
 ];
 
 export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
-  const [activeSection, setActiveSection] = useState("connection");
+  const { permissions, isLoading, hasAnyPermission } = useConfigPermissions(userId, isAdmin);
+  
+  // Filter sections based on permissions
+  const configSections = useMemo(() => {
+    return allConfigSections.filter(section => permissions[section.permissionKey]);
+  }, [permissions]);
+
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  // Set initial active section when permissions load
+  useEffect(() => {
+    if (!isLoading && configSections.length > 0 && !activeSection) {
+      setActiveSection(configSections[0].id);
+    }
+  }, [isLoading, configSections, activeSection]);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -62,11 +83,49 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
       case "advanced":
         return <AdvancedSection userId={userId} isAdmin={isAdmin} />;
       default:
-        return <ConnectionSection userId={userId} isAdmin={isAdmin} />;
+        return null;
     }
   };
 
   const activeConfig = configSections.find(s => s.id === activeSection);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col md:flex-row gap-4 h-full">
+        <div className="md:w-56 shrink-0">
+          <div className="hidden md:flex flex-col gap-1 bg-muted/30 rounded-lg p-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            ))}
+          </div>
+          <div className="md:hidden flex gap-2 pb-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-10 w-24 rounded-lg" />
+            ))}
+          </div>
+        </div>
+        <div className="flex-1">
+          <Skeleton className="h-8 w-48 mb-4" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAnyPermission) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="p-4 rounded-full bg-muted mb-4">
+          <Lock className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="font-semibold text-lg mb-2">Acesso Restrito</h3>
+        <p className="text-muted-foreground max-w-md">
+          Você não tem permissão para acessar as configurações do WhatsApp. 
+          Entre em contato com um administrador para solicitar acesso.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row gap-4 h-full">
@@ -75,21 +134,21 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
         {/* Mobile: Horizontal scrollable tabs */}
         <div className="md:hidden overflow-x-auto">
           <div className="flex gap-2 pb-2 min-w-max">
-              {configSections.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg whitespace-nowrap transition-colors shrink-0",
-                    activeSection === section.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-muted/80"
-                  )}
-                >
-                  <section.icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{section.title}</span>
-                </button>
-              ))}
+            {configSections.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg whitespace-nowrap transition-colors shrink-0",
+                  activeSection === section.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted hover:bg-muted/80"
+                )}
+              >
+                <section.icon className="w-4 h-4" />
+                <span className="text-sm font-medium">{section.title}</span>
+              </button>
+            ))}
           </div>
         </div>
 
