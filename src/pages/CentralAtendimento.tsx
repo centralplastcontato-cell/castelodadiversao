@@ -368,11 +368,21 @@ export default function CentralAtendimento() {
                   <SheetContent side="left" className="w-72 p-0">
                     <SheetHeader className="p-4 border-b border-border">
                       <div className="flex items-center gap-3">
-                        <img src={logoCastelo} alt="Castelo da Diversão" className="h-10 w-auto" />
-                        <div>
-                          <SheetTitle className="text-left text-base">Castelo da Diversão</SheetTitle>
-                          <p className="text-xs text-muted-foreground">
-                            {currentUserProfile?.full_name || user.email}
+                        <Avatar 
+                          className="h-12 w-12 border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors shrink-0" 
+                          onClick={() => { navigate("/configuracoes"); setIsMobileMenuOpen(false); }}
+                        >
+                          <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                            {getInitials(currentUserProfile?.full_name || user.email || "U")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <SheetTitle className="text-left text-base truncate">
+                            {currentUserProfile?.full_name || "Usuário"}
+                          </SheetTitle>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {user.email}
                           </p>
                         </div>
                       </div>
