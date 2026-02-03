@@ -1,0 +1,5 @@
+export { ConnectionSection } from './ConnectionSection';
+export { MessagesSection } from './MessagesSection';
+export { NotificationsSection } from './NotificationsSection';
+export { AutomationsSection } from './AutomationsSection';
+export { AdvancedSection } from './AdvancedSection';
