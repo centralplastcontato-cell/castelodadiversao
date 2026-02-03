@@ -361,28 +361,18 @@ Deno.serve(async (req) => {
       }
 
       case 'send-document': {
-        const { base64: docBase64, fileName: docFileName, mediaUrl: docMediaUrl } = body;
+        const { fileName: docFileName, mediaUrl: docMediaUrl } = body;
         
-        let finalDocBase64 = docBase64;
-        
-        if (docMediaUrl && !docBase64) {
-          try {
-            const docResponse = await fetch(docMediaUrl);
-            const arrayBuffer = await docResponse.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            finalDocBase64 = btoa(binary);
-          } catch (err) {
-            console.error('Error fetching document from URL:', err);
-            return new Response(JSON.stringify({ error: 'Failed to fetch document' }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
+        // W-API requires a URL for documents, not base64
+        if (!docMediaUrl) {
+          console.error('send-document: No mediaUrl provided');
+          return new Response(JSON.stringify({ error: 'URL do documento é obrigatória.' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
+
+        console.log('Sending document to W-API, phone:', phone, 'url:', docMediaUrl, 'fileName:', docFileName);
 
         const response = await fetch(
           `${WAPI_BASE_URL}/message/send-document?instanceId=${instance_id}`,
@@ -394,13 +384,36 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               phone: phone,
-              base64: finalDocBase64,
+              url: docMediaUrl,
               fileName: docFileName || 'document',
             }),
           }
         );
 
-        const result = await response.json();
+        // Handle non-JSON responses (HTML error pages)
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('W-API send-document returned HTML:', htmlText.substring(0, 200));
+          return new Response(JSON.stringify({ 
+            error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis.' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        let result;
+        try {
+          result = await response.json();
+        } catch (parseErr) {
+          console.error('Failed to parse W-API response:', parseErr);
+          return new Response(JSON.stringify({ error: 'Resposta inválida da W-API' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
         console.log('W-API send-document response:', result);
 
         if (!response.ok || result.error) {
@@ -419,7 +432,7 @@ Deno.serve(async (req) => {
               from_me: true,
               message_type: 'document',
               content: docFileName || '[Documento]',
-              media_url: docMediaUrl || null,
+              media_url: docMediaUrl,
               status: 'sent',
               timestamp: new Date().toISOString(),
             });
