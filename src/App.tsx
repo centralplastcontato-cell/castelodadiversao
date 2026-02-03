@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CentralAtendimento from "./pages/CentralAtendimento";
 import Users from "./pages/Users";
+import UserSettings from "./pages/UserSettings";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/atendimento" element={<CentralAtendimento />} />
+          <Route path="/configuracoes" element={<UserSettings />} />
           <Route path="/dashboard" element={<Index />} />
           <Route path="/users" element={<Users />} />
           <Route path="/promo" element={<LandingPage />} />
