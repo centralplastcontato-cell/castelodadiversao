@@ -459,19 +459,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
       setNewMessage("");
       
-      // Optimistically add message to UI
-      const tempMessage: Message = {
-        id: crypto.randomUUID(),
-        conversation_id: selectedConversation.id,
-        message_id: response.data?.messageId || null,
-        from_me: true,
-        message_type: "text",
-        content: newMessage,
-        media_url: null,
-        status: "sent",
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, tempMessage]);
+      // Note: The Edge Function already saves the message to the database,
+      // and the realtime subscription will add it to the UI automatically.
+      // No need for optimistic update here to avoid duplicate messages.
     } catch (error: any) {
       toast({
         title: "Erro ao enviar",
@@ -624,19 +614,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
         throw new Error(response.error.message);
       }
 
-      // Optimistically add message to UI
-      const tempMessage: Message = {
-        id: crypto.randomUUID(),
-        conversation_id: selectedConversation.id,
-        message_id: response.data?.messageId || null,
-        from_me: true,
-        message_type: 'audio',
-        content: '[Áudio]',
-        media_url: mediaUrl,
-        status: "sent",
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, tempMessage]);
+      // Note: The Edge Function already saves the message to the database,
+      // and the realtime subscription will add it to the UI automatically.
+      // No need for optimistic update here to avoid duplicate messages.
 
       // Clear the recorded audio
       cancelRecording();
@@ -728,19 +708,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
         throw new Error(response.error.message);
       }
 
-      // Optimistically add message to UI
-      const tempMessage: Message = {
-        id: crypto.randomUUID(),
-        conversation_id: selectedConversation.id,
-        message_id: response.data?.messageId || null,
-        from_me: true,
-        message_type: type,
-        content: type === 'image' ? (mediaCaption || '[Imagem]') : type === 'audio' ? '[Áudio]' : file.name,
-        media_url: mediaUrl,
-        status: "sent",
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, tempMessage]);
+      // Note: The Edge Function already saves the message to the database,
+      // and the realtime subscription will add it to the UI automatically.
+      // No need for optimistic update here to avoid duplicate messages.
 
       // Clear preview
       cancelMediaUpload();
