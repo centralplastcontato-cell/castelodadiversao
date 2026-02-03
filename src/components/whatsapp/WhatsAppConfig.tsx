@@ -555,16 +555,16 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
       <QrCodeDialog />
       {/* Instances Management Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Settings2 className="w-5 h-5" />
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <Settings2 className="w-5 h-5 shrink-0" />
               Gerenciar Instâncias W-API
             </CardTitle>
             <CardDescription>Configure as instâncias do WhatsApp para cada unidade</CardDescription>
           </div>
           {getAvailableUnits().length > 0 && (
-            <Button onClick={() => handleOpenDialog()}>
+            <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Nova Instância
             </Button>
@@ -591,24 +591,25 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
               {instances.map((instance) => (
                 <Card key={instance.id}>
                   <CardContent className="pt-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-3 rounded-lg ${instance.status === 'connected' ? 'bg-primary/10' : 'bg-muted'}`}>
+                    {/* Header row - stacks on mobile */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-3 rounded-lg shrink-0 ${instance.status === 'connected' ? 'bg-primary/10' : 'bg-muted'}`}>
                           {instance.status === 'connected' ? (
-                            <Wifi className="w-6 h-6 text-primary" />
+                            <Wifi className="w-5 h-5 text-primary" />
                           ) : (
-                            <WifiOff className="w-6 h-6 text-muted-foreground" />
+                            <WifiOff className="w-5 h-5 text-muted-foreground" />
                           )}
                         </div>
-                        <div>
-                          <p className="font-semibold flex items-center gap-2">
-                            <Building2 className="w-4 h-4" />
-                            {instance.unit || "Sem unidade"}
+                        <div className="min-w-0">
+                          <p className="font-semibold flex items-center gap-2 flex-wrap">
+                            <Building2 className="w-4 h-4 shrink-0" />
+                            <span>{instance.unit || "Sem unidade"}</span>
                             <Badge variant={instance.status === 'connected' ? 'default' : 'secondary'}>
                               {instance.status === 'connected' ? 'Online' : 'Offline'}
                             </Badge>
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground truncate">
                             ID: {instance.instance_id}
                           </p>
                           {instance.phone_number && (
@@ -618,11 +619,14 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      
+                      {/* Action buttons - full width on mobile */}
+                      <div className="flex items-center gap-2 sm:shrink-0">
                         {instance.status !== 'connected' && (
                           <Button 
                             size="sm"
                             onClick={() => handleOpenQrDialog(instance)}
+                            className="flex-1 sm:flex-none"
                           >
                             <QrCode className="w-4 h-4 mr-2" />
                             Conectar
@@ -630,7 +634,8 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
                         )}
                         <Button 
                           variant="outline" 
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleRefreshStatus(instance)}
                           disabled={isRefreshing}
                         >
@@ -638,16 +643,17 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
                         </Button>
                         <Button 
                           variant="outline" 
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleOpenDialog(instance)}
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
                         <Button 
                           variant="outline" 
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => handleDeleteInstance(instance)}
-                          className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -655,20 +661,20 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
                     </div>
 
                     {/* Stats Row */}
-                    <div className="grid grid-cols-3 gap-4 mt-4">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-4">
                       <div className="text-center p-2 bg-muted/50 rounded">
                         <MessageSquare className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                        <p className="text-lg font-bold">{instance.messages_count || 0}</p>
+                        <p className="text-base sm:text-lg font-bold">{instance.messages_count || 0}</p>
                         <p className="text-xs text-muted-foreground">Mensagens</p>
                       </div>
                       <div className="text-center p-2 bg-muted/50 rounded">
                         <CreditCard className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                        <p className="text-lg font-bold">{instance.credits_available?.toLocaleString() || 0}</p>
+                        <p className="text-base sm:text-lg font-bold">{instance.credits_available?.toLocaleString() || 0}</p>
                         <p className="text-xs text-muted-foreground">Créditos</p>
                       </div>
                       <div className="text-center p-2 bg-muted/50 rounded">
                         <Calendar className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                        <p className="text-sm font-bold">
+                        <p className="text-xs sm:text-sm font-bold">
                           {instance.addon_valid_until 
                             ? format(new Date(instance.addon_valid_until), "dd/MM/yy", { locale: ptBR })
                             : "-"}
