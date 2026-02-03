@@ -129,25 +129,65 @@ Deno.serve(async (req) => {
         
         let imageBase64 = base64;
         
+        // Validate that we have image data
+        if (!base64 && !mediaUrl) {
+          console.error('send-image: No base64 or mediaUrl provided');
+          return new Response(JSON.stringify({ error: 'Imagem é obrigatória. Forneça base64 ou mediaUrl.' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
         if (mediaUrl && !base64) {
           try {
+            console.log('Fetching image from URL:', mediaUrl);
             const imageResponse = await fetch(mediaUrl);
+            
+            if (!imageResponse.ok) {
+              console.error('Failed to fetch image, status:', imageResponse.status);
+              return new Response(JSON.stringify({ error: 'Falha ao baixar imagem da URL' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            
             const arrayBuffer = await imageResponse.arrayBuffer();
             const bytes = new Uint8Array(arrayBuffer);
+            
+            if (bytes.length === 0) {
+              console.error('Image fetch returned empty data');
+              return new Response(JSON.stringify({ error: 'Imagem vazia ou inválida' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            
             let binary = '';
             for (let i = 0; i < bytes.length; i++) {
               binary += String.fromCharCode(bytes[i]);
             }
             imageBase64 = btoa(binary);
+            console.log('Image converted to base64, size:', imageBase64.length);
           } catch (err) {
             console.error('Error fetching image from URL:', err);
-            return new Response(JSON.stringify({ error: 'Failed to fetch image' }), {
+            return new Response(JSON.stringify({ error: 'Falha ao processar imagem: ' + (err instanceof Error ? err.message : String(err)) }), {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
         }
+        
+        // Final validation
+        if (!imageBase64) {
+          console.error('send-image: imageBase64 is empty after processing');
+          return new Response(JSON.stringify({ error: 'Dados da imagem não puderam ser processados' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
 
+        console.log('Sending image to W-API, phone:', phone, 'base64 length:', imageBase64.length);
+        
         const response = await fetch(
           `${WAPI_BASE_URL}/message/send-image?instanceId=${instance_id}`,
           {
@@ -164,11 +204,35 @@ Deno.serve(async (req) => {
           }
         );
 
-        const result = await response.json();
+        // Handle non-JSON responses (HTML error pages)
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('W-API send-image returned HTML:', htmlText.substring(0, 200));
+          return new Response(JSON.stringify({ 
+            error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis.' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        let result;
+        try {
+          result = await response.json();
+        } catch (parseErr) {
+          console.error('Failed to parse W-API response:', parseErr);
+          return new Response(JSON.stringify({ error: 'Resposta inválida da W-API' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
         console.log('W-API send-image response:', result);
 
         if (!response.ok || result.error) {
-          return new Response(JSON.stringify({ error: result.message || 'Failed to send image' }), {
+          console.error('W-API send-image failed:', result);
+          return new Response(JSON.stringify({ error: result.message || 'Falha ao enviar imagem' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
