@@ -365,9 +365,13 @@ Deno.serve(async (req) => {
 
       case 'get-status': {
         try {
-          // Try connection-state endpoint first (correct W-API endpoint)
+          // W-API uses the qr-code endpoint to check connection status
+          // When connected, it returns { connected: true, phone: "..." }
+          // When disconnected, it returns QR code data
+          console.log(`Checking status for instance: ${instance_id}`);
+          
           const response = await fetch(
-            `${WAPI_BASE_URL}/instance/connection-state?instanceId=${instance_id}`,
+            `${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}`,
             {
               method: 'GET',
               headers: {
@@ -377,39 +381,11 @@ Deno.serve(async (req) => {
           );
 
           const contentType = response.headers.get('content-type');
-          console.log(`Get-status response: status=${response.status}, content-type=${contentType}`);
+          console.log(`Get-status qr-code response: status=${response.status}, content-type=${contentType}`);
 
           if (contentType?.includes('text/html')) {
             const htmlText = await response.text();
             console.error('W-API returned HTML instead of JSON:', htmlText.substring(0, 200));
-            
-            // Try fallback to qr-code endpoint to check if connected
-            console.log('Trying fallback via QR code endpoint...');
-            const qrResponse = await fetch(
-              `${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}`,
-              {
-                method: 'GET',
-                headers: {
-                  'Authorization': `Bearer ${instance_token}`,
-                },
-              }
-            );
-            
-            if (qrResponse.ok) {
-              const qrResult = await qrResponse.json();
-              console.log('QR fallback result:', JSON.stringify(qrResult));
-              
-              // If instance is connected, qr-code returns connected:true
-              if (qrResult.connected === true) {
-                return new Response(JSON.stringify({ 
-                  status: 'connected',
-                  phoneNumber: qrResult.phone || null,
-                }), {
-                  status: 200,
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                });
-              }
-            }
             
             return new Response(JSON.stringify({ 
               error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis no painel w-api.app',
@@ -435,20 +411,26 @@ Deno.serve(async (req) => {
           }
 
           const result = await response.json();
-          console.log('W-API connection state:', result);
+          console.log('W-API qr-code response for status:', JSON.stringify(result));
 
-          // W-API connection-state returns state: 'open' | 'connecting' | 'close'
+          // W-API qr-code endpoint returns:
+          // - { connected: true, phone: "5511999999999" } when connected
+          // - { qrcode: "...", base64: "..." } when disconnected and waiting for scan
           let status = 'disconnected';
-          if (result.state === 'open' || result.connected === true) {
+          let phoneNumber = null;
+          
+          if (result.connected === true) {
             status = 'connected';
-          } else if (result.state === 'connecting') {
-            status = 'connecting';
+            phoneNumber = result.phone || result.phoneNumber || null;
+          } else if (result.qrcode || result.base64 || result.qr) {
+            // Has QR code means waiting for connection
+            status = 'disconnected';
           }
           
           return new Response(JSON.stringify({ 
-            ...result, 
             status,
-            phoneNumber: result.phone || result.phoneNumber || null,
+            phoneNumber,
+            connected: result.connected === true,
           }), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
