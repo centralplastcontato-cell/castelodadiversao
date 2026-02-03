@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { Users, LogOut, RefreshCw, Headset } from "lucide-react";
+import { Users, LogOut, RefreshCw, Headset, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -26,6 +26,7 @@ interface AdminSidebarProps {
 
 const menuItems = [
   { title: "Central de Atendimento", url: "/atendimento", icon: Headset },
+  { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
 export function AdminSidebar({ 
