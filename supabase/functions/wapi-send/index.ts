@@ -845,6 +845,123 @@ Deno.serve(async (req) => {
         });
       }
 
+      case 'download-media': {
+        const { messageId: downloadMsgId } = body;
+        
+        if (!downloadMsgId) {
+          return new Response(JSON.stringify({ error: 'messageId é obrigatório' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        console.log(`Downloading media for message: ${downloadMsgId}`);
+        
+        try {
+          const downloadResponse = await fetch(
+            `${WAPI_BASE_URL}/message/download-media?instanceId=${instance_id}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${instance_token}`,
+              },
+              body: JSON.stringify({
+                messageId: downloadMsgId,
+              }),
+            }
+          );
+
+          if (!downloadResponse.ok) {
+            const errorText = await downloadResponse.text();
+            console.error(`W-API download failed: ${downloadResponse.status} - ${errorText}`);
+            return new Response(JSON.stringify({ 
+              error: 'Falha ao baixar mídia da W-API',
+              details: errorText.substring(0, 200),
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          const result = await downloadResponse.json();
+          const base64Data = result.base64 || result.data || result.media;
+          const mimeType = result.mimetype || result.mimeType || 'application/octet-stream';
+          
+          if (!base64Data) {
+            return new Response(JSON.stringify({ 
+              error: 'Nenhum dado de mídia recebido',
+              responseKeys: Object.keys(result),
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          // Generate filename and store
+          const extensionMap: Record<string, string> = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'audio/ogg': 'ogg',
+            'audio/mpeg': 'mp3',
+            'video/mp4': 'mp4',
+            'application/pdf': 'pdf',
+          };
+          const extension = extensionMap[mimeType] || 'bin';
+          const storagePath = `received/downloads/${downloadMsgId}.${extension}`;
+          
+          // Convert base64 to binary
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          // Upload to Supabase Storage
+          const { error: uploadError } = await supabase.storage
+            .from('whatsapp-media')
+            .upload(storagePath, bytes, {
+              contentType: mimeType,
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+            return new Response(JSON.stringify({ 
+              error: 'Falha ao salvar mídia no storage',
+              details: uploadError.message,
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          // Get public URL
+          const { data: publicUrl } = supabase.storage
+            .from('whatsapp-media')
+            .getPublicUrl(storagePath);
+          
+          return new Response(JSON.stringify({ 
+            success: true,
+            url: publicUrl.publicUrl,
+            mimeType,
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (err) {
+          console.error('Error downloading media:', err);
+          return new Response(JSON.stringify({ 
+            error: 'Erro ao baixar mídia',
+            details: err instanceof Error ? err.message : String(err),
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
       default:
         return new Response(JSON.stringify({ error: 'Invalid action' }), {
           status: 400,

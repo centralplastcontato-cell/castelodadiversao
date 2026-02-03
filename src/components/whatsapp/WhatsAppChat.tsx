@@ -100,6 +100,113 @@ interface WhatsAppChatProps {
   allowedUnits: string[];
 }
 
+// Component for downloading media that wasn't stored properly
+function MediaDownloadButton({
+  messageId,
+  content,
+  fromMe,
+  mediaType,
+  selectedInstance,
+  onDownloadSuccess,
+}: {
+  messageId: string | null;
+  content: string | null;
+  fromMe: boolean;
+  mediaType: 'document' | 'audio' | 'video' | 'image';
+  selectedInstance: WapiInstance | null;
+  onDownloadSuccess: (url: string) => void;
+}) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    if (!messageId || !selectedInstance) {
+      setError('Dados insuficientes para download');
+      return;
+    }
+
+    setIsDownloading(true);
+    setError(null);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('wapi-send', {
+        body: {
+          action: 'download-media',
+          messageId,
+          instanceId: selectedInstance.instance_id,
+          instanceToken: selectedInstance.instance_token,
+        },
+      });
+
+      if (fnError || !data?.success) {
+        throw new Error(data?.error || fnError?.message || 'Falha ao baixar');
+      }
+
+      onDownloadSuccess(data.url);
+      
+      // Also update in database
+      await supabase
+        .from('wapi_messages')
+        .update({ media_url: data.url })
+        .eq('message_id', messageId);
+
+    } catch (err) {
+      console.error('Download error:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao baixar');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const iconMap = {
+    document: FileText,
+    audio: Mic,
+    video: FileText,
+    image: ImageIcon,
+  };
+  const Icon = iconMap[mediaType];
+
+  return (
+    <div className={cn(
+      "flex items-center gap-2 p-2 rounded border",
+      fromMe ? "border-primary-foreground/30" : "border-border"
+    )}>
+      <Icon className="w-5 h-5 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{content || 'Arquivo'}</p>
+        {error ? (
+          <p className={cn(
+            "text-xs text-destructive",
+            fromMe && "text-red-200"
+          )}>
+            {error}
+          </p>
+        ) : (
+          <p className={cn(
+            "text-xs",
+            fromMe ? "text-primary-foreground/60" : "text-muted-foreground"
+          )}>
+            {isDownloading ? 'Baixando...' : 'Clique para tentar baixar'}
+          </p>
+        )}
+      </div>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="shrink-0 h-7 w-7"
+        onClick={handleDownload}
+        disabled={isDownloading || !messageId}
+      >
+        {isDownloading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <ExternalLink className="w-4 h-4" />
+        )}
+      </Button>
+    </div>
+  );
+}
+
 export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<WapiInstance | null>(null);
@@ -1609,11 +1716,26 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                   />
                                 </div>
                               )}
-                              {msg.message_type === 'audio' && msg.media_url && (
+                              {msg.message_type === 'audio' && (
                                 <div className="mb-2">
-                                  <audio controls className="max-w-full">
-                                    <source src={msg.media_url} />
-                                  </audio>
+                                  {msg.media_url ? (
+                                    <audio controls className="max-w-full">
+                                      <source src={msg.media_url} />
+                                    </audio>
+                                  ) : (
+                                    <MediaDownloadButton
+                                      messageId={msg.message_id}
+                                      content={msg.content}
+                                      fromMe={msg.from_me}
+                                      mediaType="audio"
+                                      selectedInstance={selectedInstance}
+                                      onDownloadSuccess={(url) => {
+                                        setMessages(prev => prev.map(m => 
+                                          m.id === msg.id ? { ...m, media_url: url } : m
+                                        ));
+                                      }}
+                                    />
+                                  )}
                                 </div>
                               )}
                               {msg.message_type === 'document' && (
@@ -1644,23 +1766,19 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                       <ExternalLink className="w-4 h-4 shrink-0" />
                                     </a>
                                   ) : (
-                                    <div className={cn(
-                                      "flex items-center gap-2 p-2 rounded border",
-                                      msg.from_me 
-                                        ? "border-primary-foreground/30" 
-                                        : "border-border"
-                                    )}>
-                                      <FileText className="w-5 h-5 shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{msg.content || 'Documento'}</p>
-                                        <p className={cn(
-                                          "text-xs",
-                                          msg.from_me ? "text-primary-foreground/60" : "text-muted-foreground"
-                                        )}>
-                                          Arquivo não disponível para download
-                                        </p>
-                                      </div>
-                                    </div>
+                                    <MediaDownloadButton
+                                      messageId={msg.message_id}
+                                      content={msg.content}
+                                      fromMe={msg.from_me}
+                                      mediaType="document"
+                                      selectedInstance={selectedInstance}
+                                      onDownloadSuccess={(url) => {
+                                        // Update message with new URL
+                                        setMessages(prev => prev.map(m => 
+                                          m.id === msg.id ? { ...m, media_url: url } : m
+                                        ));
+                                      }}
+                                    />
                                   )}
                                 </div>
                               )}
@@ -1675,15 +1793,18 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                       <source src={msg.media_url} />
                                     </video>
                                   ) : (
-                                    <div className={cn(
-                                      "flex items-center gap-2 p-2 rounded border",
-                                      msg.from_me 
-                                        ? "border-primary-foreground/30" 
-                                        : "border-border"
-                                    )}>
-                                      <FileText className="w-5 h-5 shrink-0" />
-                                      <span className="text-sm">🎥 Vídeo não disponível</span>
-                                    </div>
+                                    <MediaDownloadButton
+                                      messageId={msg.message_id}
+                                      content={msg.content || 'Vídeo'}
+                                      fromMe={msg.from_me}
+                                      mediaType="video"
+                                      selectedInstance={selectedInstance}
+                                      onDownloadSuccess={(url) => {
+                                        setMessages(prev => prev.map(m => 
+                                          m.id === msg.id ? { ...m, media_url: url } : m
+                                        ));
+                                      }}
+                                    />
                                   )}
                                 </div>
                               )}
@@ -1984,11 +2105,26 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               />
                             </div>
                           )}
-                          {msg.message_type === 'audio' && msg.media_url && (
+                          {msg.message_type === 'audio' && (
                             <div className="mb-2">
-                              <audio controls className="max-w-full">
-                                <source src={msg.media_url} />
-                              </audio>
+                              {msg.media_url ? (
+                                <audio controls className="max-w-full">
+                                  <source src={msg.media_url} />
+                                </audio>
+                              ) : (
+                                <MediaDownloadButton
+                                  messageId={msg.message_id}
+                                  content={msg.content}
+                                  fromMe={msg.from_me}
+                                  mediaType="audio"
+                                  selectedInstance={selectedInstance}
+                                  onDownloadSuccess={(url) => {
+                                    setMessages(prev => prev.map(m => 
+                                      m.id === msg.id ? { ...m, media_url: url } : m
+                                    ));
+                                  }}
+                                />
+                              )}
                             </div>
                           )}
                           {msg.message_type === 'document' && (
@@ -2011,15 +2147,18 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                   <ExternalLink className="w-3 h-3 shrink-0" />
                                 </a>
                               ) : (
-                                <div className={cn(
-                                  "flex items-center gap-2 p-2 rounded border",
-                                  msg.from_me 
-                                    ? "border-primary-foreground/30" 
-                                    : "border-border"
-                                )}>
-                                  <FileText className="w-4 h-4 shrink-0" />
-                                  <span className="text-sm truncate">{msg.content || 'Documento'}</span>
-                                </div>
+                                <MediaDownloadButton
+                                  messageId={msg.message_id}
+                                  content={msg.content}
+                                  fromMe={msg.from_me}
+                                  mediaType="document"
+                                  selectedInstance={selectedInstance}
+                                  onDownloadSuccess={(url) => {
+                                    setMessages(prev => prev.map(m => 
+                                      m.id === msg.id ? { ...m, media_url: url } : m
+                                    ));
+                                  }}
+                                />
                               )}
                             </div>
                           )}
@@ -2030,14 +2169,18 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                   <source src={msg.media_url} />
                                 </video>
                               ) : (
-                                <div className={cn(
-                                  "flex items-center gap-2 p-2 rounded border",
-                                  msg.from_me 
-                                    ? "border-primary-foreground/30" 
-                                    : "border-border"
-                                )}>
-                                  <span className="text-sm">🎥 Vídeo não disponível</span>
-                                </div>
+                                <MediaDownloadButton
+                                  messageId={msg.message_id}
+                                  content={msg.content || 'Vídeo'}
+                                  fromMe={msg.from_me}
+                                  mediaType="video"
+                                  selectedInstance={selectedInstance}
+                                  onDownloadSuccess={(url) => {
+                                    setMessages(prev => prev.map(m => 
+                                      m.id === msg.id ? { ...m, media_url: url } : m
+                                    ));
+                                  }}
+                                />
                               )}
                             </div>
                           )}
