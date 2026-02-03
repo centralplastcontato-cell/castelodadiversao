@@ -10,7 +10,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { 
   Send, Search, MessageSquare, Phone, Check, CheckCheck, Clock, WifiOff, 
-  ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile
+  ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
+  Image as ImageIcon, Mic, Paperclip, X, Loader2
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -28,6 +29,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface WapiInstance {
   id: string;
@@ -88,7 +95,17 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [filter, setFilter] = useState<'all' | 'unread' | 'favorites'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [mediaPreview, setMediaPreview] = useState<{
+    type: 'image' | 'audio' | 'document';
+    file: File;
+    preview?: string;
+  } | null>(null);
+  const [mediaCaption, setMediaCaption] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchInstances();
@@ -327,6 +344,136 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const insertEmoji = (emoji: string) => {
     setNewMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
+  };
+
+  // Handle file selection for media
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'audio' | 'document') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo é 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create preview for images
+    let preview: string | undefined;
+    if (type === 'image') {
+      preview = URL.createObjectURL(file);
+    }
+
+    setMediaPreview({ type, file, preview });
+    setMediaCaption("");
+    
+    // Reset input
+    event.target.value = '';
+  };
+
+  const cancelMediaUpload = () => {
+    if (mediaPreview?.preview) {
+      URL.revokeObjectURL(mediaPreview.preview);
+    }
+    setMediaPreview(null);
+    setMediaCaption("");
+  };
+
+  const sendMedia = async () => {
+    if (!mediaPreview || !selectedConversation || !selectedInstance || isUploading) return;
+
+    setIsUploading(true);
+
+    try {
+      const { type, file } = mediaPreview;
+      
+      // Upload file to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedConversation.id}/${Date.now()}.${fileExt}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('whatsapp-media')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('whatsapp-media')
+        .getPublicUrl(fileName);
+
+      const mediaUrl = urlData.publicUrl;
+
+      // Determine action based on type
+      let action: string;
+      let body: Record<string, any> = {
+        phone: selectedConversation.contact_phone,
+        conversationId: selectedConversation.id,
+        instanceId: selectedInstance.instance_id,
+        instanceToken: selectedInstance.instance_token,
+        mediaUrl,
+      };
+
+      switch (type) {
+        case 'image':
+          action = 'send-image';
+          body.caption = mediaCaption;
+          break;
+        case 'audio':
+          action = 'send-audio';
+          break;
+        case 'document':
+          action = 'send-document';
+          body.fileName = file.name;
+          break;
+        default:
+          throw new Error('Tipo de mídia não suportado');
+      }
+
+      const response = await supabase.functions.invoke("wapi-send", {
+        body: { action, ...body },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      // Optimistically add message to UI
+      const tempMessage: Message = {
+        id: crypto.randomUUID(),
+        conversation_id: selectedConversation.id,
+        message_id: response.data?.messageId || null,
+        from_me: true,
+        message_type: type,
+        content: type === 'image' ? (mediaCaption || '[Imagem]') : type === 'audio' ? '[Áudio]' : file.name,
+        media_url: mediaUrl,
+        status: "sent",
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, tempMessage]);
+
+      // Clear preview
+      cancelMediaUpload();
+
+      toast({
+        title: "Mídia enviada",
+        description: `${type === 'image' ? 'Imagem' : type === 'audio' ? 'Áudio' : 'Arquivo'} enviado com sucesso.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar mídia",
+        description: error.message || "Não foi possível enviar a mídia.",
+        variant: "destructive",
+      });
+    }
+
+    setIsUploading(false);
   };
 
   // Common emojis for quick access
@@ -682,7 +829,49 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                 : "bg-card border"
                             )}
                           >
-                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                            {/* Render media based on type */}
+                            {msg.message_type === 'image' && msg.media_url && (
+                              <div className="mb-2">
+                                <img 
+                                  src={msg.media_url} 
+                                  alt="Imagem" 
+                                  className="rounded max-w-full max-h-64 object-contain cursor-pointer"
+                                  onClick={() => window.open(msg.media_url!, '_blank')}
+                                />
+                              </div>
+                            )}
+                            {msg.message_type === 'audio' && msg.media_url && (
+                              <div className="mb-2">
+                                <audio controls className="max-w-full">
+                                  <source src={msg.media_url} />
+                                </audio>
+                              </div>
+                            )}
+                            {msg.message_type === 'document' && msg.media_url && (
+                              <div className="mb-2">
+                                <a 
+                                  href={msg.media_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={cn(
+                                    "flex items-center gap-2 p-2 rounded border",
+                                    msg.from_me 
+                                      ? "border-primary-foreground/30 hover:bg-primary-foreground/10" 
+                                      : "border-border hover:bg-muted"
+                                  )}
+                                >
+                                  <Paperclip className="w-4 h-4" />
+                                  <span className="truncate text-xs">{msg.content || 'Documento'}</span>
+                                </a>
+                              </div>
+                            )}
+                            {/* Text content */}
+                            {msg.content && msg.message_type === 'text' && (
+                              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                            )}
+                            {msg.content && msg.message_type === 'image' && msg.content !== '[Imagem]' && (
+                              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                            )}
                             <div
                               className={cn(
                                 "flex items-center justify-end gap-1 mt-1",
@@ -765,6 +954,34 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       </PopoverContent>
                     </Popover>
 
+                    {/* Media attachment dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon"
+                          className="shrink-0 h-9 w-9"
+                        >
+                          <Paperclip className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                          <ImageIcon className="w-4 h-4 mr-2" />
+                          Imagem
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
+                          <Mic className="w-4 h-4 mr-2" />
+                          Áudio
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Arquivo
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Input
                       placeholder="Digite uma mensagem..."
                       value={newMessage}
@@ -797,6 +1014,105 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
           </div>
         </div>
       )}
+
+      {/* Hidden file inputs */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => handleFileSelect(e, 'image')}
+      />
+      <input
+        type="file"
+        ref={audioInputRef}
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => handleFileSelect(e, 'audio')}
+      />
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+        className="hidden"
+        onChange={(e) => handleFileSelect(e, 'document')}
+      />
+
+      {/* Media Preview Dialog */}
+      <Dialog open={!!mediaPreview} onOpenChange={(open) => !open && cancelMediaUpload()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {mediaPreview?.type === 'image' && 'Enviar imagem'}
+              {mediaPreview?.type === 'audio' && 'Enviar áudio'}
+              {mediaPreview?.type === 'document' && 'Enviar arquivo'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Preview */}
+            {mediaPreview?.type === 'image' && mediaPreview.preview && (
+              <div className="flex justify-center">
+                <img 
+                  src={mediaPreview.preview} 
+                  alt="Preview" 
+                  className="max-h-64 rounded-lg object-contain"
+                />
+              </div>
+            )}
+            {mediaPreview?.type === 'audio' && (
+              <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+                <Mic className="w-8 h-8 text-primary" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{mediaPreview.file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(mediaPreview.file.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              </div>
+            )}
+            {mediaPreview?.type === 'document' && (
+              <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+                <Paperclip className="w-8 h-8 text-primary" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{mediaPreview.file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(mediaPreview.file.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Caption for images */}
+            {mediaPreview?.type === 'image' && (
+              <Input
+                placeholder="Adicionar legenda (opcional)..."
+                value={mediaCaption}
+                onChange={(e) => setMediaCaption(e.target.value)}
+              />
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={cancelMediaUpload} disabled={isUploading}>
+                Cancelar
+              </Button>
+              <Button onClick={sendMedia} disabled={isUploading}>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Enviar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
