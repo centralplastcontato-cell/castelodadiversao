@@ -858,6 +858,25 @@ Deno.serve(async (req) => {
         console.log(`Downloading media for message: ${downloadMsgId}`);
         
         try {
+          // First, try to get media_key from database
+          const { data: msgData } = await supabase
+            .from('wapi_messages')
+            .select('media_key, message_type')
+            .eq('message_id', downloadMsgId)
+            .single();
+          
+          const mediaKey = msgData?.media_key;
+          console.log(`Message lookup - hasMediaKey: ${!!mediaKey}, type: ${msgData?.message_type}`);
+          
+          // Build request body - include mediaKey if available
+          const requestBody: Record<string, string> = {
+            messageId: downloadMsgId,
+          };
+          
+          if (mediaKey) {
+            requestBody.mediaKey = mediaKey;
+          }
+          
           const downloadResponse = await fetch(
             `${WAPI_BASE_URL}/message/download-media?instanceId=${instance_id}`,
             {
@@ -866,9 +885,7 @@ Deno.serve(async (req) => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${instance_token}`,
               },
-              body: JSON.stringify({
-                messageId: downloadMsgId,
-              }),
+              body: JSON.stringify(requestBody),
             }
           );
 
@@ -878,6 +895,7 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ 
               error: 'Falha ao baixar mídia da W-API',
               details: errorText.substring(0, 200),
+              hint: mediaKey ? 'Tente novamente mais tarde' : 'MediaKey não disponível - mídia pode ter expirado',
             }), {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -941,6 +959,12 @@ Deno.serve(async (req) => {
           const { data: publicUrl } = supabase.storage
             .from('whatsapp-media')
             .getPublicUrl(storagePath);
+          
+          // Clear media_key from database since we successfully downloaded
+          await supabase
+            .from('wapi_messages')
+            .update({ media_key: null, media_url: publicUrl.publicUrl })
+            .eq('message_id', downloadMsgId);
           
           return new Response(JSON.stringify({ 
             success: true,
