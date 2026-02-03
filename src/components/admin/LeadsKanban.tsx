@@ -1,25 +1,17 @@
 import { Lead, LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, LeadStatus } from "@/types/crm";
 import { UserWithRole } from "@/types/crm";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  ExternalLink,
-  MessageSquare,
-  User,
-  GripVertical,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { KanbanCard } from "./KanbanCard";
 
 interface LeadsKanbanProps {
   leads: Lead[];
   responsaveis: UserWithRole[];
   onLeadClick: (lead: Lead) => void;
   onStatusChange: (leadId: string, newStatus: LeadStatus) => void;
+  onNameUpdate?: (leadId: string, newName: string) => Promise<void>;
   canEdit: boolean;
+  canEditName?: boolean;
 }
 
 export function LeadsKanban({
@@ -27,7 +19,9 @@ export function LeadsKanban({
   responsaveis,
   onLeadClick,
   onStatusChange,
+  onNameUpdate,
   canEdit,
+  canEditName = false,
 }: LeadsKanbanProps) {
   const columns: LeadStatus[] = [
     "novo",
@@ -46,18 +40,6 @@ export function LeadsKanban({
     if (!responsavelId) return null;
     const r = responsaveis.find((r) => r.user_id === responsavelId);
     return r?.full_name || null;
-  };
-
-  const formatWhatsAppLink = (phone: string) => {
-    const cleanPhone = phone.replace(/\D/g, "");
-    const phoneWithCountry = cleanPhone.startsWith("55")
-      ? cleanPhone
-      : `55${cleanPhone}`;
-    return `https://wa.me/${phoneWithCountry}`;
-  };
-
-  const handleDragStart = (e: React.DragEvent, leadId: string) => {
-    e.dataTransfer.setData("leadId", leadId);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -88,19 +70,9 @@ export function LeadsKanban({
     return null;
   };
 
-  const handleMoveLeft = (e: React.MouseEvent, lead: Lead) => {
-    e.stopPropagation();
-    const prevStatus = getPreviousStatus(lead.status);
-    if (prevStatus && canEdit) {
-      onStatusChange(lead.id, prevStatus);
-    }
-  };
-
-  const handleMoveRight = (e: React.MouseEvent, lead: Lead) => {
-    e.stopPropagation();
-    const nextStatus = getNextStatus(lead.status);
-    if (nextStatus && canEdit) {
-      onStatusChange(lead.id, nextStatus);
+  const handleNameUpdate = async (leadId: string, newName: string) => {
+    if (onNameUpdate) {
+      await onNameUpdate(leadId, newName);
     }
   };
 
@@ -140,116 +112,21 @@ export function LeadsKanban({
                     Nenhum lead
                   </div>
                 ) : (
-                  columnLeads.map((lead) => {
-                    const hasPrev = getPreviousStatus(lead.status) !== null;
-                    const hasNext = getNextStatus(lead.status) !== null;
-                    
-                    return (
-                      <div
-                        key={lead.id}
-                        draggable={canEdit}
-                        onDragStart={(e) => handleDragStart(e, lead.id)}
-                        onClick={() => onLeadClick(lead)}
-                        className={`
-                          bg-card rounded-lg border border-border p-3 
-                          cursor-pointer hover:border-primary/50 transition-colors
-                          ${canEdit ? "cursor-grab active:cursor-grabbing" : ""}
-                        `}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              {canEdit && (
-                                <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                              )}
-                              <p className="font-medium text-sm truncate">
-                                {lead.name}
-                              </p>
-                            </div>
-
-                            <div className="mt-2 space-y-1">
-                              {lead.unit && (
-                                <p className="text-xs text-muted-foreground">
-                                  📍 {lead.unit}
-                                </p>
-                              )}
-                              {lead.month && (
-                                <p className="text-xs text-muted-foreground">
-                                  📅 {lead.day_of_month || lead.day_preference || "-"}/
-                                  {lead.month}
-                                </p>
-                              )}
-                              {lead.guests && (
-                                <p className="text-xs text-muted-foreground">
-                                  👥 {lead.guests} convidados
-                                </p>
-                              )}
-                            </div>
-
-                            {getResponsavelName(lead.responsavel_id) && (
-                              <div className="mt-2 flex items-center gap-1">
-                                <User className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground truncate">
-                                  {getResponsavelName(lead.responsavel_id)}
-                                </span>
-                              </div>
-                            )}
-
-                            {lead.observacoes && (
-                              <div className="mt-2">
-                                <MessageSquare className="w-3 h-3 text-primary inline" />
-                              </div>
-                            )}
-                          </div>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 flex-shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(formatWhatsAppLink(lead.whatsapp), "_blank");
-                            }}
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Button>
-                        </div>
-
-                        <div className="mt-2 pt-2 border-t border-border flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(lead.created_at), "dd/MM/yyyy", {
-                              locale: ptBR,
-                            })}
-                          </p>
-                          
-                          {canEdit && (
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={(e) => handleMoveLeft(e, lead)}
-                                disabled={!hasPrev}
-                                title={hasPrev ? `Mover para ${LEAD_STATUS_LABELS[getPreviousStatus(lead.status)!]}` : undefined}
-                              >
-                                <ChevronLeft className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={(e) => handleMoveRight(e, lead)}
-                                disabled={!hasNext}
-                                title={hasNext ? `Mover para ${LEAD_STATUS_LABELS[getNextStatus(lead.status)!]}` : undefined}
-                              >
-                                <ChevronRight className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
+                  columnLeads.map((lead) => (
+                    <div key={lead.id} className="group">
+                      <KanbanCard
+                        lead={lead}
+                        responsavelName={getResponsavelName(lead.responsavel_id)}
+                        canEdit={canEdit}
+                        canEditName={canEditName}
+                        onLeadClick={onLeadClick}
+                        onStatusChange={onStatusChange}
+                        onNameUpdate={handleNameUpdate}
+                        getPreviousStatus={getPreviousStatus}
+                        getNextStatus={getNextStatus}
+                      />
+                    </div>
+                  ))
                 )}
               </div>
             </ScrollArea>

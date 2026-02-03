@@ -32,6 +32,7 @@ const PERMISSION_PRESETS = {
     permissions: {
       'leads.view': true,
       'leads.edit': true,
+      'leads.edit.name': true,
       'leads.delete': true,
       'leads.export': true,
       'leads.assign': true,
@@ -50,6 +51,7 @@ const PERMISSION_PRESETS = {
     permissions: {
       'leads.view': true,
       'leads.edit': true,
+      'leads.edit.name': false,
       'leads.delete': false,
       'leads.export': true,
       'leads.assign': false,
@@ -68,6 +70,7 @@ const PERMISSION_PRESETS = {
     permissions: {
       'leads.view': true,
       'leads.edit': true,
+      'leads.edit.name': false,
       'leads.delete': false,
       'leads.export': true,
       'leads.assign': false,

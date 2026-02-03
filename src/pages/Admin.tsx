@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUnitPermissions } from "@/hooks/useUnitPermissions";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Lead, LeadStatus, UserWithRole, Profile } from "@/types/crm";
 import { LeadsTable } from "@/components/admin/LeadsTable";
 import { LeadsFilters } from "@/components/admin/LeadsFilters";
@@ -67,6 +68,8 @@ export default function Admin() {
 
   const { role, isLoading: isLoadingRole, isAdmin, canEdit, canManageUsers } = useUserRole(user?.id);
   const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
+  const { hasPermission } = usePermissions(user?.id);
+  const canEditName = isAdmin || hasPermission('leads.edit.name');
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -380,7 +383,17 @@ export default function Admin() {
                     toast({ title: "Erro ao atualizar status", description: "Tente novamente.", variant: "destructive" });
                   }
                 }}
+                onNameUpdate={async (leadId, newName) => {
+                  const lead = leads.find((l) => l.id === leadId);
+                  if (!lead) return;
+                  await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de nome", old_value: lead.name, new_value: newName });
+                  const { error } = await supabase.from("campaign_leads").update({ name: newName }).eq("id", leadId);
+                  if (error) throw error;
+                  setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, name: newName } : l));
+                  toast({ title: "Nome atualizado", description: `O nome foi alterado para "${newName}".` });
+                }}
                 canEdit={canEdit}
+                canEditName={canEditName}
               />
             </TabsContent>
           </Tabs>
@@ -464,7 +477,17 @@ export default function Admin() {
                       toast({ title: "Erro ao atualizar status", description: "Tente novamente.", variant: "destructive" });
                     }
                   }}
+                  onNameUpdate={async (leadId, newName) => {
+                    const lead = leads.find((l) => l.id === leadId);
+                    if (!lead) return;
+                    await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de nome", old_value: lead.name, new_value: newName });
+                    const { error } = await supabase.from("campaign_leads").update({ name: newName }).eq("id", leadId);
+                    if (error) throw error;
+                    setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, name: newName } : l));
+                    toast({ title: "Nome atualizado", description: `O nome foi alterado para "${newName}".` });
+                  }}
                   canEdit={canEdit}
+                  canEditName={canEditName}
                 />
               </TabsContent>
             </Tabs>
