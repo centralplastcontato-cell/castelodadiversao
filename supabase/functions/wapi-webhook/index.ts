@@ -113,6 +113,11 @@ Deno.serve(async (req) => {
                            message.sender?.verifiedBizName || 
                            contactPhone;
 
+        // Get contact profile picture from various sources
+        const contactPicture = message.chat?.profilePicture || 
+                              message.sender?.profilePicture || 
+                              null;
+
         // Get or create conversation
         let conversation;
         const { data: existingConv } = await supabase
@@ -144,16 +149,21 @@ Deno.serve(async (req) => {
 
         if (existingConv) {
           conversation = existingConv;
-          // Update last message timestamp and preview
+          // Update last message timestamp, preview, and profile picture
+          const updateData: Record<string, unknown> = { 
+            last_message_at: new Date().toISOString(),
+            unread_count: fromMe ? existingConv.unread_count : (existingConv.unread_count || 0) + 1,
+            last_message_content: previewContent.substring(0, 100),
+            last_message_from_me: fromMe,
+            contact_name: contactName || existingConv.contact_name,
+          };
+          // Only update picture if we have a new one
+          if (contactPicture) {
+            updateData.contact_picture = contactPicture;
+          }
           await supabase
             .from('wapi_conversations')
-            .update({ 
-              last_message_at: new Date().toISOString(),
-              unread_count: fromMe ? existingConv.unread_count : (existingConv.unread_count || 0) + 1,
-              last_message_content: previewContent.substring(0, 100),
-              last_message_from_me: fromMe,
-              contact_name: contactName || existingConv.contact_name,
-            })
+            .update(updateData)
             .eq('id', existingConv.id);
         } else {
           // Create new conversation
@@ -164,6 +174,7 @@ Deno.serve(async (req) => {
               remote_jid: remoteJid,
               contact_phone: contactPhone,
               contact_name: contactName,
+              contact_picture: contactPicture,
               last_message_at: new Date().toISOString(),
               unread_count: fromMe ? 0 : 1,
               last_message_content: previewContent.substring(0, 100),

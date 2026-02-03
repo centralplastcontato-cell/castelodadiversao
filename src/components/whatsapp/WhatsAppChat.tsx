@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { 
@@ -53,6 +53,7 @@ interface Conversation {
   remote_jid: string;
   contact_name: string | null;
   contact_phone: string;
+  contact_picture: string | null;
   last_message_at: string | null;
   unread_count: number;
   is_favorite: boolean;
@@ -973,6 +974,12 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   >
                     <div className="relative">
                       <Avatar className="shrink-0">
+                        {conv.contact_picture && (
+                          <AvatarImage 
+                            src={conv.contact_picture} 
+                            alt={conv.contact_name || conv.contact_phone}
+                          />
+                        )}
                         <AvatarFallback className={cn(
                           "text-primary",
                           conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
@@ -1060,6 +1067,12 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     <ArrowLeft className="w-5 h-5" />
                   </Button>
                   <Avatar className="h-9 w-9 shrink-0">
+                    {selectedConversation.contact_picture && (
+                      <AvatarImage 
+                        src={selectedConversation.contact_picture} 
+                        alt={selectedConversation.contact_name || selectedConversation.contact_phone}
+                      />
+                    )}
                     <AvatarFallback className="bg-primary/10 text-primary text-sm">
                       {(selectedConversation.contact_name || selectedConversation.contact_phone)
                         .charAt(0)
