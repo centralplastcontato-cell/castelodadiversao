@@ -37,10 +37,16 @@ Deno.serve(async (req) => {
     }
 
     // Handle different webhook events
-    switch (event) {
-      case 'connection': {
+    // W-API sends events in different formats, normalize them
+    const eventType = event || body.event;
+    console.log('Processing event type:', eventType);
+
+    switch (eventType) {
+      case 'connection':
+      case 'webhookConnected': {
         // WhatsApp connection status changed
-        const { connected, phone } = data || {};
+        const connected = data?.connected ?? body.connected ?? false;
+        const phone = data?.phone || body.connectedPhone || null;
         await supabase
           .from('wapi_instances')
           .update({
@@ -53,7 +59,8 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case 'disconnection': {
+      case 'disconnection':
+      case 'webhookDisconnected': {
         await supabase
           .from('wapi_instances')
           .update({
@@ -65,19 +72,47 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case 'message': 
-      case 'message-received': {
-        // Message received
-        const message = data?.message || data;
-        if (!message) break;
+      case 'message':
+      case 'message-received':
+      case 'webhookReceived': {
+        // Message received - handle both old and new W-API formats
+        const message = data?.message || data || body;
+        if (!message) {
+          console.log('No message data found');
+          break;
+        }
 
-        const remoteJid = message.key?.remoteJid || message.from || message.remoteJid;
-        const fromMe = message.key?.fromMe || false;
+        // Skip protocol messages (internal WhatsApp messages)
+        if (message.msgContent?.protocolMessage) {
+          console.log('Skipping protocol message');
+          break;
+        }
+
+        // Extract remote JID from different possible locations
+        const remoteJid = message.key?.remoteJid || 
+                          message.from || 
+                          message.remoteJid || 
+                          (message.chat?.id ? `${message.chat.id}@s.whatsapp.net` : null) ||
+                          (message.sender?.id ? `${message.sender.id}@s.whatsapp.net` : null);
+        
+        if (!remoteJid) {
+          console.log('No remoteJid found, skipping message');
+          break;
+        }
+
+        const fromMe = message.key?.fromMe || message.fromMe || false;
         const messageId = message.key?.id || message.id || message.messageId;
         
-        // Extract phone number from remoteJid (format: 5511999999999@s.whatsapp.net)
-        const contactPhone = remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '') || '';
+        // Extract phone number from remoteJid (format: 5511999999999@s.whatsapp.net or 5511999999999)
+        const contactPhone = remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@lid', '') || '';
         
+        // Get contact name from various sources
+        const contactName = message.pushName || 
+                           message.verifiedBizName || 
+                           message.sender?.pushName || 
+                           message.sender?.verifiedBizName || 
+                           contactPhone;
+
         // Get or create conversation
         let conversation;
         const { data: existingConv } = await supabase
@@ -87,20 +122,22 @@ Deno.serve(async (req) => {
           .eq('remote_jid', remoteJid)
           .single();
 
-        // Extract message content for preview
+        // Extract message content for preview - handle both old and new formats
         let previewContent = '';
-        if (message.message?.conversation) {
-          previewContent = message.message.conversation;
-        } else if (message.message?.extendedTextMessage?.text) {
-          previewContent = message.message.extendedTextMessage.text;
-        } else if (message.message?.imageMessage) {
+        const msgContent = message.message || message.msgContent || {};
+        
+        if (msgContent.conversation) {
+          previewContent = msgContent.conversation;
+        } else if (msgContent.extendedTextMessage?.text) {
+          previewContent = msgContent.extendedTextMessage.text;
+        } else if (msgContent.imageMessage) {
           previewContent = '📷 Imagem';
-        } else if (message.message?.videoMessage) {
+        } else if (msgContent.videoMessage) {
           previewContent = '🎥 Vídeo';
-        } else if (message.message?.audioMessage) {
+        } else if (msgContent.audioMessage) {
           previewContent = '🎤 Áudio';
-        } else if (message.message?.documentMessage) {
-          previewContent = '📄 ' + (message.message.documentMessage.fileName || 'Documento');
+        } else if (msgContent.documentMessage) {
+          previewContent = '📄 ' + (msgContent.documentMessage.fileName || 'Documento');
         } else if (message.body || message.text) {
           previewContent = message.body || message.text;
         }
@@ -115,6 +152,7 @@ Deno.serve(async (req) => {
               unread_count: fromMe ? existingConv.unread_count : (existingConv.unread_count || 0) + 1,
               last_message_content: previewContent.substring(0, 100),
               last_message_from_me: fromMe,
+              contact_name: contactName || existingConv.contact_name,
             })
             .eq('id', existingConv.id);
         } else {
@@ -125,7 +163,7 @@ Deno.serve(async (req) => {
               instance_id: instance.id,
               remote_jid: remoteJid,
               contact_phone: contactPhone,
-              contact_name: message.pushName || message.verifiedBizName || contactPhone,
+              contact_name: contactName,
               last_message_at: new Date().toISOString(),
               unread_count: fromMe ? 0 : 1,
               last_message_content: previewContent.substring(0, 100),
@@ -146,23 +184,23 @@ Deno.serve(async (req) => {
         let messageType = 'text';
         let mediaUrl = null;
 
-        if (message.message?.conversation) {
-          content = message.message.conversation;
-        } else if (message.message?.extendedTextMessage?.text) {
-          content = message.message.extendedTextMessage.text;
-        } else if (message.message?.imageMessage) {
+        if (msgContent.conversation) {
+          content = msgContent.conversation;
+        } else if (msgContent.extendedTextMessage?.text) {
+          content = msgContent.extendedTextMessage.text;
+        } else if (msgContent.imageMessage) {
           messageType = 'image';
-          content = message.message.imageMessage.caption || '[Imagem]';
-          mediaUrl = message.message.imageMessage.url;
-        } else if (message.message?.videoMessage) {
+          content = msgContent.imageMessage.caption || '[Imagem]';
+          mediaUrl = msgContent.imageMessage.url;
+        } else if (msgContent.videoMessage) {
           messageType = 'video';
-          content = message.message.videoMessage.caption || '[Vídeo]';
-        } else if (message.message?.audioMessage) {
+          content = msgContent.videoMessage.caption || '[Vídeo]';
+        } else if (msgContent.audioMessage) {
           messageType = 'audio';
           content = '[Áudio]';
-        } else if (message.message?.documentMessage) {
+        } else if (msgContent.documentMessage) {
           messageType = 'document';
-          content = message.message.documentMessage.fileName || '[Documento]';
+          content = msgContent.documentMessage.fileName || '[Documento]';
         } else if (message.body || message.text) {
           content = message.body || message.text;
         }
@@ -180,32 +218,46 @@ Deno.serve(async (req) => {
             status: fromMe ? 'sent' : 'received',
             timestamp: message.messageTimestamp 
               ? new Date(message.messageTimestamp * 1000).toISOString() 
+              : message.moment
+              ? new Date(message.moment * 1000).toISOString()
               : new Date().toISOString(),
           });
 
         if (msgError) {
           console.error('Error inserting message:', msgError);
         } else {
-          console.log('Message saved:', messageId);
+          console.log('Message saved:', messageId, 'content:', content.substring(0, 50));
         }
         break;
       }
 
       case 'message-status':
-      case 'message_ack': {
+      case 'message_ack':
+      case 'webhookStatus':
+      case 'webhookDelivery': {
         // Message status update (sent, delivered, read)
-        const { messageId, status, ack } = data || {};
-        const statusMap: Record<number, string> = {
+        const statusData = data || body;
+        const messageId = statusData?.messageId;
+        const status = statusData?.status;
+        const ack = statusData?.ack;
+        
+        const statusMap: Record<string | number, string> = {
           0: 'error',
           1: 'pending',
           2: 'sent',
           3: 'delivered',
           4: 'read',
+          'PENDING': 'pending',
+          'SENT': 'sent',
+          'DELIVERY': 'delivered',
+          'READ': 'read',
+          'PLAYED': 'read',
+          'ERROR': 'error',
         };
         
-        const newStatus = status || statusMap[ack] || 'unknown';
+        const newStatus = statusMap[status] || statusMap[ack] || 'unknown';
         
-        if (messageId) {
+        if (messageId && newStatus !== 'unknown') {
           await supabase
             .from('wapi_messages')
             .update({ status: newStatus })
@@ -216,7 +268,7 @@ Deno.serve(async (req) => {
       }
 
       default:
-        console.log('Unhandled event type:', event);
+        console.log('Unhandled event type:', eventType, 'body keys:', Object.keys(body));
     }
 
     return new Response(JSON.stringify({ success: true }), {
