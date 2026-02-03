@@ -18,6 +18,7 @@ import { WhatsAppConfig } from "@/components/whatsapp/WhatsAppConfig";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedBadge } from "@/components/ui/animated-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -440,12 +441,11 @@ export default function CentralAtendimento() {
                 <MessageSquare className="w-4 h-4" />
                 Chat
                 {unreadCount > 0 && (
-                  <Badge 
+                  <AnimatedBadge 
+                    value={unreadCount > 99 ? "99+" : unreadCount}
                     variant="destructive" 
                     className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center rounded-full"
-                  >
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </Badge>
+                  />
                 )}
               </TabsTrigger>
               <TabsTrigger value="leads" className="flex items-center gap-1.5 text-xs">

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedBadge } from "@/components/ui/animated-badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1107,9 +1108,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           </span>
                         </p>
                         {conv.unread_count > 0 && (
-                          <Badge className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0">
-                            {conv.unread_count}
-                          </Badge>
+                          <AnimatedBadge 
+                            value={conv.unread_count}
+                            className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0"
+                          />
                         )}
                       </div>
                     </div>
@@ -1255,9 +1257,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               </span>
                             </p>
                             {conv.unread_count > 0 && (
-                              <Badge className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0">
-                                {conv.unread_count}
-                              </Badge>
+                              <AnimatedBadge 
+                                value={conv.unread_count}
+                                className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0"
+                              />
                             )}
                           </div>
                         </div>
