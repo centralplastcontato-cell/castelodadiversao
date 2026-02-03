@@ -7,16 +7,6 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
-// Helper to convert base64 to Uint8Array
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -53,7 +43,6 @@ Deno.serve(async (req) => {
     // Use provided instanceId/token or fallback to fetching from database
     let instance_id = instanceId;
     let instance_token = instanceToken;
-    let db_instance_id: string | null = null;
 
     // If no instance credentials provided, try to get from database (legacy behavior)
     if (!instance_id || !instance_token) {
@@ -73,13 +62,10 @@ Deno.serve(async (req) => {
 
       instance_id = instance.instance_id;
       instance_token = instance.instance_token;
-      db_instance_id = instance.id;
     }
 
     switch (action) {
       case 'send-text': {
-        // Send text message via W-API
-        // Ensure proper UTF-8 encoding for emojis and special characters
         const textEncoder = new TextEncoder();
         const encodedMessage = textEncoder.encode(message);
         const decodedMessage = new TextDecoder('utf-8').decode(encodedMessage);
@@ -109,7 +95,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Save message to database
         if (conversationId) {
           await supabase
             .from('wapi_messages')
@@ -123,7 +108,6 @@ Deno.serve(async (req) => {
               timestamp: new Date().toISOString(),
             });
 
-          // Update conversation last message
           await supabase
             .from('wapi_conversations')
             .update({ 
@@ -141,11 +125,10 @@ Deno.serve(async (req) => {
       }
 
       case 'send-image': {
-        const { base64, caption, fileName, mediaUrl } = body;
+        const { base64, caption, mediaUrl } = body;
         
         let imageBase64 = base64;
         
-        // If we received a mediaUrl (from storage), fetch and convert to base64
         if (mediaUrl && !base64) {
           try {
             const imageResponse = await fetch(mediaUrl);
@@ -191,7 +174,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Save message to database
         if (conversationId) {
           await supabase
             .from('wapi_messages')
@@ -227,7 +209,6 @@ Deno.serve(async (req) => {
         
         let finalAudioBase64 = audioBase64;
         
-        // If we received a mediaUrl (from storage), fetch and convert to base64
         if (audioMediaUrl && !audioBase64) {
           try {
             const audioResponse = await fetch(audioMediaUrl);
@@ -272,7 +253,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Save message to database
         if (conversationId) {
           await supabase
             .from('wapi_messages')
@@ -308,7 +288,6 @@ Deno.serve(async (req) => {
         
         let finalDocBase64 = docBase64;
         
-        // If we received a mediaUrl (from storage), fetch and convert to base64
         if (docMediaUrl && !docBase64) {
           try {
             const docResponse = await fetch(docMediaUrl);
@@ -354,7 +333,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Save message to database
         if (conversationId) {
           await supabase
             .from('wapi_messages')
@@ -386,7 +364,6 @@ Deno.serve(async (req) => {
       }
 
       case 'get-status': {
-        // Get instance status from W-API
         try {
           const response = await fetch(
             `${WAPI_BASE_URL}/instance/info?instanceId=${instance_id}`,
@@ -401,14 +378,12 @@ Deno.serve(async (req) => {
           const contentType = response.headers.get('content-type');
           console.log(`Get-status response: status=${response.status}, content-type=${contentType}`);
 
-          // Check if response is HTML (error page) instead of JSON
           if (contentType?.includes('text/html')) {
             const htmlText = await response.text();
             console.error('W-API returned HTML instead of JSON:', htmlText.substring(0, 200));
             return new Response(JSON.stringify({ 
               error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis no painel w-api.app',
               status: 'error',
-              details: 'A API retornou uma página de erro. Isso geralmente indica problemas com a instância, créditos expirados ou manutenção.'
             }), {
               status: 503,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -421,7 +396,6 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ 
               error: `W-API retornou erro: ${response.status}`,
               status: 'error',
-              details: errorText
             }), {
               status: response.status,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -431,7 +405,6 @@ Deno.serve(async (req) => {
           const result = await response.json();
           console.log('W-API instance info:', result);
 
-          // Return the result with parsed status
           const status = result.connected ? 'connected' : 'disconnected';
           
           return new Response(JSON.stringify({ 
@@ -445,9 +418,8 @@ Deno.serve(async (req) => {
         } catch (err) {
           console.error('Error getting status:', err);
           return new Response(JSON.stringify({ 
-            error: 'Erro ao comunicar com W-API. Verifique sua conexão e tente novamente.',
+            error: 'Erro ao comunicar com W-API.',
             status: 'error',
-            details: err instanceof Error ? err.message : 'Unknown error'
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -456,7 +428,6 @@ Deno.serve(async (req) => {
       }
 
       case 'get-qr': {
-        // W-API documented endpoint for QR Code
         const qrEndpoint = `${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}&image=enable`;
         
         console.log(`Fetching QR code from: ${qrEndpoint}`);
@@ -498,7 +469,6 @@ Deno.serve(async (req) => {
               });
             }
             
-            // The qrcode field contains the data:image/png;base64,... string
             const qrCode = result.qrcode || result.qrCode || result.qr || result.base64;
             
             if (qrCode) {
@@ -519,7 +489,6 @@ Deno.serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           } else if (contentType?.includes('image')) {
-            // Response is an image, convert to base64
             const arrayBuffer = await response.arrayBuffer();
             const bytes = new Uint8Array(arrayBuffer);
             let binary = '';
@@ -562,10 +531,120 @@ Deno.serve(async (req) => {
         }
       }
 
+      case 'request-pairing-code': {
+        const { phoneNumber } = body;
+        
+        if (!phoneNumber) {
+          return new Response(JSON.stringify({ 
+            error: 'Número de telefone é obrigatório',
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const cleanPhone = phoneNumber.replace(/\D/g, '');
+        
+        console.log(`Requesting pairing code for phone: ${cleanPhone}, instance: ${instance_id}`);
+        
+        try {
+          const response = await fetch(
+            `${WAPI_BASE_URL}/instance/pairing-code?instanceId=${instance_id}&phone=${cleanPhone}`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${instance_token}`,
+              },
+            }
+          );
+
+          const contentType = response.headers.get('content-type');
+          console.log(`Pairing code response: status=${response.status}, content-type=${contentType}`);
+
+          if (contentType?.includes('text/html')) {
+            const htmlText = await response.text();
+            console.error('W-API returned HTML instead of JSON:', htmlText.substring(0, 200));
+            return new Response(JSON.stringify({ 
+              error: 'Serviço W-API indisponível. Tente novamente em alguns minutos.',
+            }), {
+              status: 503,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('W-API pairing-code failed:', response.status, errorText);
+            
+            try {
+              const errorJson = JSON.parse(errorText);
+              return new Response(JSON.stringify({ 
+                error: errorJson.message || `Erro ao solicitar código: ${response.status}`,
+                details: errorJson
+              }), {
+                status: response.status,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            } catch {
+              return new Response(JSON.stringify({ 
+                error: `Erro ao solicitar código de pareamento: ${response.status}`,
+                details: errorText
+              }), {
+                status: response.status,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+          }
+
+          const result = await response.json();
+          console.log('W-API pairing code response:', JSON.stringify(result));
+
+          const pairingCode = result.pairingCode || result.code || result.pairing_code;
+          
+          if (pairingCode) {
+            return new Response(JSON.stringify({ 
+              success: true,
+              pairingCode: pairingCode,
+              message: 'Código de pareamento gerado.',
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          if (result.connected) {
+            return new Response(JSON.stringify({ 
+              error: 'Esta instância já está conectada.',
+              connected: true
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          return new Response(JSON.stringify({ 
+            error: 'Não foi possível gerar o código de pareamento.',
+            details: result
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+          
+        } catch (err) {
+          console.error('Error requesting pairing code:', err);
+          return new Response(JSON.stringify({ 
+            error: 'Erro ao comunicar com W-API',
+            details: err instanceof Error ? err.message : 'Unknown error'
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
       case 'configure-webhooks': {
         const webhookUrl = body.webhookUrl;
         
-        // Configure webhooks on W-API
         const webhookConfig = {
           onConnect: webhookUrl,
           onDisconnect: webhookUrl,
