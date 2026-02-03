@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,10 @@ import { toast } from "@/hooks/use-toast";
 import { 
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
-  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play
+  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { useNotifications } from "@/hooks/useNotifications";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -135,6 +136,42 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     error: recordingError,
   } = useAudioRecorder({ maxDuration: 120 });
 
+  // Notifications hook
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    const saved = localStorage.getItem('whatsapp-notifications-enabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+  
+  const { notify, requestPermission, hasPermission } = useNotifications({
+    soundEnabled: notificationsEnabled,
+    browserNotificationsEnabled: notificationsEnabled,
+  });
+
+  // Request notification permission on mount if enabled
+  useEffect(() => {
+    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
+      requestPermission();
+    }
+  }, [notificationsEnabled, requestPermission]);
+
+  // Save notification preference to localStorage
+  const toggleNotifications = useCallback(async () => {
+    const newValue = !notificationsEnabled;
+    setNotificationsEnabled(newValue);
+    localStorage.setItem('whatsapp-notifications-enabled', String(newValue));
+    
+    if (newValue && 'Notification' in window && Notification.permission === 'default') {
+      await requestPermission();
+    }
+    
+    toast({
+      title: newValue ? "Notificações ativadas" : "Notificações desativadas",
+      description: newValue 
+        ? "Você receberá alertas sonoros e visuais para novas mensagens."
+        : "Você não receberá mais alertas de novas mensagens.",
+    });
+  }, [notificationsEnabled, requestPermission]);
+
   // Format recording time as MM:SS
   const formatRecordingTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -163,7 +200,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     if (selectedInstance) {
       fetchConversations();
 
-      // Subscribe to realtime updates for conversations
+      // Subscribe to realtime updates for conversations - with notifications
       const conversationsChannel = supabase
         .channel('wapi_conversations_changes')
         .on(
@@ -174,7 +211,25 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
             table: 'wapi_conversations',
             filter: `instance_id=eq.${selectedInstance.id}`,
           },
-          () => {
+          (payload) => {
+            // Check if this is a new message (unread_count increased or last_message changed)
+            if (payload.eventType === 'UPDATE') {
+              const newData = payload.new as Conversation;
+              const oldData = payload.old as Partial<Conversation>;
+              
+              // If unread count increased and message is not from me, trigger notification
+              if (
+                newData.unread_count > (oldData.unread_count || 0) && 
+                !newData.last_message_from_me &&
+                newData.id !== selectedConversation?.id // Don't notify for current conversation
+              ) {
+                notify({
+                  title: newData.contact_name || newData.contact_phone,
+                  body: newData.last_message_content || 'Nova mensagem',
+                  tag: `whatsapp-${newData.id}`,
+                });
+              }
+            }
             fetchConversations();
           }
         )
@@ -184,7 +239,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
         supabase.removeChannel(conversationsChannel);
       };
     }
-  }, [selectedInstance]);
+  }, [selectedInstance, selectedConversation?.id, notify]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -786,31 +841,54 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
   return (
     <div className="flex flex-col h-[calc(100vh-220px)] sm:h-[calc(100vh-200px)] min-h-[400px] max-h-[800px]">
-      {/* Unit Tabs - only show if multiple instances */}
-      {instances.length > 1 && (
-        <Tabs 
-          value={selectedInstance?.id || ""} 
-          onValueChange={handleInstanceChange}
-          className="mb-2"
+      {/* Header with Unit Tabs and Notifications Toggle */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        {/* Unit Tabs - only show if multiple instances */}
+        {instances.length > 1 ? (
+          <Tabs 
+            value={selectedInstance?.id || ""} 
+            onValueChange={handleInstanceChange}
+            className="flex-1"
+          >
+            <TabsList>
+              {instances.map((instance) => (
+                <TabsTrigger 
+                  key={instance.id} 
+                  value={instance.id}
+                  disabled={instance.status !== 'connected'}
+                  className="flex items-center gap-2"
+                >
+                  <Building2 className="w-4 h-4" />
+                  {instance.unit}
+                  {instance.status !== 'connected' && (
+                    <WifiOff className="w-3 h-3 text-destructive" />
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        ) : (
+          <div className="flex-1" />
+        )}
+        
+        {/* Notifications Toggle */}
+        <Button
+          variant={notificationsEnabled ? "secondary" : "ghost"}
+          size="sm"
+          onClick={toggleNotifications}
+          className="shrink-0"
+          title={notificationsEnabled ? "Notificações ativadas" : "Notificações desativadas"}
         >
-          <TabsList>
-            {instances.map((instance) => (
-              <TabsTrigger 
-                key={instance.id} 
-                value={instance.id}
-                disabled={instance.status !== 'connected'}
-                className="flex items-center gap-2"
-              >
-                <Building2 className="w-4 h-4" />
-                {instance.unit}
-                {instance.status !== 'connected' && (
-                  <WifiOff className="w-3 h-3 text-destructive" />
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      )}
+          {notificationsEnabled ? (
+            <Bell className="w-4 h-4" />
+          ) : (
+            <BellOff className="w-4 h-4 text-muted-foreground" />
+          )}
+          <span className="hidden sm:inline ml-1">
+            {notificationsEnabled ? "Notificações" : "Silenciado"}
+          </span>
+        </Button>
+      </div>
 
       {/* Disconnected warning */}
       {hasDisconnectedInstances && selectedInstance?.status !== 'connected' && (
