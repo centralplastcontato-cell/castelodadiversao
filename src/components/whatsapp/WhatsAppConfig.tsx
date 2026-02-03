@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Wifi, WifiOff, Plus, RefreshCw, Settings2, Copy, Check, MessageSquare, CreditCard, Calendar, Building2, Pencil, Trash2 } from "lucide-react";
+import { Wifi, WifiOff, Plus, RefreshCw, Settings2, Copy, Check, MessageSquare, CreditCard, Calendar, Building2, Pencil, Trash2, QrCode, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -58,6 +58,13 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [editingInstance, setEditingInstance] = useState<WapiInstance | null>(null);
+  
+  // QR Code states
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrInstance, setQrInstance] = useState<WapiInstance | null>(null);
+  const [qrPolling, setQrPolling] = useState(false);
 
   const [formData, setFormData] = useState({
     instanceId: "",
@@ -259,6 +266,117 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
     setIsRefreshing(false);
   };
 
+  // Fetch QR Code
+  const fetchQrCode = useCallback(async (instance: WapiInstance) => {
+    setQrLoading(true);
+    
+    try {
+      const response = await supabase.functions.invoke("wapi-send", {
+        body: { 
+          action: "get-qr",
+          instanceId: instance.instance_id,
+          instanceToken: instance.instance_token,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.qrCode) {
+        setQrCode(response.data.qrCode);
+      } else if (response.data?.error) {
+        // Instance might be already connected or there's an issue
+        toast({
+          title: "Aviso",
+          description: response.data.error,
+          variant: "destructive",
+        });
+        setQrDialogOpen(false);
+      }
+    } catch (error: any) {
+      console.error("Error fetching QR code:", error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao obter QR Code.",
+        variant: "destructive",
+      });
+    }
+
+    setQrLoading(false);
+  }, []);
+
+  // Poll for connection status
+  const pollConnectionStatus = useCallback(async (instance: WapiInstance) => {
+    try {
+      const response = await supabase.functions.invoke("wapi-send", {
+        body: { 
+          action: "get-status",
+          instanceId: instance.instance_id,
+          instanceToken: instance.instance_token,
+        },
+      });
+
+      if (response.data?.status === 'connected') {
+        // Update database
+        await supabase
+          .from("wapi_instances")
+          .update({ 
+            status: 'connected',
+            phone_number: response.data.phoneNumber || null,
+            connected_at: new Date().toISOString(),
+          })
+          .eq("id", instance.id);
+
+        setQrPolling(false);
+        setQrDialogOpen(false);
+        toast({
+          title: "Conectado!",
+          description: `WhatsApp da unidade ${instance.unit} conectado com sucesso!`,
+        });
+        fetchInstances();
+        return true;
+      }
+    } catch (error) {
+      console.error("Error polling status:", error);
+    }
+    return false;
+  }, []);
+
+  // Open QR Code dialog
+  const handleOpenQrDialog = (instance: WapiInstance) => {
+    setQrInstance(instance);
+    setQrCode(null);
+    setQrDialogOpen(true);
+    setQrPolling(true);
+    fetchQrCode(instance);
+  };
+
+  // Effect for polling connection status when QR dialog is open
+  useEffect(() => {
+    if (!qrDialogOpen || !qrInstance || !qrPolling) return;
+
+    const interval = setInterval(async () => {
+      const connected = await pollConnectionStatus(qrInstance);
+      if (connected) {
+        clearInterval(interval);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [qrDialogOpen, qrInstance, qrPolling, pollConnectionStatus]);
+
+  // Effect to refresh QR code periodically (QR codes expire)
+  useEffect(() => {
+    if (!qrDialogOpen || !qrInstance || !qrPolling) return;
+
+    const interval = setInterval(() => {
+      fetchQrCode(qrInstance);
+    }, 30000); // Refresh QR every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [qrDialogOpen, qrInstance, qrPolling, fetchQrCode]);
+
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
@@ -297,10 +415,80 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
     );
   }
 
+  // QR Code Dialog Component (reusable for both admin and non-admin)
+  const QrCodeDialog = () => (
+    <Dialog open={qrDialogOpen} onOpenChange={(open) => {
+      setQrDialogOpen(open);
+      if (!open) {
+        setQrPolling(false);
+        setQrCode(null);
+      }
+    }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <QrCode className="w-5 h-5" />
+            Conectar WhatsApp - {qrInstance?.unit}
+          </DialogTitle>
+          <DialogDescription>
+            Escaneie o QR Code com seu WhatsApp para conectar
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="flex flex-col items-center justify-center py-4">
+          {qrLoading && !qrCode ? (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
+            </div>
+          ) : qrCode ? (
+            <div className="flex flex-col items-center gap-4">
+              <div className="bg-white p-4 rounded-lg">
+                {qrCode.startsWith('data:image') ? (
+                  <img src={qrCode} alt="QR Code" className="w-64 h-64" />
+                ) : (
+                  // If it's a base64 string without data URI prefix
+                  <img 
+                    src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} 
+                    alt="QR Code" 
+                    className="w-64 h-64" 
+                  />
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className={`w-4 h-4 ${qrLoading ? 'animate-spin' : ''}`} />
+                <span>Aguardando conexão...</span>
+              </div>
+              <p className="text-xs text-muted-foreground text-center max-w-xs">
+                Abra o WhatsApp no seu celular, vá em Configurações → Aparelhos conectados → Conectar aparelho
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <WifiOff className="w-12 h-12 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Não foi possível gerar o QR Code</p>
+              <Button variant="outline" onClick={() => qrInstance && fetchQrCode(qrInstance)}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setQrDialogOpen(false)}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (!isAdmin) {
-    // Non-admin view: just show status
+    // Non-admin view: show status with connect button
     return (
       <div className="space-y-4">
+        <QrCodeDialog />
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -308,7 +496,7 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
               Status das Instâncias
             </CardTitle>
             <CardDescription>
-              Apenas administradores podem configurar as instâncias W-API.
+              Clique em "Conectar" para escanear o QR Code e conectar o WhatsApp.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -338,9 +526,20 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
                       </p>
                     </div>
                   </div>
-                  <Badge variant={instance.status === 'connected' ? 'default' : 'secondary'}>
-                    {instance.status === 'connected' ? 'Online' : 'Offline'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {instance.status !== 'connected' && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleOpenQrDialog(instance)}
+                      >
+                        <QrCode className="w-4 h-4 mr-2" />
+                        Conectar
+                      </Button>
+                    )}
+                    <Badge variant={instance.status === 'connected' ? 'default' : 'secondary'}>
+                      {instance.status === 'connected' ? 'Online' : 'Offline'}
+                    </Badge>
+                  </div>
                 </div>
               ))
             )}
@@ -353,6 +552,7 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
   // Admin view: full configuration
   return (
     <div className="space-y-6">
+      <QrCodeDialog />
       {/* Instances Management Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -419,6 +619,15 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {instance.status !== 'connected' && (
+                          <Button 
+                            size="sm"
+                            onClick={() => handleOpenQrDialog(instance)}
+                          >
+                            <QrCode className="w-4 h-4 mr-2" />
+                            Conectar
+                          </Button>
+                        )}
                         <Button 
                           variant="outline" 
                           size="sm"

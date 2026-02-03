@@ -149,6 +149,71 @@ Deno.serve(async (req) => {
         });
       }
 
+      case 'get-qr': {
+        // Get QR code for instance connection from W-API
+        const response = await fetch(
+          `${WAPI_BASE_URL}/instance/qrcode?instanceId=${instance_id}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${instance_token}`,
+            },
+          }
+        );
+
+        // Check if response is JSON or image
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType?.includes('application/json')) {
+          const result = await response.json();
+          console.log('W-API QR code response (JSON):', result);
+          
+          if (result.error) {
+            return new Response(JSON.stringify({ 
+              error: result.message || 'Erro ao obter QR Code',
+              code: result.error 
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          // If it returns qrCode as string or base64
+          return new Response(JSON.stringify({ 
+            qrCode: result.qrCode || result.qr || result.base64 || result.code,
+            success: true
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else if (contentType?.includes('image')) {
+          // If response is image, convert to base64
+          const arrayBuffer = await response.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          const mimeType = contentType || 'image/png';
+          
+          return new Response(JSON.stringify({ 
+            qrCode: `data:${mimeType};base64,${base64}`,
+            success: true
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else {
+          // Try to parse as text
+          const text = await response.text();
+          console.log('W-API QR code response (text):', text);
+          
+          return new Response(JSON.stringify({ 
+            qrCode: text,
+            success: true
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
       case 'configure-webhooks': {
         const webhookUrl = body.webhookUrl;
         
