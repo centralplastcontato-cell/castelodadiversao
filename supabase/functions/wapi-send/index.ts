@@ -387,30 +387,72 @@ Deno.serve(async (req) => {
 
       case 'get-status': {
         // Get instance status from W-API
-        const response = await fetch(
-          `${WAPI_BASE_URL}/instance/info?instanceId=${instance_id}`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${instance_token}`,
-            },
+        try {
+          const response = await fetch(
+            `${WAPI_BASE_URL}/instance/info?instanceId=${instance_id}`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${instance_token}`,
+              },
+            }
+          );
+
+          const contentType = response.headers.get('content-type');
+          console.log(`Get-status response: status=${response.status}, content-type=${contentType}`);
+
+          // Check if response is HTML (error page) instead of JSON
+          if (contentType?.includes('text/html')) {
+            const htmlText = await response.text();
+            console.error('W-API returned HTML instead of JSON:', htmlText.substring(0, 200));
+            return new Response(JSON.stringify({ 
+              error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis no painel w-api.app',
+              status: 'error',
+              details: 'A API retornou uma página de erro. Isso geralmente indica problemas com a instância, créditos expirados ou manutenção.'
+            }), {
+              status: 503,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
           }
-        );
 
-        const result = await response.json();
-        console.log('W-API instance info:', result);
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('W-API get-status failed:', response.status, errorText);
+            return new Response(JSON.stringify({ 
+              error: `W-API retornou erro: ${response.status}`,
+              status: 'error',
+              details: errorText
+            }), {
+              status: response.status,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
 
-        // Return the result with parsed status
-        const status = result.connected ? 'connected' : 'disconnected';
-        
-        return new Response(JSON.stringify({ 
-          ...result, 
-          status,
-          phoneNumber: result.phone || null,
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+          const result = await response.json();
+          console.log('W-API instance info:', result);
+
+          // Return the result with parsed status
+          const status = result.connected ? 'connected' : 'disconnected';
+          
+          return new Response(JSON.stringify({ 
+            ...result, 
+            status,
+            phoneNumber: result.phone || null,
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (err) {
+          console.error('Error getting status:', err);
+          return new Response(JSON.stringify({ 
+            error: 'Erro ao comunicar com W-API. Verifique sua conexão e tente novamente.',
+            status: 'error',
+            details: err instanceof Error ? err.message : 'Unknown error'
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
 
       case 'get-qr': {
