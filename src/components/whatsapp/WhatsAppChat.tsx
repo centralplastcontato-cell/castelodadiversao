@@ -11,8 +11,9 @@ import { toast } from "@/hooks/use-toast";
 import { 
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
-  Image as ImageIcon, Mic, Paperclip, Loader2
+  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play
 } from "lucide-react";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -119,6 +120,27 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Audio recording hook
+  const {
+    isRecording,
+    isPaused,
+    recordingTime,
+    audioBlob,
+    startRecording,
+    stopRecording,
+    pauseRecording,
+    resumeRecording,
+    cancelRecording,
+    error: recordingError,
+  } = useAudioRecorder({ maxDuration: 120 });
+
+  // Format recording time as MM:SS
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     fetchInstances();
@@ -502,6 +524,91 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     setMediaPreview(null);
     setMediaCaption("");
   };
+
+  // Send recorded audio
+  const sendRecordedAudio = async () => {
+    if (!audioBlob || !selectedConversation || !selectedInstance || isUploading) return;
+
+    setIsUploading(true);
+
+    try {
+      // Create file from blob
+      const fileName = `${selectedConversation.id}/${Date.now()}.webm`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('whatsapp-media')
+        .upload(fileName, audioBlob, {
+          contentType: audioBlob.type,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('whatsapp-media')
+        .getPublicUrl(fileName);
+
+      const mediaUrl = urlData.publicUrl;
+
+      const response = await supabase.functions.invoke("wapi-send", {
+        body: {
+          action: 'send-audio',
+          phone: selectedConversation.contact_phone,
+          conversationId: selectedConversation.id,
+          instanceId: selectedInstance.instance_id,
+          instanceToken: selectedInstance.instance_token,
+          mediaUrl,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      // Optimistically add message to UI
+      const tempMessage: Message = {
+        id: crypto.randomUUID(),
+        conversation_id: selectedConversation.id,
+        message_id: response.data?.messageId || null,
+        from_me: true,
+        message_type: 'audio',
+        content: '[Áudio]',
+        media_url: mediaUrl,
+        status: "sent",
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, tempMessage]);
+
+      // Clear the recorded audio
+      cancelRecording();
+
+      toast({
+        title: "Áudio enviado",
+        description: "Mensagem de voz enviada com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar áudio",
+        description: error.message || "Não foi possível enviar o áudio.",
+        variant: "destructive",
+      });
+    }
+
+    setIsUploading(false);
+  };
+
+  // Effect to show error from recording
+  useEffect(() => {
+    if (recordingError) {
+      toast({
+        title: "Erro na gravação",
+        description: recordingError,
+        variant: "destructive",
+      });
+    }
+  }, [recordingError]);
 
   const sendMedia = async () => {
     if (!mediaPreview || !selectedConversation || !selectedInstance || isUploading) return;
@@ -1029,15 +1136,172 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
                 {/* Message Input */}
                 <div className="p-2 sm:p-3 border-t shrink-0 bg-card">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }}
-                    className="flex gap-2 items-end"
-                  >
-                    {/* Templates Button */}
-                    {templates.length > 0 && (
+                  {/* Recording UI */}
+                  {isRecording || audioBlob ? (
+                    <div className="flex items-center gap-2">
+                      {/* Cancel button */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 h-9 w-9 text-destructive hover:text-destructive"
+                        onClick={cancelRecording}
+                        disabled={isUploading}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+
+                      {/* Recording status or playback */}
+                      <div className="flex-1 flex items-center gap-3 px-3 py-2 bg-muted rounded-lg">
+                        {isRecording ? (
+                          <>
+                            {/* Recording indicator */}
+                            <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
+                            <span className="text-sm font-mono">
+                              {formatRecordingTime(recordingTime)}
+                            </span>
+                            <div className="flex-1 flex items-center justify-center">
+                              {/* Simple wave animation */}
+                              <div className="flex items-center gap-0.5">
+                                {[...Array(20)].map((_, i) => (
+                                  <div
+                                    key={i}
+                                    className="w-1 bg-primary rounded-full animate-pulse"
+                                    style={{
+                                      height: `${8 + Math.sin(i * 0.5 + recordingTime) * 8}px`,
+                                      animationDelay: `${i * 50}ms`,
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        ) : audioBlob ? (
+                          <>
+                            {/* Playback preview */}
+                            <Mic className="w-4 h-4 text-primary" />
+                            <span className="text-sm font-mono">
+                              {formatRecordingTime(recordingTime)}
+                            </span>
+                            <audio
+                              src={URL.createObjectURL(audioBlob)}
+                              controls
+                              className="flex-1 h-8"
+                            />
+                          </>
+                        ) : null}
+                      </div>
+
+                      {/* Pause/Resume button (only during recording) */}
+                      {isRecording && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-9 w-9"
+                          onClick={isPaused ? resumeRecording : pauseRecording}
+                        >
+                          {isPaused ? (
+                            <Play className="w-4 h-4" />
+                          ) : (
+                            <Pause className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+
+                      {/* Stop/Send button */}
+                      {isRecording ? (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={stopRecording}
+                        >
+                          <Square className="w-4 h-4" />
+                        </Button>
+                      ) : audioBlob ? (
+                        <Button
+                          type="button"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={sendRecordedAudio}
+                          disabled={isUploading}
+                        >
+                          {isUploading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    /* Normal message input */
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }}
+                      className="flex gap-2 items-end"
+                    >
+                      {/* Templates Button */}
+                      {templates.length > 0 && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon"
+                              className="shrink-0 h-9 w-9"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-64">
+                            <DropdownMenuLabel>Templates Rápidos</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {templates.map((template) => (
+                              <DropdownMenuItem 
+                                key={template.id}
+                                onClick={() => applyTemplate(template)}
+                              >
+                                <span className="truncate">{template.name}</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+
+                      {/* Emoji Button */}
+                      <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon"
+                            className="shrink-0 h-9 w-9"
+                          >
+                            <Smile className="w-4 h-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-2" align="start">
+                          <div className="grid grid-cols-6 gap-1">
+                            {commonEmojis.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => insertEmoji(emoji)}
+                                className="text-xl p-1 hover:bg-muted rounded transition-colors"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+
+                      {/* Media attachment dropdown */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button 
@@ -1046,96 +1310,56 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             size="icon"
                             className="shrink-0 h-9 w-9"
                           >
-                            <FileText className="w-4 h-4" />
+                            <Paperclip className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-64">
-                          <DropdownMenuLabel>Templates Rápidos</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          {templates.map((template) => (
-                            <DropdownMenuItem 
-                              key={template.id}
-                              onClick={() => applyTemplate(template)}
-                            >
-                              <span className="truncate">{template.name}</span>
-                            </DropdownMenuItem>
-                          ))}
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                            <ImageIcon className="w-4 h-4 mr-2" />
+                            Imagem
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
+                            <Mic className="w-4 h-4 mr-2" />
+                            Arquivo de Áudio
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Arquivo
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    )}
 
-                    {/* Emoji Button */}
-                    <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-                      <PopoverTrigger asChild>
+                      <Input
+                        placeholder="Digite uma mensagem..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        disabled={isSending}
+                        className="text-base sm:text-sm flex-1"
+                      />
+
+                      {/* Mic button for recording or Send button */}
+                      {newMessage.trim() ? (
                         <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon"
-                          className="shrink-0 h-9 w-9"
+                          type="submit" 
+                          size="icon" 
+                          disabled={isSending}
+                          className="shrink-0"
                         >
-                          <Smile className="w-4 h-4" />
+                          <Send className="w-4 h-4" />
                         </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-2" align="start">
-                        <div className="grid grid-cols-6 gap-1">
-                          {commonEmojis.map((emoji) => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={() => insertEmoji(emoji)}
-                              className="text-xl p-1 hover:bg-muted rounded transition-colors"
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-
-                    {/* Media attachment dropdown */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="secondary"
                           size="icon"
-                          className="shrink-0 h-9 w-9"
+                          className="shrink-0"
+                          onClick={startRecording}
                         >
-                          <Paperclip className="w-4 h-4" />
+                          <Mic className="w-4 h-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                          <ImageIcon className="w-4 h-4 mr-2" />
-                          Imagem
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
-                          <Mic className="w-4 h-4 mr-2" />
-                          Áudio
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                          <FileText className="w-4 h-4 mr-2" />
-                          Arquivo
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <Input
-                      placeholder="Digite uma mensagem..."
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      disabled={isSending}
-                      className="text-base sm:text-sm flex-1"
-                    />
-                    <Button 
-                      type="submit" 
-                      size="icon" 
-                      disabled={isSending || !newMessage.trim()}
-                      className="shrink-0"
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </form>
+                      )}
+                    </form>
+                  )}
                 </div>
               </>
             ) : (
