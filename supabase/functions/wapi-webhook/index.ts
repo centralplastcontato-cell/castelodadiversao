@@ -228,16 +228,19 @@ Deno.serve(async (req) => {
         } else if (msgContent.imageMessage) {
           messageType = 'image';
           content = msgContent.imageMessage.caption || '[Imagem]';
-          mediaUrl = msgContent.imageMessage.url;
+          mediaUrl = msgContent.imageMessage.url || msgContent.imageMessage.directPath || null;
         } else if (msgContent.videoMessage) {
           messageType = 'video';
           content = msgContent.videoMessage.caption || '[Vídeo]';
+          mediaUrl = msgContent.videoMessage.url || msgContent.videoMessage.directPath || null;
         } else if (msgContent.audioMessage) {
           messageType = 'audio';
           content = '[Áudio]';
+          mediaUrl = msgContent.audioMessage.url || msgContent.audioMessage.directPath || null;
         } else if (msgContent.documentMessage) {
           messageType = 'document';
           content = msgContent.documentMessage.fileName || '[Documento]';
+          mediaUrl = msgContent.documentMessage.url || msgContent.documentMessage.directPath || null;
         } else if (message.body || message.text) {
           content = message.body || message.text;
         }
@@ -380,16 +383,19 @@ Deno.serve(async (req) => {
                   } else if (msgContent.imageMessage) {
                     messageType = 'image';
                     content = msgContent.imageMessage.caption || '[Imagem]';
-                    mediaUrl = msgContent.imageMessage.url;
+                    mediaUrl = msgContent.imageMessage.url || msgContent.imageMessage.directPath || null;
                   } else if (msgContent.videoMessage) {
                     messageType = 'video';
                     content = msgContent.videoMessage.caption || '[Vídeo]';
+                    mediaUrl = msgContent.videoMessage.url || msgContent.videoMessage.directPath || null;
                   } else if (msgContent.audioMessage) {
                     messageType = 'audio';
                     content = '[Áudio]';
+                    mediaUrl = msgContent.audioMessage.url || msgContent.audioMessage.directPath || null;
                   } else if (msgContent.documentMessage) {
                     messageType = 'document';
                     content = msgContent.documentMessage.fileName || '[Documento]';
+                    mediaUrl = msgContent.documentMessage.url || msgContent.documentMessage.directPath || null;
                   }
 
                   // Insert message
