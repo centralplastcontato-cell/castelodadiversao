@@ -96,6 +96,11 @@ export default {
           "0%": { transform: "scale(0.95)", opacity: "0" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        "badge-pulse": {
+          "0%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.2)" },
+          "100%": { transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -103,6 +108,7 @@ export default {
         "bounce-gentle": "bounce-gentle 2s ease-in-out infinite",
         "wiggle": "wiggle 1s ease-in-out infinite",
         "scale-up": "scale-up 0.3s ease-out",
+        "badge-pulse": "badge-pulse 0.3s ease-out",
       },
     },
   },
