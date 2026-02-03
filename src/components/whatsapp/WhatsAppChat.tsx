@@ -1423,9 +1423,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </div>
                   </div>
 
-                  {/* Lead Classification Panel - Always visible when lead is linked */}
-                  {linkedLead && (
-                    <div className="border-b bg-card/50 p-3 shrink-0">
+                  {/* Lead Classification Panel - Always visible */}
+                  <div className="border-b bg-card/50 p-2 sm:p-3 shrink-0">
+                    {linkedLead ? (
+                      // Show classification buttons when lead is linked
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-medium text-muted-foreground">Status:</span>
                         {[
@@ -1500,12 +1501,76 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             onClick={() => window.open(`/admin?lead=${linkedLead.id}`, '_blank')}
                           >
                             <ExternalLink className="w-3 h-3 mr-1" />
-                            Ver no CRM
+                            CRM
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-muted-foreground"
+                            onClick={() => setShowLinkLeadModal(true)}
+                          >
+                            <Link2 className="w-3 h-3 mr-1" />
+                            Trocar
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      // Show inline search when no lead is linked
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground shrink-0">Lead:</span>
+                        <div className="relative flex-1 max-w-xs">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                          <Input
+                            placeholder="Buscar lead por nome ou telefone..."
+                            value={leadSearchQuery}
+                            onChange={(e) => {
+                              setLeadSearchQuery(e.target.value);
+                              searchLeads(e.target.value);
+                            }}
+                            className="h-7 text-xs pl-7 pr-2"
+                          />
+                        </div>
+                        {isSearchingLeads && (
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        )}
+                        {!isSearchingLeads && searchedLeads.length > 0 && (
+                          <Popover open={searchedLeads.length > 0 && leadSearchQuery.length > 0} onOpenChange={() => setSearchedLeads([])}>
+                            <PopoverTrigger asChild>
+                              <span />
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-1" align="start">
+                              <ScrollArea className="max-h-48">
+                                {searchedLeads.map((lead) => (
+                                  <button
+                                    key={lead.id}
+                                    onClick={() => {
+                                      linkLeadToConversation(lead);
+                                      setLeadSearchQuery("");
+                                      setSearchedLeads([]);
+                                    }}
+                                    className="w-full flex items-center gap-2 p-2 hover:bg-accent rounded text-left text-sm"
+                                  >
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                        {lead.name.charAt(0).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-xs truncate">{lead.name}</p>
+                                      <p className="text-[10px] text-muted-foreground truncate">{lead.whatsapp}</p>
+                                    </div>
+                                  </button>
+                                ))}
+                              </ScrollArea>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                        <span className="text-[10px] text-muted-foreground hidden sm:block">
+                          Vincule para classificar
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Messages */}
                   <ScrollArea className="flex-1 p-3 sm:p-4 bg-muted/30">
