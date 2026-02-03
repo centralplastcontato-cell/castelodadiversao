@@ -1855,21 +1855,72 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
           <div className="space-y-4">
             {/* Show linked lead if exists */}
             {linkedLead && (
-              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {linkedLead.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{linkedLead.name}</p>
-                    <p className="text-xs text-muted-foreground">{linkedLead.whatsapp}</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {linkedLead.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{linkedLead.name}</p>
+                      <p className="text-xs text-muted-foreground">{linkedLead.whatsapp}</p>
+                    </div>
+                  </div>
+                  <Button variant="destructive" size="sm" onClick={unlinkLead}>
+                    Desvincular
+                  </Button>
+                </div>
+
+                {/* Lead Status Classification */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Classificar lead:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                      { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
+                      { value: 'orcamento_enviado', label: 'Orçamento Enviado', color: 'bg-purple-500' },
+                      { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+                      { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                      { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                    ].map((statusOption) => (
+                      <Button
+                        key={statusOption.value}
+                        variant={linkedLead.status === statusOption.value ? "default" : "outline"}
+                        size="sm"
+                        className={cn(
+                          "justify-start gap-2",
+                          linkedLead.status === statusOption.value && "ring-2 ring-offset-2"
+                        )}
+                        onClick={async () => {
+                          const { error } = await supabase
+                            .from('campaign_leads')
+                            .update({ status: statusOption.value as "novo" | "em_contato" | "orcamento_enviado" | "aguardando_resposta" | "fechado" | "perdido" })
+                            .eq('id', linkedLead.id);
+                          
+                          if (error) {
+                            toast({
+                              title: "Erro ao atualizar",
+                              description: error.message,
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          
+                          setLinkedLead({ ...linkedLead, status: statusOption.value });
+                          toast({
+                            title: "Status atualizado",
+                            description: `Lead classificado como "${statusOption.label}"`,
+                          });
+                        }}
+                      >
+                        <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
+                        {statusOption.label}
+                      </Button>
+                    ))}
                   </div>
                 </div>
-                <Button variant="destructive" size="sm" onClick={unlinkLead}>
-                  Desvincular
-                </Button>
               </div>
             )}
 
