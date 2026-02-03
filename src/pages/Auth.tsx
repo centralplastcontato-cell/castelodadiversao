@@ -96,7 +96,7 @@ export default function Auth() {
       <div className="w-full max-w-md relative z-10">
         <Button
           variant="ghost"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/promo")}
           className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
