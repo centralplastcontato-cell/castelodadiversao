@@ -270,11 +270,20 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
         )
         .subscribe();
 
-      // Mark as read
-      supabase
-        .from('wapi_conversations')
-        .update({ unread_count: 0 })
-        .eq('id', selectedConversation.id);
+      // Mark as read immediately - update local state first for instant feedback
+      if (selectedConversation.unread_count > 0) {
+        setConversations(prev => 
+          prev.map(c => c.id === selectedConversation.id ? { ...c, unread_count: 0 } : c)
+        );
+        setSelectedConversation(prev => prev ? { ...prev, unread_count: 0 } : null);
+        
+        // Then update the database
+        supabase
+          .from('wapi_conversations')
+          .update({ unread_count: 0 })
+          .eq('id', selectedConversation.id)
+          .then(() => {});
+      }
 
       return () => {
         supabase.removeChannel(messagesChannel);
@@ -282,7 +291,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     } else {
       setLinkedLead(null);
     }
-  }, [selectedConversation]);
+  }, [selectedConversation?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
