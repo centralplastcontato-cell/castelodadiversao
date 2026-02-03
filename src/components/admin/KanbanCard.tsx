@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Lead, LEAD_STATUS_LABELS, LeadStatus } from "@/types/crm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ExternalLink,
   MessageSquare,
@@ -21,9 +22,11 @@ interface KanbanCardProps {
   responsavelName: string | null;
   canEdit: boolean;
   canEditName: boolean;
+  canEditDescription: boolean;
   onLeadClick: (lead: Lead) => void;
   onStatusChange: (leadId: string, newStatus: LeadStatus) => void;
   onNameUpdate: (leadId: string, newName: string) => Promise<void>;
+  onDescriptionUpdate: (leadId: string, newDescription: string) => Promise<void>;
   getPreviousStatus: (status: LeadStatus) => LeadStatus | null;
   getNextStatus: (status: LeadStatus) => LeadStatus | null;
 }
@@ -33,16 +36,21 @@ export function KanbanCard({
   responsavelName,
   canEdit,
   canEditName,
+  canEditDescription,
   onLeadClick,
   onStatusChange,
   onNameUpdate,
+  onDescriptionUpdate,
   getPreviousStatus,
   getNextStatus,
 }: KanbanCardProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(lead.name);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(lead.observacoes || "");
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasPrev = getPreviousStatus(lead.status) !== null;
   const hasNext = getNextStatus(lead.status) !== null;
@@ -53,6 +61,13 @@ export function KanbanCard({
       inputRef.current.select();
     }
   }, [isEditingName]);
+
+  useEffect(() => {
+    if (isEditingDescription && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [isEditingDescription]);
 
   const formatWhatsAppLink = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, "");
@@ -82,13 +97,14 @@ export function KanbanCard({
     }
   };
 
-  const handleStartEdit = (e: React.MouseEvent) => {
+  // Name editing handlers
+  const handleStartEditName = (e: React.MouseEvent) => {
     e.stopPropagation();
     setEditedName(lead.name);
     setIsEditingName(true);
   };
 
-  const handleCancelEdit = (e: React.MouseEvent) => {
+  const handleCancelEditName = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingName(false);
     setEditedName(lead.name);
@@ -113,7 +129,7 @@ export function KanbanCard({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDownName = (e: React.KeyboardEvent) => {
     e.stopPropagation();
     if (e.key === "Enter") {
       handleSaveName(e as unknown as React.MouseEvent);
@@ -123,21 +139,62 @@ export function KanbanCard({
     }
   };
 
+  // Description editing handlers
+  const handleStartEditDescription = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditedDescription(lead.observacoes || "");
+    setIsEditingDescription(true);
+  };
+
+  const handleCancelEditDescription = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditingDescription(false);
+    setEditedDescription(lead.observacoes || "");
+  };
+
+  const handleSaveDescription = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (editedDescription === (lead.observacoes || "")) {
+      setIsEditingDescription(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onDescriptionUpdate(lead.id, editedDescription.trim());
+      setIsEditingDescription(false);
+    } catch {
+      setEditedDescription(lead.observacoes || "");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleKeyDownDescription = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      setIsEditingDescription(false);
+      setEditedDescription(lead.observacoes || "");
+    }
+  };
+
+  const isEditing = isEditingName || isEditingDescription;
+
   return (
     <div
-      draggable={canEdit && !isEditingName}
+      draggable={canEdit && !isEditing}
       onDragStart={handleDragStart}
-      onClick={() => !isEditingName && onLeadClick(lead)}
+      onClick={() => !isEditing && onLeadClick(lead)}
       className={`
         bg-card rounded-lg border border-border p-3 
         cursor-pointer hover:border-primary/50 transition-colors
-        ${canEdit && !isEditingName ? "cursor-grab active:cursor-grabbing" : ""}
+        ${canEdit && !isEditing ? "cursor-grab active:cursor-grabbing" : ""}
       `}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            {canEdit && !isEditingName && (
+            {canEdit && !isEditing && (
               <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
             )}
             
@@ -147,7 +204,7 @@ export function KanbanCard({
                   ref={inputRef}
                   value={editedName}
                   onChange={(e) => setEditedName(e.target.value)}
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={handleKeyDownName}
                   className="h-7 text-sm py-0 px-2"
                   disabled={isSaving}
                 />
@@ -164,7 +221,7 @@ export function KanbanCard({
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 text-destructive hover:text-destructive/80"
-                  onClick={handleCancelEdit}
+                  onClick={handleCancelEditName}
                   disabled={isSaving}
                 >
                   <X className="w-3 h-3" />
@@ -178,7 +235,7 @@ export function KanbanCard({
                     variant="ghost"
                     size="icon"
                     className="h-5 w-5 flex-shrink-0 opacity-0 group-hover:opacity-100 hover:opacity-100"
-                    onClick={handleStartEdit}
+                    onClick={handleStartEditName}
                     title="Editar nome"
                   >
                     <Pencil className="w-3 h-3" />
@@ -216,9 +273,63 @@ export function KanbanCard({
             </div>
           )}
 
-          {lead.observacoes && (
-            <div className="mt-2">
-              <MessageSquare className="w-3 h-3 text-primary inline" />
+          {/* Description / Observações section */}
+          {isEditingDescription ? (
+            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+              <Textarea
+                ref={textareaRef}
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                onKeyDown={handleKeyDownDescription}
+                className="text-xs min-h-[60px] resize-none"
+                placeholder="Observações..."
+                disabled={isSaving}
+              />
+              <div className="flex items-center gap-1 mt-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-primary hover:text-primary/80"
+                  onClick={handleSaveDescription}
+                  disabled={isSaving}
+                >
+                  <Check className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive/80"
+                  onClick={handleCancelEditDescription}
+                  disabled={isSaving}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 flex items-start gap-1">
+              {lead.observacoes ? (
+                <p className="text-xs text-muted-foreground line-clamp-2 flex-1">
+                  💬 {lead.observacoes}
+                </p>
+              ) : (
+                canEditDescription && (
+                  <p className="text-xs text-muted-foreground/50 flex-1">
+                    Sem observações
+                  </p>
+                )
+              )}
+              {canEditDescription && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 flex-shrink-0 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                  onClick={handleStartEditDescription}
+                  title="Editar descrição"
+                >
+                  <MessageSquare className="w-3 h-3" />
+                </Button>
+              )}
             </div>
           )}
         </div>
