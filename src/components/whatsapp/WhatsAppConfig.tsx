@@ -56,6 +56,7 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [editingInstance, setEditingInstance] = useState<WapiInstance | null>(null);
   
@@ -314,6 +315,65 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
     }
 
     setIsRefreshing(false);
+  };
+
+  // Sync all instances status
+  const handleSyncAllStatus = async () => {
+    setIsSyncingAll(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const instance of instances) {
+        try {
+          const response = await supabase.functions.invoke("wapi-send", {
+            body: { 
+              action: "get-status",
+              instanceId: instance.instance_id,
+              instanceToken: instance.instance_token,
+            },
+          });
+
+          if (response.data?.status) {
+            const updateData: Record<string, unknown> = { status: response.data.status };
+            
+            if (response.data.status === 'connected') {
+              updateData.phone_number = response.data.phoneNumber || response.data.phone || instance.phone_number;
+              if (!instance.connected_at) {
+                updateData.connected_at = new Date().toISOString();
+              }
+            } else if (response.data.status === 'disconnected') {
+              updateData.connected_at = null;
+            }
+
+            await supabase
+              .from("wapi_instances")
+              .update(updateData)
+              .eq("id", instance.id);
+            
+            successCount++;
+          }
+        } catch (err) {
+          console.error(`Error syncing ${instance.unit}:`, err);
+          errorCount++;
+        }
+      }
+
+      await fetchInstances();
+
+      toast({
+        title: "Sincronização concluída",
+        description: `${successCount} instância(s) sincronizada(s)${errorCount > 0 ? `, ${errorCount} erro(s)` : ''}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao sincronizar status.",
+        variant: "destructive",
+      });
+    }
+
+    setIsSyncingAll(false);
   };
 
   // Fetch QR Code
@@ -726,14 +786,27 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
       <div className="space-y-4">
         <ConnectionDialog />
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="w-5 h-5" />
-              Status das Instâncias
-            </CardTitle>
-            <CardDescription>
-              Clique em "Conectar" para escanear o QR Code e conectar o WhatsApp.
-            </CardDescription>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Settings2 className="w-5 h-5" />
+                Status das Instâncias
+              </CardTitle>
+              <CardDescription>
+                Clique em "Conectar" para escanear o QR Code e conectar o WhatsApp.
+              </CardDescription>
+            </div>
+            {instances.length > 0 && (
+              <Button 
+                variant="outline" 
+                onClick={handleSyncAllStatus}
+                disabled={isSyncingAll}
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncingAll ? 'animate-spin' : ''}`} />
+                {isSyncingAll ? 'Sincronizando...' : 'Atualizar Status'}
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             {instances.length === 0 ? (
@@ -799,12 +872,25 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
             </CardTitle>
             <CardDescription>Configure as instâncias do WhatsApp para cada unidade</CardDescription>
           </div>
-          {getAvailableUnits().length > 0 && (
-            <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Instância
-            </Button>
-          )}
+          <div className="flex gap-2 w-full sm:w-auto">
+            {instances.length > 0 && (
+              <Button 
+                variant="outline" 
+                onClick={handleSyncAllStatus}
+                disabled={isSyncingAll}
+                className="flex-1 sm:flex-none"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncingAll ? 'animate-spin' : ''}`} />
+                {isSyncingAll ? 'Sincronizando...' : 'Atualizar Status'}
+              </Button>
+            )}
+            {getAvailableUnits().length > 0 && (
+              <Button onClick={() => handleOpenDialog()} className="flex-1 sm:flex-none">
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Instância
+              </Button>
+            )}
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
