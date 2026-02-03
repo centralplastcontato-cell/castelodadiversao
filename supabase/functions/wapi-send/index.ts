@@ -138,7 +138,16 @@ Deno.serve(async (req) => {
           });
         }
         
-        if (mediaUrl && !base64) {
+        // If base64 is provided directly (fast path - frontend already converted)
+        if (base64) {
+          imageBase64 = base64;
+          // Ensure it has data URI prefix
+          if (!imageBase64.startsWith('data:')) {
+            imageBase64 = `data:image/jpeg;base64,${imageBase64}`;
+          }
+          console.log('Using provided base64, length:', imageBase64.length);
+        } else if (mediaUrl) {
+          // Fallback: fetch from URL (slower path)
           try {
             console.log('Fetching image from URL:', mediaUrl);
             const imageResponse = await fetch(mediaUrl);
@@ -151,9 +160,7 @@ Deno.serve(async (req) => {
               });
             }
             
-            // Get content type from response
             const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-            
             const arrayBuffer = await imageResponse.arrayBuffer();
             const bytes = new Uint8Array(arrayBuffer);
             
@@ -170,8 +177,6 @@ Deno.serve(async (req) => {
               binary += String.fromCharCode(bytes[i]);
             }
             const rawBase64 = btoa(binary);
-            
-            // W-API requires data URI format: data:image/jpeg;base64,...
             imageBase64 = `data:${contentType};base64,${rawBase64}`;
             console.log('Image converted to data URI, total length:', imageBase64.length);
           } catch (err) {
@@ -181,13 +186,6 @@ Deno.serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
-        }
-        
-        // If base64 was provided directly, ensure it has data URI prefix
-        if (imageBase64 && !imageBase64.startsWith('data:')) {
-          // Assume JPEG if no prefix provided
-          imageBase64 = `data:image/jpeg;base64,${imageBase64}`;
-          console.log('Added data URI prefix to provided base64');
         }
         
         // Final validation
