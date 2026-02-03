@@ -12,7 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { 
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
-  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff
+  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff, GripVertical
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -38,6 +38,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 
 interface WapiInstance {
   id: string;
@@ -948,10 +953,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       {/* Chat Area */}
       {selectedInstance?.status === 'connected' && (
         <div className="flex flex-1 border rounded-lg overflow-hidden bg-card min-h-0">
-          {/* Conversations List */}
+          {/* Mobile: Show full width list or chat */}
           <div className={cn(
-            "w-full md:w-72 lg:w-80 border-r flex flex-col min-h-0",
-            selectedConversation && "hidden md:flex"
+            "w-full flex flex-col min-h-0 md:hidden",
+            selectedConversation && "hidden"
           )}>
             <div className="p-3 border-b space-y-2">
               <div className="relative">
@@ -963,8 +968,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   className="pl-9"
                 />
               </div>
-              
-              {/* Filter Tabs */}
               <div className="flex gap-1">
                 <Button 
                   variant={filter === 'all' ? 'secondary' : 'ghost'} 
@@ -998,7 +1001,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                 </Button>
               </div>
             </div>
-
             <ScrollArea className="flex-1">
               {filteredConversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-center p-4">
@@ -1039,37 +1041,16 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <p className={cn(
-                            "truncate",
-                            conv.unread_count > 0 ? "font-bold" : "font-medium"
-                          )}>
-                            {conv.contact_name || conv.contact_phone}
-                          </p>
-                          {conv.lead_id && (
-                            <Link2 className="w-3 h-3 text-primary shrink-0" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(conv);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
-                          >
-                            {conv.is_favorite ? (
-                              <StarOff className="w-3 h-3 text-muted-foreground" />
-                            ) : (
-                              <Star className="w-3 h-3 text-muted-foreground" />
-                            )}
-                          </button>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {formatConversationDate(conv.last_message_at)}
-                          </span>
-                        </div>
+                        <p className={cn(
+                          "truncate flex-1",
+                          conv.unread_count > 0 ? "font-bold" : "font-medium"
+                        )}>
+                          {conv.contact_name || conv.contact_phone}
+                        </p>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                          {formatConversationDate(conv.last_message_at)}
+                        </span>
                       </div>
-                      {/* Last message preview */}
                       <div className="flex items-center justify-between gap-2 mt-0.5">
                         <p className={cn(
                           "text-xs truncate flex items-center gap-1",
@@ -1095,19 +1076,537 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
             </ScrollArea>
           </div>
 
-          {/* Messages Area */}
+          {/* Desktop: Resizable Panels */}
+          <ResizablePanelGroup direction="horizontal" className="hidden md:flex flex-1">
+            {/* Conversations Panel - Resizable */}
+            <ResizablePanel 
+              defaultSize={35} 
+              minSize={20} 
+              maxSize={50}
+              className="flex flex-col min-h-0"
+            >
+              <div className="flex flex-col h-full border-r">
+                <div className="p-3 border-b space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar conversa..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant={filter === 'all' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('all')}
+                    >
+                      Tudo
+                    </Button>
+                    <Button 
+                      variant={filter === 'unread' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('unread')}
+                    >
+                      Não lidas
+                      {conversations.filter(c => c.unread_count > 0).length > 0 && (
+                        <Badge className="ml-1 h-4 min-w-4 p-0 text-[10px]">
+                          {conversations.filter(c => c.unread_count > 0).length}
+                        </Badge>
+                      )}
+                    </Button>
+                    <Button 
+                      variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('favorites')}
+                    >
+                      <Star className="w-3 h-3 mr-1" />
+                      Favoritos
+                    </Button>
+                  </div>
+                </div>
+                <ScrollArea className="flex-1">
+                  {filteredConversations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-48 text-center p-4">
+                      <MessageSquare className="w-8 h-8 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {searchQuery ? "Nenhuma conversa encontrada" : "Nenhuma conversa ainda"}
+                      </p>
+                    </div>
+                  ) : (
+                    filteredConversations.map((conv) => (
+                      <button
+                        key={conv.id}
+                        onClick={() => setSelectedConversation(conv)}
+                        className={cn(
+                          "w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors text-left border-b group",
+                          selectedConversation?.id === conv.id && "bg-accent",
+                          conv.unread_count > 0 && "bg-primary/5"
+                        )}
+                      >
+                        <div className="relative">
+                          <Avatar className="shrink-0">
+                            {conv.contact_picture && (
+                              <AvatarImage 
+                                src={conv.contact_picture} 
+                                alt={conv.contact_name || conv.contact_phone}
+                              />
+                            )}
+                            <AvatarFallback className={cn(
+                              "text-primary",
+                              conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
+                            )}>
+                              {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {conv.is_favorite && (
+                            <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1 min-w-0 flex-1">
+                              <p className={cn(
+                                "truncate",
+                                conv.unread_count > 0 ? "font-bold" : "font-medium"
+                              )}>
+                                {conv.contact_name || conv.contact_phone}
+                              </p>
+                              {conv.lead_id && (
+                                <Link2 className="w-3 h-3 text-primary shrink-0" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(conv);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
+                              >
+                                {conv.is_favorite ? (
+                                  <StarOff className="w-3 h-3 text-muted-foreground" />
+                                ) : (
+                                  <Star className="w-3 h-3 text-muted-foreground" />
+                                )}
+                              </button>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {formatConversationDate(conv.last_message_at)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <p className={cn(
+                              "text-xs truncate flex items-center gap-1",
+                              conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
+                            )}>
+                              {conv.last_message_from_me && (
+                                <CheckCheck className="w-3 h-3 shrink-0 text-primary" />
+                              )}
+                              <span className="truncate">
+                                {conv.last_message_content || conv.contact_phone}
+                              </span>
+                            </p>
+                            {conv.unread_count > 0 && (
+                              <Badge className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0">
+                                {conv.unread_count}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </ScrollArea>
+              </div>
+            </ResizablePanel>
+
+            {/* Resize Handle */}
+            <ResizableHandle withHandle className="bg-border hover:bg-primary/20 transition-colors" />
+
+            {/* Messages Panel */}
+            <ResizablePanel defaultSize={65} minSize={40} className="flex flex-col min-h-0 min-w-0">
+              {selectedConversation ? (
+                <>
+                  {/* Chat Header */}
+                  <div className="p-3 border-b flex items-center gap-2 sm:gap-3 shrink-0">
+                    <Avatar className="h-9 w-9 shrink-0">
+                      {selectedConversation.contact_picture && (
+                        <AvatarImage 
+                          src={selectedConversation.contact_picture} 
+                          alt={selectedConversation.contact_name || selectedConversation.contact_phone}
+                        />
+                      )}
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        {(selectedConversation.contact_name || selectedConversation.contact_phone)
+                          .charAt(0)
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <p className="font-medium truncate text-sm sm:text-base">
+                          {selectedConversation.contact_name || selectedConversation.contact_phone}
+                        </p>
+                        {linkedLead && (
+                          <Badge 
+                            variant="secondary" 
+                            className="text-[10px] h-4 px-1 cursor-pointer hover:bg-secondary/80"
+                            onClick={() => setShowLinkLeadModal(true)}
+                          >
+                            <Link2 className="w-2.5 h-2.5 mr-0.5" />
+                            {linkedLead.name.split(' ')[0]}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {selectedConversation.contact_phone}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setShowLinkLeadModal(true)}
+                        title={linkedLead ? "Gerenciar vínculo com lead" : "Vincular a um lead"}
+                      >
+                        <Link2 className={cn(
+                          "w-4 h-4",
+                          linkedLead ? "text-primary" : "text-muted-foreground"
+                        )} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => toggleFavorite(selectedConversation)}
+                      >
+                        {selectedConversation.is_favorite ? (
+                          <Star className="w-4 h-4 text-secondary fill-secondary" />
+                        ) : (
+                          <Star className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                      {selectedInstance && (
+                        <Badge variant="outline" className="hidden sm:flex">
+                          <Building2 className="w-3 h-3 mr-1" />
+                          {selectedInstance.unit}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Messages */}
+                  <ScrollArea className="flex-1 p-3 sm:p-4 bg-muted/30">
+                    <div className="space-y-2 sm:space-y-3">
+                      {messages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <MessageSquare className="w-10 h-10 text-muted-foreground mb-3" />
+                          <p className="text-sm text-muted-foreground">
+                            Nenhuma mensagem ainda
+                          </p>
+                        </div>
+                      ) : (
+                        messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={cn(
+                              "flex",
+                              msg.from_me ? "justify-end" : "justify-start"
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "max-w-[85%] sm:max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm",
+                                msg.from_me
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-card border"
+                              )}
+                            >
+                              {msg.message_type === 'image' && msg.media_url && (
+                                <div className="mb-2">
+                                  <img 
+                                    src={msg.media_url} 
+                                    alt="Imagem" 
+                                    className="rounded max-w-full max-h-64 object-contain cursor-pointer"
+                                    onClick={() => window.open(msg.media_url!, '_blank')}
+                                  />
+                                </div>
+                              )}
+                              {msg.message_type === 'audio' && msg.media_url && (
+                                <div className="mb-2">
+                                  <audio controls className="max-w-full">
+                                    <source src={msg.media_url} />
+                                  </audio>
+                                </div>
+                              )}
+                              {msg.message_type === 'document' && msg.media_url && (
+                                <div className="mb-2">
+                                  <a 
+                                    href={msg.media_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className={cn(
+                                      "flex items-center gap-2 p-2 rounded border",
+                                      msg.from_me 
+                                        ? "border-primary-foreground/30 hover:bg-primary-foreground/10" 
+                                        : "border-border hover:bg-muted"
+                                    )}
+                                  >
+                                    <Paperclip className="w-4 h-4" />
+                                    <span className="truncate">{msg.content}</span>
+                                  </a>
+                                </div>
+                              )}
+                              {msg.message_type === 'text' && (
+                                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                              )}
+                              {msg.message_type !== 'text' && msg.content && msg.content !== '[Imagem]' && msg.content !== '[Áudio]' && (
+                                <p className="whitespace-pre-wrap break-words mt-1">{msg.content}</p>
+                              )}
+                              <div className={cn(
+                                "flex items-center gap-1 mt-1",
+                                msg.from_me ? "justify-end" : "justify-start"
+                              )}>
+                                <span className={cn(
+                                  "text-[10px]",
+                                  msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                                )}>
+                                  {formatMessageTime(msg.timestamp)}
+                                </span>
+                                {msg.from_me && getStatusIcon(msg.status)}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
+
+                  {/* Message Input */}
+                  <div className="p-3 border-t shrink-0">
+                    {isRecording || audioBlob ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-3 bg-muted rounded-lg px-4 py-2">
+                          <div className={cn(
+                            "w-3 h-3 rounded-full",
+                            isRecording && !isPaused ? "bg-destructive animate-pulse" : "bg-muted-foreground"
+                          )} />
+                          <span className="font-mono text-lg">
+                            {formatRecordingTime(recordingTime)}
+                          </span>
+                          {audioBlob && (
+                            <span className="text-sm text-muted-foreground">
+                              Gravação pronta
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={cancelRecording}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                        {isRecording && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={isPaused ? resumeRecording : pauseRecording}
+                          >
+                            {isPaused ? (
+                              <Play className="w-4 h-4" />
+                            ) : (
+                              <Pause className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                        {isRecording ? (
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={stopRecording}
+                          >
+                            <Square className="w-4 h-4" />
+                          </Button>
+                        ) : audioBlob ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={sendRecordedAudio}
+                            disabled={isUploading}
+                          >
+                            {isUploading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Send className="w-4 h-4" />
+                            )}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }}
+                        className="flex gap-2 items-end"
+                      >
+                        {templates.length > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon"
+                                className="shrink-0 h-9 w-9"
+                              >
+                                <FileText className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-64">
+                              <DropdownMenuLabel>Templates Rápidos</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {templates.map((template) => (
+                                <DropdownMenuItem 
+                                  key={template.id}
+                                  onClick={() => applyTemplate(template)}
+                                >
+                                  <span className="truncate">{template.name}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon"
+                              className="shrink-0 h-9 w-9"
+                            >
+                              <Smile className="w-4 h-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-2" align="start">
+                            <div className="grid grid-cols-6 gap-1">
+                              {commonEmojis.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={() => insertEmoji(emoji)}
+                                  className="text-xl p-1 hover:bg-muted rounded transition-colors"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon"
+                              className="shrink-0 h-9 w-9"
+                            >
+                              <Paperclip className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                              <ImageIcon className="w-4 h-4 mr-2" />
+                              Imagem
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
+                              <Mic className="w-4 h-4 mr-2" />
+                              Arquivo de Áudio
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                              <FileText className="w-4 h-4 mr-2" />
+                              Arquivo
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Textarea
+                          placeholder="Digite uma mensagem..."
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            }
+                          }}
+                          disabled={isSending}
+                          className="text-base sm:text-sm flex-1 min-h-[40px] max-h-32 resize-y py-2"
+                          rows={1}
+                        />
+                        {newMessage.trim() ? (
+                          <Button 
+                            type="submit" 
+                            size="icon" 
+                            disabled={isSending}
+                            className="shrink-0"
+                          >
+                            <Send className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={startRecording}
+                          >
+                            <Mic className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </form>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-4 bg-muted/20">
+                  <div className="bg-muted/50 rounded-full p-4 mb-4">
+                    <MessageSquare className="w-10 h-10 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Selecione uma conversa</h3>
+                  <p className="text-sm text-muted-foreground max-w-xs">
+                    Escolha uma conversa na lista ao lado para começar a enviar mensagens.
+                  </p>
+                </div>
+              )}
+            </ResizablePanel>
+          </ResizablePanelGroup>
+
+          {/* Mobile: Show chat when conversation is selected */}
           <div className={cn(
-            "flex-1 flex flex-col min-h-0 min-w-0",
-            !selectedConversation && "hidden md:flex"
+            "w-full flex flex-col min-h-0 md:hidden",
+            !selectedConversation && "hidden"
           )}>
-            {selectedConversation ? (
+            {selectedConversation && (
               <>
-                {/* Chat Header */}
-                <div className="p-3 border-b flex items-center gap-2 sm:gap-3 shrink-0">
+                <div className="p-3 border-b flex items-center gap-2 shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="md:hidden h-8 w-8 shrink-0"
+                    className="h-8 w-8 shrink-0"
                     onClick={() => setSelectedConversation(null)}
                   >
                     <ArrowLeft className="w-5 h-5" />
@@ -1126,396 +1625,124 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <p className="font-medium truncate text-sm sm:text-base">
-                        {selectedConversation.contact_name || selectedConversation.contact_phone}
-                      </p>
-                      {linkedLead && (
-                        <Badge 
-                          variant="secondary" 
-                          className="text-[10px] h-4 px-1 cursor-pointer hover:bg-secondary/80"
-                          onClick={() => setShowLinkLeadModal(true)}
-                        >
-                          <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                          {linkedLead.name.split(' ')[0]}
-                        </Badge>
-                      )}
-                    </div>
+                    <p className="font-medium truncate text-sm">
+                      {selectedConversation.contact_name || selectedConversation.contact_phone}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {selectedConversation.contact_phone}
                     </p>
                   </div>
-                  
-                  <div className="flex items-center gap-1 shrink-0">
-                    {/* Link to lead button */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setShowLinkLeadModal(true)}
-                      title={linkedLead ? "Gerenciar vínculo com lead" : "Vincular a um lead"}
-                    >
-                      <Link2 className={cn(
-                        "w-4 h-4",
-                        linkedLead ? "text-primary" : "text-muted-foreground"
-                      )} />
-                    </Button>
-
-                    {/* Favorite toggle */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => toggleFavorite(selectedConversation)}
-                    >
-                      {selectedConversation.is_favorite ? (
-                        <Star className="w-4 h-4 text-secondary fill-secondary" />
-                      ) : (
-                        <Star className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </Button>
-
-                    {selectedInstance && (
-                      <Badge variant="outline" className="hidden sm:flex">
-                        <Building2 className="w-3 h-3 mr-1" />
-                        {selectedInstance.unit}
-                      </Badge>
-                    )}
-                  </div>
                 </div>
-
-                {/* Messages */}
-                <ScrollArea className="flex-1 p-3 sm:p-4 bg-muted/30">
-                  <div className="space-y-2 sm:space-y-3">
-                    {messages.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <MessageSquare className="w-10 h-10 text-muted-foreground mb-3" />
-                        <p className="text-sm text-muted-foreground">
-                          Nenhuma mensagem ainda
-                        </p>
-                      </div>
-                    ) : (
-                      messages.map((msg) => (
+                <ScrollArea className="flex-1 p-3 bg-muted/30">
+                  <div className="space-y-2">
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          "flex",
+                          msg.from_me ? "justify-end" : "justify-start"
+                        )}
+                      >
                         <div
-                          key={msg.id}
                           className={cn(
-                            "flex",
-                            msg.from_me ? "justify-end" : "justify-start"
+                            "max-w-[85%] rounded-lg px-3 py-2 text-sm shadow-sm",
+                            msg.from_me
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-card border"
                           )}
                         >
-                          <div
-                            className={cn(
-                              "max-w-[85%] sm:max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm",
-                              msg.from_me
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-card border"
-                            )}
-                          >
-                            {/* Render media based on type */}
-                            {msg.message_type === 'image' && msg.media_url && (
-                              <div className="mb-2">
-                                <img 
-                                  src={msg.media_url} 
-                                  alt="Imagem" 
-                                  className="rounded max-w-full max-h-64 object-contain cursor-pointer"
-                                  onClick={() => window.open(msg.media_url!, '_blank')}
-                                />
-                              </div>
-                            )}
-                            {msg.message_type === 'audio' && msg.media_url && (
-                              <div className="mb-2">
-                                <audio controls className="max-w-full">
-                                  <source src={msg.media_url} />
-                                </audio>
-                              </div>
-                            )}
-                            {msg.message_type === 'document' && msg.media_url && (
-                              <div className="mb-2">
-                                <a 
-                                  href={msg.media_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className={cn(
-                                    "flex items-center gap-2 p-2 rounded border",
-                                    msg.from_me 
-                                      ? "border-primary-foreground/30 hover:bg-primary-foreground/10" 
-                                      : "border-border hover:bg-muted"
-                                  )}
-                                >
-                                  <Paperclip className="w-4 h-4" />
-                                  <span className="truncate text-xs">{msg.content || 'Documento'}</span>
-                                </a>
-                              </div>
-                            )}
-                            {/* Text content */}
-                            {msg.content && msg.message_type === 'text' && (
-                              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                            )}
-                            {msg.content && msg.message_type === 'image' && msg.content !== '[Imagem]' && (
-                              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                            )}
-                            <div
-                              className={cn(
-                                "flex items-center justify-end gap-1 mt-1",
-                                msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
-                              )}
-                            >
-                              <span className="text-xs">{formatMessageTime(msg.timestamp)}</span>
-                              {msg.from_me && getStatusIcon(msg.status)}
+                          {msg.message_type === 'image' && msg.media_url && (
+                            <div className="mb-2">
+                              <img 
+                                src={msg.media_url} 
+                                alt="Imagem" 
+                                className="rounded max-w-full max-h-48 object-contain"
+                              />
                             </div>
+                          )}
+                          {msg.message_type === 'audio' && msg.media_url && (
+                            <audio controls className="max-w-full">
+                              <source src={msg.media_url} />
+                            </audio>
+                          )}
+                          {msg.message_type === 'text' && (
+                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          )}
+                          <div className={cn(
+                            "flex items-center gap-1 mt-1",
+                            msg.from_me ? "justify-end" : "justify-start"
+                          )}>
+                            <span className={cn(
+                              "text-[10px]",
+                              msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                            )}>
+                              {formatMessageTime(msg.timestamp)}
+                            </span>
+                            {msg.from_me && getStatusIcon(msg.status)}
                           </div>
                         </div>
-                      ))
-                    )}
+                      </div>
+                    ))}
                     <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
-
-                {/* Message Input */}
-                <div className="p-2 sm:p-3 border-t shrink-0 bg-card">
-                  {/* Recording UI */}
-                  {isRecording || audioBlob ? (
-                    <div className="flex items-center gap-2">
-                      {/* Cancel button */}
+                <div className="p-3 border-t shrink-0">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }}
+                    className="flex gap-2 items-end"
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="ghost" size="icon" className="shrink-0 h-9 w-9">
+                          <Paperclip className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                          <ImageIcon className="w-4 h-4 mr-2" />
+                          Imagem
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Arquivo
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Textarea
+                      placeholder="Digite uma mensagem..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      disabled={isSending}
+                      className="text-base flex-1 min-h-[40px] max-h-32 resize-y py-2"
+                      rows={1}
+                    />
+                    {newMessage.trim() ? (
+                      <Button type="submit" size="icon" disabled={isSending} className="shrink-0">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    ) : (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="secondary"
                         size="icon"
-                        className="shrink-0 h-9 w-9 text-destructive hover:text-destructive"
-                        onClick={cancelRecording}
-                        disabled={isUploading}
+                        className="shrink-0"
+                        onClick={startRecording}
                       >
-                        <X className="w-4 h-4" />
+                        <Mic className="w-4 h-4" />
                       </Button>
-
-                      {/* Recording status or playback */}
-                      <div className="flex-1 flex items-center gap-3 px-3 py-2 bg-muted rounded-lg">
-                        {isRecording ? (
-                          <>
-                            {/* Recording indicator */}
-                            <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
-                            <span className="text-sm font-mono">
-                              {formatRecordingTime(recordingTime)}
-                            </span>
-                            <div className="flex-1 flex items-center justify-center">
-                              {/* Simple wave animation */}
-                              <div className="flex items-center gap-0.5">
-                                {[...Array(20)].map((_, i) => (
-                                  <div
-                                    key={i}
-                                    className="w-1 bg-primary rounded-full animate-pulse"
-                                    style={{
-                                      height: `${8 + Math.sin(i * 0.5 + recordingTime) * 8}px`,
-                                      animationDelay: `${i * 50}ms`,
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        ) : audioBlob ? (
-                          <>
-                            {/* Playback preview */}
-                            <Mic className="w-4 h-4 text-primary" />
-                            <span className="text-sm font-mono">
-                              {formatRecordingTime(recordingTime)}
-                            </span>
-                            <audio
-                              src={URL.createObjectURL(audioBlob)}
-                              controls
-                              className="flex-1 h-8"
-                            />
-                          </>
-                        ) : null}
-                      </div>
-
-                      {/* Pause/Resume button (only during recording) */}
-                      {isRecording && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0 h-9 w-9"
-                          onClick={isPaused ? resumeRecording : pauseRecording}
-                        >
-                          {isPaused ? (
-                            <Play className="w-4 h-4" />
-                          ) : (
-                            <Pause className="w-4 h-4" />
-                          )}
-                        </Button>
-                      )}
-
-                      {/* Stop/Send button */}
-                      {isRecording ? (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="shrink-0"
-                          onClick={stopRecording}
-                        >
-                          <Square className="w-4 h-4" />
-                        </Button>
-                      ) : audioBlob ? (
-                        <Button
-                          type="button"
-                          size="icon"
-                          className="shrink-0"
-                          onClick={sendRecordedAudio}
-                          disabled={isUploading}
-                        >
-                          {isUploading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Send className="w-4 h-4" />
-                          )}
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : (
-                    /* Normal message input */
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }}
-                      className="flex gap-2 items-end"
-                    >
-                      {/* Templates Button */}
-                      {templates.length > 0 && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="icon"
-                              className="shrink-0 h-9 w-9"
-                            >
-                              <FileText className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-64">
-                            <DropdownMenuLabel>Templates Rápidos</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {templates.map((template) => (
-                              <DropdownMenuItem 
-                                key={template.id}
-                                onClick={() => applyTemplate(template)}
-                              >
-                                <span className="truncate">{template.name}</span>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-
-                      {/* Emoji Button */}
-                      <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon"
-                            className="shrink-0 h-9 w-9"
-                          >
-                            <Smile className="w-4 h-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-2" align="start">
-                          <div className="grid grid-cols-6 gap-1">
-                            {commonEmojis.map((emoji) => (
-                              <button
-                                key={emoji}
-                                type="button"
-                                onClick={() => insertEmoji(emoji)}
-                                className="text-xl p-1 hover:bg-muted rounded transition-colors"
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-
-                      {/* Media attachment dropdown */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon"
-                            className="shrink-0 h-9 w-9"
-                          >
-                            <Paperclip className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            Imagem
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
-                            <Mic className="w-4 h-4 mr-2" />
-                            Arquivo de Áudio
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                            <FileText className="w-4 h-4 mr-2" />
-                            Arquivo
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <Textarea
-                        placeholder="Digite uma mensagem..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                        disabled={isSending}
-                        className="text-base sm:text-sm flex-1 min-h-[40px] max-h-32 resize-y py-2"
-                        rows={1}
-                      />
-
-                      {/* Mic button for recording or Send button */}
-                      {newMessage.trim() ? (
-                        <Button 
-                          type="submit" 
-                          size="icon" 
-                          disabled={isSending}
-                          className="shrink-0"
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="icon"
-                          className="shrink-0"
-                          onClick={startRecording}
-                        >
-                          <Mic className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </form>
-                  )}
+                    )}
+                  </form>
                 </div>
               </>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-4 bg-muted/20">
-                <div className="bg-muted/50 rounded-full p-4 mb-4">
-                  <MessageSquare className="w-10 h-10 text-muted-foreground" />
-                </div>
-                <h3 className="font-semibold mb-2">Selecione uma conversa</h3>
-                <p className="text-sm text-muted-foreground max-w-xs">
-                  Escolha uma conversa na lista ao lado para começar a enviar mensagens.
-                </p>
-              </div>
             )}
           </div>
         </div>
