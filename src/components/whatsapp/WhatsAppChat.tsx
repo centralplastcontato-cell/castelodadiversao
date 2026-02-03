@@ -1094,9 +1094,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           {formatConversationDate(conv.last_message_at)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5">
                         <p className={cn(
-                          "text-xs truncate flex items-center gap-1",
+                          "text-xs flex items-center gap-1 flex-1 min-w-0",
                           conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>
                           {conv.last_message_from_me && (
@@ -1242,9 +1242,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5">
                             <p className={cn(
-                              "text-xs truncate flex items-center gap-1",
+                              "text-xs flex items-center gap-1 flex-1 min-w-0",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                             )}>
                               {conv.last_message_from_me && (
