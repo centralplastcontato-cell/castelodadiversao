@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
         const remoteJid = message.key?.remoteJid || 
                           message.from || 
                           message.remoteJid || 
-                          (message.chat?.id ? `${message.chat.id}@s.whatsapp.net` : null) ||
+                          (message.chat?.id ? `${message.chat.id}` : null) ||
                           (message.sender?.id ? `${message.sender.id}@s.whatsapp.net` : null);
         
         if (!remoteJid) {
@@ -222,20 +222,41 @@ Deno.serve(async (req) => {
           break;
         }
 
+        // Check if this is a group conversation
+        const isGroup = remoteJid.includes('@g.us');
+        
         const fromMe = message.key?.fromMe || message.fromMe || false;
         const messageId = message.key?.id || message.id || message.messageId;
         
         // Extract phone number from remoteJid (format: 5511999999999@s.whatsapp.net or 5511999999999)
-        const contactPhone = remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@lid', '') || '';
+        // For groups, extract the group ID
+        const contactPhone = remoteJid
+          ?.replace('@s.whatsapp.net', '')
+          .replace('@c.us', '')
+          .replace('@g.us', '')
+          .replace('@lid', '') || '';
         
-        // Get contact name from various sources
-        const contactName = message.pushName || 
-                           message.verifiedBizName || 
-                           message.sender?.pushName || 
-                           message.sender?.verifiedBizName || 
-                           contactPhone;
+        // Get contact/group name from various sources
+        // For groups: prioritize chat name over sender name
+        // For individuals: use pushName or sender info
+        let contactName: string;
+        if (isGroup) {
+          // For groups, get the group name from chat object, NOT the sender's pushName
+          contactName = message.chat?.name || 
+                       message.groupName ||
+                       message.subject ||
+                       `Grupo ${contactPhone}`;
+          console.log(`Group message - Group name: ${contactName}, Sender: ${message.pushName || 'unknown'}`);
+        } else {
+          // For individual chats, use sender info
+          contactName = message.pushName || 
+                       message.verifiedBizName || 
+                       message.sender?.pushName || 
+                       message.sender?.verifiedBizName || 
+                       contactPhone;
+        }
 
-        // Get contact profile picture from various sources
+        // Get contact/group profile picture from various sources
         const contactPicture = message.chat?.profilePicture || 
                               message.sender?.profilePicture || 
                               null;
@@ -277,8 +298,23 @@ Deno.serve(async (req) => {
             unread_count: fromMe ? existingConv.unread_count : (existingConv.unread_count || 0) + 1,
             last_message_content: previewContent.substring(0, 100),
             last_message_from_me: fromMe,
-            contact_name: contactName || existingConv.contact_name,
           };
+          
+          // For groups: only update name if we have a valid group name (not sender name)
+          // For individuals: update name if we have a new one
+          if (isGroup) {
+            // Only update group name if it's explicitly provided and different from generic
+            const groupName = message.chat?.name || message.groupName || message.subject;
+            if (groupName && groupName !== existingConv.contact_name) {
+              updateData.contact_name = groupName;
+            }
+          } else {
+            // For individual chats, update with sender name
+            if (contactName && contactName !== existingConv.contact_name) {
+              updateData.contact_name = contactName;
+            }
+          }
+          
           // Only update picture if we have a new one
           if (contactPicture) {
             updateData.contact_picture = contactPicture;
