@@ -1616,22 +1616,75 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                   </audio>
                                 </div>
                               )}
-                              {msg.message_type === 'document' && msg.media_url && (
+                              {msg.message_type === 'document' && (
                                 <div className="mb-2">
-                                  <a 
-                                    href={msg.media_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className={cn(
+                                  {msg.media_url ? (
+                                    <a 
+                                      href={msg.media_url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      download
+                                      className={cn(
+                                        "flex items-center gap-2 p-2 rounded border transition-colors",
+                                        msg.from_me 
+                                          ? "border-primary-foreground/30 hover:bg-primary-foreground/10" 
+                                          : "border-border hover:bg-muted"
+                                      )}
+                                    >
+                                      <FileText className="w-5 h-5 shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{msg.content || 'Documento'}</p>
+                                        <p className={cn(
+                                          "text-xs",
+                                          msg.from_me ? "text-primary-foreground/60" : "text-muted-foreground"
+                                        )}>
+                                          Clique para baixar
+                                        </p>
+                                      </div>
+                                      <ExternalLink className="w-4 h-4 shrink-0" />
+                                    </a>
+                                  ) : (
+                                    <div className={cn(
                                       "flex items-center gap-2 p-2 rounded border",
                                       msg.from_me 
-                                        ? "border-primary-foreground/30 hover:bg-primary-foreground/10" 
-                                        : "border-border hover:bg-muted"
-                                    )}
-                                  >
-                                    <Paperclip className="w-4 h-4" />
-                                    <span className="truncate">{msg.content}</span>
-                                  </a>
+                                        ? "border-primary-foreground/30" 
+                                        : "border-border"
+                                    )}>
+                                      <FileText className="w-5 h-5 shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{msg.content || 'Documento'}</p>
+                                        <p className={cn(
+                                          "text-xs",
+                                          msg.from_me ? "text-primary-foreground/60" : "text-muted-foreground"
+                                        )}>
+                                          Arquivo não disponível para download
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {msg.message_type === 'video' && (
+                                <div className="mb-2">
+                                  {msg.media_url ? (
+                                    <video 
+                                      controls 
+                                      className="rounded max-w-full max-h-64"
+                                      preload="metadata"
+                                    >
+                                      <source src={msg.media_url} />
+                                    </video>
+                                  ) : (
+                                    <div className={cn(
+                                      "flex items-center gap-2 p-2 rounded border",
+                                      msg.from_me 
+                                        ? "border-primary-foreground/30" 
+                                        : "border-border"
+                                    )}>
+                                      <FileText className="w-5 h-5 shrink-0" />
+                                      <span className="text-sm">🎥 Vídeo não disponível</span>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               {msg.message_type === 'text' && (
@@ -1932,9 +1985,61 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             </div>
                           )}
                           {msg.message_type === 'audio' && msg.media_url && (
-                            <audio controls className="max-w-full">
-                              <source src={msg.media_url} />
-                            </audio>
+                            <div className="mb-2">
+                              <audio controls className="max-w-full">
+                                <source src={msg.media_url} />
+                              </audio>
+                            </div>
+                          )}
+                          {msg.message_type === 'document' && (
+                            <div className="mb-2">
+                              {msg.media_url ? (
+                                <a 
+                                  href={msg.media_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  download
+                                  className={cn(
+                                    "flex items-center gap-2 p-2 rounded border transition-colors",
+                                    msg.from_me 
+                                      ? "border-primary-foreground/30 hover:bg-primary-foreground/10" 
+                                      : "border-border hover:bg-muted"
+                                  )}
+                                >
+                                  <FileText className="w-4 h-4 shrink-0" />
+                                  <span className="text-sm truncate flex-1">{msg.content || 'Documento'}</span>
+                                  <ExternalLink className="w-3 h-3 shrink-0" />
+                                </a>
+                              ) : (
+                                <div className={cn(
+                                  "flex items-center gap-2 p-2 rounded border",
+                                  msg.from_me 
+                                    ? "border-primary-foreground/30" 
+                                    : "border-border"
+                                )}>
+                                  <FileText className="w-4 h-4 shrink-0" />
+                                  <span className="text-sm truncate">{msg.content || 'Documento'}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {msg.message_type === 'video' && (
+                            <div className="mb-2">
+                              {msg.media_url ? (
+                                <video controls className="rounded max-w-full max-h-48" preload="metadata">
+                                  <source src={msg.media_url} />
+                                </video>
+                              ) : (
+                                <div className={cn(
+                                  "flex items-center gap-2 p-2 rounded border",
+                                  msg.from_me 
+                                    ? "border-primary-foreground/30" 
+                                    : "border-border"
+                                )}>
+                                  <span className="text-sm">🎥 Vídeo não disponível</span>
+                                </div>
+                              )}
+                            </div>
                           )}
                           {msg.message_type === 'text' && (
                             <p className="whitespace-pre-wrap break-words">{msg.content}</p>
