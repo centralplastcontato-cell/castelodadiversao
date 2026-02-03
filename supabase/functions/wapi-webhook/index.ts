@@ -273,11 +273,153 @@ Deno.serve(async (req) => {
       case 'webhookStatus':
       case 'webhookDelivery': {
         // Message status update (sent, delivered, read)
+        // Also handle messages sent from other devices (fromMe=true with msgContent)
         const statusData = data || body;
-        const messageId = statusData?.messageId;
+        const messageId = statusData?.messageId || body?.messageId;
         const status = statusData?.status;
         const ack = statusData?.ack;
+        const fromMeDelivery = body?.fromMe || statusData?.fromMe || false;
+        const msgContentDelivery = body?.msgContent || statusData?.msgContent;
         
+        // If this is a message sent from another device (has msgContent and fromMe=true)
+        // we need to save it as a new message if it doesn't exist yet
+        if (fromMeDelivery && msgContentDelivery && messageId) {
+          // Check if message already exists
+          const { data: existingMsg } = await supabase
+            .from('wapi_messages')
+            .select('id')
+            .eq('message_id', messageId)
+            .single();
+            
+          if (!existingMsg) {
+            console.log('Processing outgoing message from other device:', messageId);
+            
+            // Get the chat info to find/create conversation
+            const chatId = body?.chat?.id || statusData?.chat?.id;
+            if (chatId) {
+              const remoteJid = chatId.includes('@') ? chatId : `${chatId}@s.whatsapp.net`;
+              const contactPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@g.us', '').replace('@lid', '');
+              
+              // Skip group messages for now (they have @g.us)
+              if (!remoteJid.includes('@g.us')) {
+                // Get or create conversation
+                let conversation;
+                const { data: existingConv } = await supabase
+                  .from('wapi_conversations')
+                  .select('*')
+                  .eq('instance_id', instance.id)
+                  .eq('remote_jid', remoteJid)
+                  .single();
+                  
+                // Extract message content for preview
+                let previewContent = '';
+                const msgContent = msgContentDelivery;
+                
+                if (msgContent.conversation) {
+                  previewContent = msgContent.conversation;
+                } else if (msgContent.extendedTextMessage?.text) {
+                  previewContent = msgContent.extendedTextMessage.text;
+                } else if (msgContent.imageMessage) {
+                  previewContent = '📷 Imagem';
+                } else if (msgContent.videoMessage) {
+                  previewContent = '🎥 Vídeo';
+                } else if (msgContent.audioMessage) {
+                  previewContent = '🎤 Áudio';
+                } else if (msgContent.documentMessage) {
+                  previewContent = '📄 ' + (msgContent.documentMessage.fileName || 'Documento');
+                }
+                
+                if (existingConv) {
+                  conversation = existingConv;
+                  await supabase
+                    .from('wapi_conversations')
+                    .update({ 
+                      last_message_at: new Date().toISOString(),
+                      last_message_content: previewContent.substring(0, 100),
+                      last_message_from_me: true,
+                    })
+                    .eq('id', existingConv.id);
+                } else {
+                  // Create new conversation
+                  const contactName = body?.chat?.name || body?.chat?.pushName || contactPhone;
+                  const contactPicture = body?.chat?.profilePicture || null;
+                  
+                  const { data: newConv, error: convError } = await supabase
+                    .from('wapi_conversations')
+                    .insert({
+                      instance_id: instance.id,
+                      remote_jid: remoteJid,
+                      contact_phone: contactPhone,
+                      contact_name: contactName,
+                      contact_picture: contactPicture,
+                      last_message_at: new Date().toISOString(),
+                      unread_count: 0,
+                      last_message_content: previewContent.substring(0, 100),
+                      last_message_from_me: true,
+                    })
+                    .select()
+                    .single();
+
+                  if (convError) {
+                    console.error('Error creating conversation for outgoing message:', convError);
+                  } else {
+                    conversation = newConv;
+                  }
+                }
+                
+                if (conversation) {
+                  // Extract message content
+                  let content = '';
+                  let messageType = 'text';
+                  let mediaUrl = null;
+
+                  if (msgContent.conversation) {
+                    content = msgContent.conversation;
+                  } else if (msgContent.extendedTextMessage?.text) {
+                    content = msgContent.extendedTextMessage.text;
+                  } else if (msgContent.imageMessage) {
+                    messageType = 'image';
+                    content = msgContent.imageMessage.caption || '[Imagem]';
+                    mediaUrl = msgContent.imageMessage.url;
+                  } else if (msgContent.videoMessage) {
+                    messageType = 'video';
+                    content = msgContent.videoMessage.caption || '[Vídeo]';
+                  } else if (msgContent.audioMessage) {
+                    messageType = 'audio';
+                    content = '[Áudio]';
+                  } else if (msgContent.documentMessage) {
+                    messageType = 'document';
+                    content = msgContent.documentMessage.fileName || '[Documento]';
+                  }
+
+                  // Insert message
+                  const { error: msgError } = await supabase
+                    .from('wapi_messages')
+                    .insert({
+                      conversation_id: conversation.id,
+                      message_id: messageId,
+                      from_me: true,
+                      message_type: messageType,
+                      content: content,
+                      media_url: mediaUrl,
+                      status: 'sent',
+                      timestamp: body.moment 
+                        ? new Date(body.moment * 1000).toISOString() 
+                        : new Date().toISOString(),
+                    });
+
+                  if (msgError) {
+                    console.error('Error inserting outgoing message:', msgError);
+                  } else {
+                    console.log('Outgoing message saved from other device:', messageId, 'content:', content.substring(0, 50));
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // Also update status if message exists
         const statusMap: Record<string | number, string> = {
           0: 'error',
           1: 'pending',
