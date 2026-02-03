@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   ExternalLink,
   MessageSquare,
   User,
@@ -13,6 +20,11 @@ import {
   Pencil,
   Check,
   X,
+  MoreVertical,
+  Phone,
+  MapPin,
+  Calendar,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -334,17 +346,71 @@ export function KanbanCard({
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 flex-shrink-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            window.open(formatWhatsAppLink(lead.whatsapp), "_blank");
-          }}
-        >
-          <ExternalLink className="w-4 h-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(formatWhatsAppLink(lead.whatsapp), "_blank");
+              }}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Abrir WhatsApp
+            </DropdownMenuItem>
+            
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(lead.whatsapp);
+              }}
+            >
+              <Phone className="w-4 h-4 mr-2" />
+              Copiar telefone
+            </DropdownMenuItem>
+            
+            {canEditName && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleStartEditName}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar nome
+                </DropdownMenuItem>
+              </>
+            )}
+            
+            {canEditDescription && (
+              <DropdownMenuItem
+                onClick={handleStartEditDescription}
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Editar observações
+              </DropdownMenuItem>
+            )}
+            
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onLeadClick(lead);
+              }}
+            >
+              <User className="w-4 h-4 mr-2" />
+              Ver detalhes
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="mt-2 pt-2 border-t border-border flex items-center justify-between">
