@@ -151,6 +151,9 @@ Deno.serve(async (req) => {
               });
             }
             
+            // Get content type from response
+            const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+            
             const arrayBuffer = await imageResponse.arrayBuffer();
             const bytes = new Uint8Array(arrayBuffer);
             
@@ -166,8 +169,11 @@ Deno.serve(async (req) => {
             for (let i = 0; i < bytes.length; i++) {
               binary += String.fromCharCode(bytes[i]);
             }
-            imageBase64 = btoa(binary);
-            console.log('Image converted to base64, size:', imageBase64.length);
+            const rawBase64 = btoa(binary);
+            
+            // W-API requires data URI format: data:image/jpeg;base64,...
+            imageBase64 = `data:${contentType};base64,${rawBase64}`;
+            console.log('Image converted to data URI, total length:', imageBase64.length);
           } catch (err) {
             console.error('Error fetching image from URL:', err);
             return new Response(JSON.stringify({ error: 'Falha ao processar imagem: ' + (err instanceof Error ? err.message : String(err)) }), {
@@ -175,6 +181,13 @@ Deno.serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
+        }
+        
+        // If base64 was provided directly, ensure it has data URI prefix
+        if (imageBase64 && !imageBase64.startsWith('data:')) {
+          // Assume JPEG if no prefix provided
+          imageBase64 = `data:image/jpeg;base64,${imageBase64}`;
+          console.log('Added data URI prefix to provided base64');
         }
         
         // Final validation
@@ -186,7 +199,7 @@ Deno.serve(async (req) => {
           });
         }
 
-        console.log('Sending image to W-API, phone:', phone, 'base64 length:', imageBase64.length);
+        console.log('Sending image to W-API, phone:', phone, 'data URI length:', imageBase64.length);
         
         const response = await fetch(
           `${WAPI_BASE_URL}/message/send-image?instanceId=${instance_id}`,
