@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Users, LogOut, RefreshCw, Headset, Settings, MessageSquare, Pin, PinOff } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Sidebar,
   SidebarContent,
@@ -79,7 +79,7 @@ export function AdminSidebar({
   return (
     <Sidebar 
       collapsible="icon" 
-      className="border-r border-border"
+      className="border-r border-border transition-all duration-200"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -93,83 +93,53 @@ export function AdminSidebar({
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
             />
-            <AnimatePresence mode="wait">
-              {!collapsed && (
-                <motion.div 
-                  className="min-w-0 overflow-hidden"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                >
-                  <p className="font-display font-bold text-sm text-foreground truncate">
-                    Castelo
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {currentUserName}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className="min-w-0 overflow-hidden group-data-[collapsible=icon]:hidden">
+              <p className="font-display font-bold text-sm text-foreground truncate">
+                Castelo
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {currentUserName}
+              </p>
+            </div>
           </div>
           
-          {/* Pin toggle button - only visible when expanded */}
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0"
-                      onClick={handlePinToggle}
-                    >
-                      <motion.div
-                        initial={false}
-                        animate={{ rotate: isPinned ? 0 : 45 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      >
-                        {isPinned ? (
-                          <Pin className="h-4 w-4 text-primary" />
-                        ) : (
-                          <PinOff className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </motion.div>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={10}>
-                    {isPinned ? "Desfixar sidebar" : "Fixar sidebar"}
-                  </TooltipContent>
-                </Tooltip>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Pin toggle button - hidden when collapsed */}
+          <div className="group-data-[collapsible=icon]:hidden">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  onClick={handlePinToggle}
+                >
+                  <motion.div
+                    initial={false}
+                    animate={{ rotate: isPinned ? 0 : 45 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    {isPinned ? (
+                      <Pin className="h-4 w-4 text-primary" />
+                    ) : (
+                      <PinOff className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </motion.div>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={10}>
+                {isPinned ? "Desfixar sidebar" : "Fixar sidebar"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <AnimatePresence mode="wait">
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <SidebarGroupLabel>Navegação</SidebarGroupLabel>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {allItems.map((item, index) => (
+              {allItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -190,18 +160,7 @@ export function AdminSidebar({
                           >
                             <item.icon className="h-5 w-5 shrink-0" />
                           </motion.div>
-                          <AnimatePresence mode="wait">
-                            {!collapsed && (
-                              <motion.span
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                transition={{ duration: 0.2, delay: index * 0.03 }}
-                              >
-                                {item.title}
-                              </motion.span>
-                            )}
-                          </AnimatePresence>
+                          <span>{item.title}</span>
                         </NavLink>
                       </SidebarMenuButton>
                     </TooltipTrigger>
@@ -218,18 +177,7 @@ export function AdminSidebar({
         </SidebarGroup>
 
         <SidebarGroup>
-          <AnimatePresence mode="wait">
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <SidebarGroupLabel>Ações</SidebarGroupLabel>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <SidebarGroupLabel>Ações</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -242,18 +190,7 @@ export function AdminSidebar({
                       >
                         <RefreshCw className="h-5 w-5 shrink-0" />
                       </motion.div>
-                      <AnimatePresence mode="wait">
-                        {!collapsed && (
-                          <motion.span
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -10 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            Atualizar Dados
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
+                      <span>Atualizar Dados</span>
                     </SidebarMenuButton>
                   </TooltipTrigger>
                   {collapsed && (
@@ -284,18 +221,7 @@ export function AdminSidebar({
                   >
                     <LogOut className="h-5 w-5 shrink-0" />
                   </motion.div>
-                  <AnimatePresence mode="wait">
-                    {!collapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        Sair da Conta
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
+                  <span>Sair da Conta</span>
                 </SidebarMenuButton>
               </TooltipTrigger>
               {collapsed && (
