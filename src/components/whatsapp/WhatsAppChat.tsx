@@ -1423,6 +1423,90 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </div>
                   </div>
 
+                  {/* Lead Classification Panel - Always visible when lead is linked */}
+                  {linkedLead && (
+                    <div className="border-b bg-card/50 p-3 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">Status:</span>
+                        {[
+                          { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                          { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
+                          { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
+                          { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+                          { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                          { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                        ].map((statusOption) => (
+                          <Button
+                            key={statusOption.value}
+                            variant={linkedLead.status === statusOption.value ? "default" : "outline"}
+                            size="sm"
+                            className={cn(
+                              "h-7 text-xs gap-1.5",
+                              linkedLead.status === statusOption.value && "ring-2 ring-offset-1"
+                            )}
+                            onClick={async () => {
+                              const oldStatus = linkedLead.status;
+                              const newStatus = statusOption.value as "novo" | "em_contato" | "orcamento_enviado" | "aguardando_resposta" | "fechado" | "perdido";
+                              
+                              if (oldStatus === newStatus) return;
+                              
+                              const { error } = await supabase
+                                .from('campaign_leads')
+                                .update({ status: newStatus })
+                                .eq('id', linkedLead.id);
+                              
+                              if (error) {
+                                toast({
+                                  title: "Erro ao atualizar",
+                                  description: error.message,
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              
+                              const statusLabels: Record<string, string> = {
+                                novo: 'Novo',
+                                em_contato: 'Em Contato',
+                                orcamento_enviado: 'Orçamento Enviado',
+                                aguardando_resposta: 'Aguardando Resposta',
+                                fechado: 'Fechado',
+                                perdido: 'Perdido',
+                              };
+                              
+                              await supabase.from('lead_history').insert({
+                                lead_id: linkedLead.id,
+                                action: 'status_change',
+                                old_value: statusLabels[oldStatus] || oldStatus,
+                                new_value: statusLabels[newStatus] || newStatus,
+                                user_id: userId,
+                              });
+                              
+                              setLinkedLead({ ...linkedLead, status: statusOption.value });
+                              toast({
+                                title: "Status atualizado",
+                                description: `Lead classificado como "${statusOption.label}"`,
+                              });
+                            }}
+                          >
+                            <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
+                            {statusOption.label}
+                          </Button>
+                        ))}
+                        <div className="ml-auto flex items-center gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => window.open(`/admin?lead=${linkedLead.id}`, '_blank')}
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            Ver no CRM
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Messages */}
                   <ScrollArea className="flex-1 p-3 sm:p-4 bg-muted/30">
                     <div className="space-y-2 sm:space-y-3">
