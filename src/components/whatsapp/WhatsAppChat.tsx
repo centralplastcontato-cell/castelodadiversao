@@ -1177,7 +1177,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                 >
                   Pendentes
                   {unclassifiedCount > 0 && (
-                    <Badge variant={filter === 'unclassified' ? 'secondary' : 'destructive'} className="ml-1 h-4 min-w-4 p-0 text-[10px]">
+                    <Badge 
+                      variant={filter === 'unclassified' ? 'secondary' : 'destructive'} 
+                      className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center"
+                    >
                       {unclassifiedCount}
                     </Badge>
                   )}
@@ -1190,7 +1193,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                 >
                   Não lidas
                   {conversations.filter(c => c.unread_count > 0).length > 0 && (
-                    <Badge className="ml-1 h-4 min-w-4 p-0 text-[10px]">
+                    <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
                       {conversations.filter(c => c.unread_count > 0).length}
                     </Badge>
                   )}
@@ -1364,7 +1367,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     >
                       Pendentes
                       {unclassifiedCount > 0 && (
-                        <Badge variant={filter === 'unclassified' ? 'secondary' : 'destructive'} className="ml-1 h-4 min-w-4 p-0 text-[10px]">
+                        <Badge 
+                          variant={filter === 'unclassified' ? 'secondary' : 'destructive'} 
+                          className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center"
+                        >
                           {unclassifiedCount}
                         </Badge>
                       )}
@@ -1377,7 +1383,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     >
                       Não lidas
                       {conversations.filter(c => c.unread_count > 0).length > 0 && (
-                        <Badge className="ml-1 h-4 min-w-4 p-0 text-[10px]">
+                        <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
                           {conversations.filter(c => c.unread_count > 0).length}
                         </Badge>
                       )}
