@@ -602,20 +602,23 @@ export default function CentralAtendimento() {
               </TabsContent>
 
               <TabsContent value="leads" className="flex-1 mt-4">
-                <MetricsCards leads={leads} isLoading={isLoadingLeads} />
-                <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
+                {/* View mode toggle - positioned at top like mobile */}
+                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")}>
+                  <div className="mb-4">
+                    <TabsList>
+                      <TabsTrigger value="list" className="flex items-center gap-2">
+                        <LayoutList className="w-4 h-4" />
+                        Lista
+                      </TabsTrigger>
+                      <TabsTrigger value="kanban" className="flex items-center gap-2">
+                        <Columns className="w-4 h-4" />
+                        CRM
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
-                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="mb-4">
-                  <TabsList>
-                    <TabsTrigger value="list" className="flex items-center gap-2">
-                      <LayoutList className="w-4 h-4" />
-                      Lista
-                    </TabsTrigger>
-                    <TabsTrigger value="kanban" className="flex items-center gap-2">
-                      <Columns className="w-4 h-4" />
-                      CRM
-                    </TabsTrigger>
-                  </TabsList>
+                  <MetricsCards leads={leads} isLoading={isLoadingLeads} />
+                  <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
 
                   <TabsContent value="list" className="mt-4">
                     <LeadsTable
