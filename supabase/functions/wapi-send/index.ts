@@ -150,92 +150,110 @@ Deno.serve(async (req) => {
       }
 
       case 'get-qr': {
-        // Try multiple QR code endpoints (W-API specific endpoints)
-        const qrEndpoints = [
-          `${WAPI_BASE_URL}/instance/qr?instanceId=${instance_id}`,
-          `${WAPI_BASE_URL}/misc/qrcode?instanceId=${instance_id}`,
-          `${WAPI_BASE_URL}/qrcode?instanceId=${instance_id}`,
-          `${WAPI_BASE_URL}/instance/qrcode/image?instanceId=${instance_id}`,
-          `${WAPI_BASE_URL}/session/qr?instanceId=${instance_id}`,
-        ];
+        // W-API documented endpoint for QR Code
+        const qrEndpoint = `${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}&image=enable`;
+        
+        console.log(`Fetching QR code from: ${qrEndpoint}`);
+        
+        try {
+          const response = await fetch(qrEndpoint, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${instance_token}`,
+            },
+          });
 
-        let qrCodeResult = null;
-        let lastError = null;
+          const contentType = response.headers.get('content-type');
+          console.log(`Response content-type: ${contentType}, status: ${response.status}`);
 
-        for (const endpoint of qrEndpoints) {
-          try {
-            console.log(`Trying QR endpoint: ${endpoint}`);
-            const response = await fetch(endpoint, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${instance_token}`,
-              },
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.log(`QR endpoint failed: ${response.status} - ${errorText}`);
+            return new Response(JSON.stringify({ 
+              error: `W-API retornou erro: ${response.status}`,
+              details: errorText
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
-
-            const contentType = response.headers.get('content-type');
-            console.log(`Response content-type: ${contentType}, status: ${response.status}`);
-
-            if (response.ok) {
-              if (contentType?.includes('application/json')) {
-                const result = await response.json();
-                console.log('W-API QR response (JSON):', JSON.stringify(result));
-                
-                if (result.qrCode || result.qr || result.base64 || result.code || result.qrcode) {
-                  qrCodeResult = result.qrCode || result.qr || result.base64 || result.code || result.qrcode;
-                  break;
-                }
-              } else if (contentType?.includes('image')) {
-                // Response is an image, convert to base64
-                const arrayBuffer = await response.arrayBuffer();
-                const bytes = new Uint8Array(arrayBuffer);
-                let binary = '';
-                for (let i = 0; i < bytes.length; i++) {
-                  binary += String.fromCharCode(bytes[i]);
-                }
-                const base64 = btoa(binary);
-                const mimeType = contentType || 'image/png';
-                qrCodeResult = `data:${mimeType};base64,${base64}`;
-                console.log('Got QR code as image');
-                break;
-              } else {
-                const text = await response.text();
-                console.log('W-API QR response (text):', text.substring(0, 200));
-                // Check if it's base64 image data
-                if (text.startsWith('data:image') || /^[A-Za-z0-9+/=]+$/.test(text.substring(0, 100))) {
-                  qrCodeResult = text;
-                  break;
-                }
-              }
-            } else {
-              const errorText = await response.text();
-              console.log(`Endpoint ${endpoint} failed: ${response.status} - ${errorText.substring(0, 200)}`);
-              lastError = errorText;
-            }
-          } catch (err) {
-            console.log(`Error trying endpoint ${endpoint}:`, err);
-            lastError = err;
           }
-        }
 
-        if (qrCodeResult) {
+          if (contentType?.includes('application/json')) {
+            const result = await response.json();
+            console.log('W-API QR response:', JSON.stringify(result));
+            
+            if (result.error) {
+              return new Response(JSON.stringify({ 
+                error: result.message || 'Erro ao obter QR Code',
+                details: result
+              }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            
+            // The qrcode field contains the data:image/png;base64,... string
+            const qrCode = result.qrcode || result.qrCode || result.qr || result.base64;
+            
+            if (qrCode) {
+              return new Response(JSON.stringify({ 
+                qrCode: qrCode,
+                success: true
+              }), {
+                status: 200,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            
+            return new Response(JSON.stringify({ 
+              error: 'QR Code não disponível. A instância pode já estar conectada.',
+              details: result
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          } else if (contentType?.includes('image')) {
+            // Response is an image, convert to base64
+            const arrayBuffer = await response.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            const base64 = btoa(binary);
+            const mimeType = contentType || 'image/png';
+            const qrCode = `data:${mimeType};base64,${base64}`;
+            
+            return new Response(JSON.stringify({ 
+              qrCode: qrCode,
+              success: true
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          const text = await response.text();
+          console.log('Unexpected response format:', text.substring(0, 200));
+          
           return new Response(JSON.stringify({ 
-            qrCode: qrCodeResult,
-            success: true
+            error: 'Formato de resposta inesperado da W-API',
+            details: text.substring(0, 200)
           }), {
-            status: 200,
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+          
+        } catch (err) {
+          console.error('Error fetching QR code:', err);
+          return new Response(JSON.stringify({ 
+            error: 'Erro ao comunicar com W-API',
+            details: err instanceof Error ? err.message : 'Unknown error'
+          }), {
+            status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-
-        // If no QR code found, return error with details
-        return new Response(JSON.stringify({ 
-          error: 'Não foi possível obter o QR Code. Verifique se a instância está correta no painel W-API.',
-          details: lastError?.toString() || 'Nenhum endpoint retornou QR code válido',
-          endpoints_tried: qrEndpoints.length
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
       }
 
       case 'configure-webhooks': {
