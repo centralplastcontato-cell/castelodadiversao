@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
 import { UserWithRole, AppRole, ROLE_LABELS } from "@/types/crm";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,14 +50,24 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound, Lock } from "lucide-react";
+import { Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound, Lock, Menu, LayoutList } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserCard } from "@/components/admin/UserCard";
 import { PermissionsPanel } from "@/components/admin/PermissionsPanel";
+
+interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  is_active: boolean;
+}
 
 export default function UsersPage() {
   const navigate = useNavigate();
@@ -73,6 +84,8 @@ export default function UsersPage() {
   const [permissionsUser, setPermissionsUser] = useState<UserWithRole | null>(null);
   const [editName, setEditName] = useState("");
   const [desktopNewPassword, setDesktopNewPassword] = useState("");
+  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Form state
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -80,7 +93,7 @@ export default function UsersPage() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<AppRole>("comercial");
 
-  const { isAdmin, isLoading: isLoadingRole, hasFetched, error: roleError } = useUserRole(user?.id);
+  const { isAdmin, isLoading: isLoadingRole, hasFetched, error: roleError, canManageUsers } = useUserRole(user?.id);
   const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
@@ -106,6 +119,22 @@ export default function UsersPage() {
       navigate("/auth");
     }
   }, [isLoading, user, navigate]);
+
+  // Fetch current user profile
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setCurrentUserProfile(data as Profile);
+          }
+        });
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!isLoadingRole && hasFetched && user && !accessChecked) {
@@ -390,6 +419,19 @@ export default function UsersPage() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Logout realizado",
+      description: "Você saiu da sua conta.",
+    });
+    navigate("/auth");
+  };
+
+  const handleRefresh = () => {
+    fetchUsers();
+  };
+
   const renderDialogContent = () => (
     <DialogContent>
       <DialogHeader>
@@ -462,6 +504,311 @@ export default function UsersPage() {
     </DialogContent>
   );
 
+  const renderUsersContent = () => (
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="p-4 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5 text-primary" />
+          <span className="font-medium text-foreground">
+            {users.length} usuário{users.length !== 1 ? "s" : ""} cadastrado
+            {users.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Usuário
+            </Button>
+          </DialogTrigger>
+          {renderDialogContent()}
+        </Dialog>
+      </div>
+
+      {isLoadingUsers ? (
+        <div className="p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : isMobile ? (
+        /* Mobile: Cards Layout */
+        <div className="p-4 space-y-4">
+          {users.map((u) => (
+            <UserCard
+              key={u.id}
+              user={u}
+              currentUserId={user!.id}
+              onToggleActive={handleToggleActive}
+              onUpdateRole={handleUpdateRole}
+              onUpdateName={handleUpdateName}
+              onDelete={handleDeleteUser}
+              onResetPassword={handleResetPassword}
+            />
+          ))}
+          {users.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum usuário cadastrado.
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Desktop: Table Layout */
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Perfil</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Ativo</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-medium">{u.full_name}</TableCell>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={u.role || "visualizacao"}
+                      onValueChange={(v) => handleUpdateRole(u.user_id, v as AppRole)}
+                      disabled={u.user_id === user!.id}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="comercial">Comercial</SelectItem>
+                        <SelectItem value="visualizacao">Visualização</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={u.is_active ? "default" : "secondary"}>
+                      {u.is_active ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {u.user_id === user!.id ? (
+                      <Switch checked={u.is_active} disabled />
+                    ) : u.is_active ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Switch checked={u.is_active} />
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              O usuário <strong>{u.full_name}</strong> não poderá mais acessar o sistema. 
+                              Você pode reativá-lo a qualquer momento.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleToggleActive(u.user_id, u.is_active)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Desativar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <Switch
+                        checked={u.is_active}
+                        onCheckedChange={() => handleToggleActive(u.user_id, u.is_active)}
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {/* Edit button */}
+                      <Dialog 
+                        open={editingUser?.id === u.id} 
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setEditingUser(u);
+                            setEditName(u.full_name);
+                          } else {
+                            setEditingUser(null);
+                            setEditName("");
+                          }
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Editar Usuário</DialogTitle>
+                            <DialogDescription>
+                              Altere o nome do usuário.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-name-desktop">Nome completo</Label>
+                              <Input
+                                id="edit-name-desktop"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                placeholder="Nome do usuário"
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setEditingUser(null)}>
+                              Cancelar
+                            </Button>
+                            <Button 
+                              onClick={async () => {
+                                if (editName.trim() && editingUser) {
+                                  await handleUpdateName(editingUser.user_id, editName.trim());
+                                  setEditingUser(null);
+                                }
+                              }} 
+                              disabled={isSubmitting || !editName.trim()}
+                            >
+                              Salvar
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* Password reset button */}
+                      {u.user_id !== user!.id && (
+                        <Dialog 
+                          open={resetPasswordUser?.id === u.id} 
+                          onOpenChange={(open) => {
+                            if (open) {
+                              setResetPasswordUser(u);
+                              setDesktopNewPassword("");
+                            } else {
+                              setResetPasswordUser(null);
+                              setDesktopNewPassword("");
+                            }
+                          }}
+                        >
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Resetar senha">
+                              <KeyRound className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Resetar Senha</DialogTitle>
+                              <DialogDescription>
+                                Defina uma nova senha para <strong>{u.full_name}</strong>.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="reset-password-desktop">Nova senha</Label>
+                                <Input
+                                  id="reset-password-desktop"
+                                  type="password"
+                                  value={desktopNewPassword}
+                                  onChange={(e) => setDesktopNewPassword(e.target.value)}
+                                  placeholder="Mínimo 6 caracteres"
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setResetPasswordUser(null)}>
+                                Cancelar
+                              </Button>
+                              <Button 
+                                onClick={async () => {
+                                  if (desktopNewPassword.length >= 6 && resetPasswordUser) {
+                                    await handleResetPassword(resetPasswordUser.user_id, desktopNewPassword);
+                                    setResetPasswordUser(null);
+                                    setDesktopNewPassword("");
+                                  }
+                                }} 
+                                disabled={isSubmitting || desktopNewPassword.length < 6}
+                              >
+                                Salvar Senha
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+
+                      {/* Permissions button */}
+                      <Sheet 
+                        open={permissionsUser?.id === u.id}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setPermissionsUser(u);
+                          } else {
+                            setPermissionsUser(null);
+                          }
+                        }}
+                      >
+                        <SheetTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Gerenciar permissões">
+                            <Lock className="w-4 h-4" />
+                          </Button>
+                        </SheetTrigger>
+                        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                          <SheetHeader className="mb-6">
+                            <SheetTitle>Gerenciar Permissões</SheetTitle>
+                          </SheetHeader>
+                          {permissionsUser && (
+                            <PermissionsPanel
+                              targetUserId={permissionsUser.user_id}
+                              targetUserName={permissionsUser.full_name}
+                              currentUserId={user!.id}
+                              onClose={() => setPermissionsUser(null)}
+                            />
+                          )}
+                        </SheetContent>
+                      </Sheet>
+
+                      {/* Delete button */}
+                      {u.user_id !== user!.id && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. O usuário <strong>{u.full_name}</strong> será removido permanentemente do sistema.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteUser(u.user_id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+
   if (isLoading || isLoadingRole || (!accessChecked && !roleError)) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
@@ -475,364 +822,101 @@ export default function UsersPage() {
     return null;
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 md:py-4">
-          {/* Mobile Header */}
-          <div className="flex items-center justify-between gap-2 md:hidden">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <img 
-                src={logoCastelo} 
-                alt="Castelo da Diversão" 
-                className="h-8 w-auto"
-              />
-            </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="w-4 h-4 mr-1" />
-                  Novo
-                </Button>
-              </DialogTrigger>
-              {renderDialogContent()}
-            </Dialog>
-          </div>
-          
-          {/* Desktop Header */}
-          <div className="hidden md:flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/admin")}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar
-              </Button>
-              <div className="flex items-center gap-3">
-                <img 
-                  src={logoCastelo} 
-                  alt="Castelo da Diversão" 
-                  className="h-10 w-auto"
-                />
-                <div>
-                  <h1 className="font-display font-bold text-foreground flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    Gestão de Usuários
-                  </h1>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Mobile Header */}
+        <header className="bg-card border-b border-border sticky top-0 z-10">
+          <div className="px-3 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                      <Menu className="w-5 h-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-72 p-0">
+                    <SheetHeader className="p-4 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <img src={logoCastelo} alt="Castelo da Diversão" className="h-10 w-auto" />
+                        <div>
+                          <SheetTitle className="text-left text-base">Castelo da Diversão</SheetTitle>
+                          <p className="text-xs text-muted-foreground">
+                            {currentUserProfile?.full_name || user.email}
+                          </p>
+                        </div>
+                      </div>
+                    </SheetHeader>
+                    
+                    <nav className="flex flex-col p-2">
+                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/admin"); setIsMobileMenuOpen(false); }}>
+                        <LayoutList className="w-5 h-5 mr-3" />
+                        Gestão de Leads
+                      </Button>
+                      
+                      <Button variant="secondary" className="justify-start h-11 px-3" onClick={() => setIsMobileMenuOpen(false)}>
+                        <Users className="w-5 h-5 mr-3" />
+                        Gerenciar Usuários
+                      </Button>
+                      
+                      <Separator className="my-2" />
+                      
+                      <Button variant="ghost" className="justify-start h-11 px-3 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>
+                        Sair da Conta
+                      </Button>
+                    </nav>
+                  </SheetContent>
+                </Sheet>
+
+                <div className="flex items-center gap-2 min-w-0">
+                  <img src={logoCastelo} alt="Castelo da Diversão" className="h-8 w-auto shrink-0" />
+                  <h1 className="font-display font-bold text-foreground text-sm truncate">Gerenciar Usuários</h1>
                 </div>
               </div>
             </div>
-
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Usuário
-                </Button>
-              </DialogTrigger>
-              {renderDialogContent()}
-            </Dialog>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 md:py-6">
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <div className="p-4 border-b border-border flex items-center gap-2">
-            <Users className="w-5 h-5 text-primary" />
-            <span className="font-medium text-foreground">
-              {users.length} usuário{users.length !== 1 ? "s" : ""} cadastrado
-              {users.length !== 1 ? "s" : ""}
-            </span>
-          </div>
+        <main className="flex-1 p-3">
+          {renderUsersContent()}
+        </main>
+      </div>
+    );
+  }
 
-          {isLoadingUsers ? (
-            <div className="p-8 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  // Desktop layout with Sidebar
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AdminSidebar 
+          canManageUsers={canManageUsers} 
+          currentUserName={currentUserProfile?.full_name || user.email || ""} 
+          onRefresh={handleRefresh} 
+          onLogout={handleLogout} 
+        />
+        
+        <SidebarInset className="flex-1 flex flex-col">
+          {/* Desktop Header */}
+          <header className="bg-card border-b border-border sticky top-0 z-10">
+            <div className="px-4 py-3 flex items-center gap-4">
+              <SidebarTrigger />
+              <div>
+                <h1 className="font-display font-bold text-foreground text-lg flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  Gestão de Usuários
+                </h1>
+                <p className="text-sm text-muted-foreground">{currentUserProfile?.full_name || user.email}</p>
+              </div>
             </div>
-          ) : isMobile ? (
-            /* Mobile: Cards Layout */
-            <div className="p-4 space-y-4">
-              {users.map((u) => (
-                <UserCard
-                  key={u.id}
-                  user={u}
-                  currentUserId={user.id}
-                  onToggleActive={handleToggleActive}
-                  onUpdateRole={handleUpdateRole}
-                  onUpdateName={handleUpdateName}
-                  onDelete={handleDeleteUser}
-                  onResetPassword={handleResetPassword}
-                />
-              ))}
-              {users.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhum usuário cadastrado.
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Desktop: Table Layout */
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Perfil</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ativo</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((u) => (
-                    <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.full_name}</TableCell>
-                      <TableCell>{u.email}</TableCell>
-                      <TableCell>
-                        <Select
-                          value={u.role || "visualizacao"}
-                          onValueChange={(v) => handleUpdateRole(u.user_id, v as AppRole)}
-                          disabled={u.user_id === user.id}
-                        >
-                          <SelectTrigger className="w-40">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="comercial">Comercial</SelectItem>
-                            <SelectItem value="visualizacao">Visualização</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={u.is_active ? "default" : "secondary"}>
-                          {u.is_active ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {u.user_id === user.id ? (
-                          <Switch checked={u.is_active} disabled />
-                        ) : u.is_active ? (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Switch checked={u.is_active} />
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  O usuário <strong>{u.full_name}</strong> não poderá mais acessar o sistema. 
-                                  Você pode reativá-lo a qualquer momento.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleToggleActive(u.user_id, u.is_active)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Desativar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        ) : (
-                          <Switch
-                            checked={u.is_active}
-                            onCheckedChange={() => handleToggleActive(u.user_id, u.is_active)}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Edit button */}
-                          <Dialog 
-                            open={editingUser?.id === u.id} 
-                            onOpenChange={(open) => {
-                              if (open) {
-                                setEditingUser(u);
-                                setEditName(u.full_name);
-                              } else {
-                                setEditingUser(null);
-                                setEditName("");
-                              }
-                            }}
-                          >
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Editar Usuário</DialogTitle>
-                                <DialogDescription>
-                                  Altere o nome do usuário.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-name-desktop">Nome completo</Label>
-                                  <Input
-                                    id="edit-name-desktop"
-                                    value={editName}
-                                    onChange={(e) => setEditName(e.target.value)}
-                                    placeholder="Nome do usuário"
-                                  />
-                                </div>
-                              </div>
-                              <DialogFooter>
-                                <Button variant="outline" onClick={() => setEditingUser(null)}>
-                                  Cancelar
-                                </Button>
-                                <Button 
-                                  onClick={async () => {
-                                    if (editName.trim() && editingUser) {
-                                      await handleUpdateName(editingUser.user_id, editName.trim());
-                                      setEditingUser(null);
-                                    }
-                                  }} 
-                                  disabled={isSubmitting || !editName.trim()}
-                                >
-                                  Salvar
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
+          </header>
 
-                          {/* Password reset button */}
-                          {u.user_id !== user.id && (
-                            <Dialog 
-                              open={resetPasswordUser?.id === u.id} 
-                              onOpenChange={(open) => {
-                                if (open) {
-                                  setResetPasswordUser(u);
-                                  setDesktopNewPassword("");
-                                } else {
-                                  setResetPasswordUser(null);
-                                  setDesktopNewPassword("");
-                                }
-                              }}
-                            >
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Resetar senha">
-                                  <KeyRound className="w-4 h-4" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Resetar Senha</DialogTitle>
-                                  <DialogDescription>
-                                    Defina uma nova senha para <strong>{u.full_name}</strong>.
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="reset-password-desktop">Nova senha</Label>
-                                    <Input
-                                      id="reset-password-desktop"
-                                      type="password"
-                                      value={desktopNewPassword}
-                                      onChange={(e) => setDesktopNewPassword(e.target.value)}
-                                      placeholder="Mínimo 6 caracteres"
-                                    />
-                                  </div>
-                                </div>
-                                <DialogFooter>
-                                  <Button variant="outline" onClick={() => setResetPasswordUser(null)}>
-                                    Cancelar
-                                  </Button>
-                                  <Button 
-                                    onClick={async () => {
-                                      if (desktopNewPassword.length >= 6 && resetPasswordUser) {
-                                        await handleResetPassword(resetPasswordUser.user_id, desktopNewPassword);
-                                        setResetPasswordUser(null);
-                                        setDesktopNewPassword("");
-                                      }
-                                    }} 
-                                    disabled={isSubmitting || desktopNewPassword.length < 6}
-                                  >
-                                    Salvar Senha
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-                          )}
-
-                          {/* Permissions button */}
-                          <Sheet 
-                            open={permissionsUser?.id === u.id}
-                            onOpenChange={(open) => {
-                              if (open) {
-                                setPermissionsUser(u);
-                              } else {
-                                setPermissionsUser(null);
-                              }
-                            }}
-                          >
-                            <SheetTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Gerenciar permissões">
-                                <Lock className="w-4 h-4" />
-                              </Button>
-                            </SheetTrigger>
-                            <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-                              <SheetHeader className="mb-6">
-                                <SheetTitle>Gerenciar Permissões</SheetTitle>
-                              </SheetHeader>
-                              {permissionsUser && (
-                                <PermissionsPanel
-                                  targetUserId={permissionsUser.user_id}
-                                  targetUserName={permissionsUser.full_name}
-                                  currentUserId={user.id}
-                                  onClose={() => setPermissionsUser(null)}
-                                />
-                              )}
-                            </SheetContent>
-                          </Sheet>
-
-                          {/* Delete button */}
-                          {u.user_id !== user.id && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita. O usuário <strong>{u.full_name}</strong> será removido permanentemente do sistema.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleDeleteUser(u.user_id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Excluir
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+          <main className="flex-1 p-6">
+            {renderUsersContent()}
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
