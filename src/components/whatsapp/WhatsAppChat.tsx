@@ -1244,14 +1244,35 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           {selectedConversation.contact_name || selectedConversation.contact_phone}
                         </p>
                         {linkedLead && (
-                          <Badge 
-                            variant="secondary" 
-                            className="text-[10px] h-4 px-1 cursor-pointer hover:bg-secondary/80"
-                            onClick={() => setShowLinkLeadModal(true)}
-                          >
-                            <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                            {linkedLead.name.split(' ')[0]}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge 
+                              variant="secondary" 
+                              className="text-[10px] h-4 px-1 cursor-pointer hover:bg-secondary/80"
+                              onClick={() => setShowLinkLeadModal(true)}
+                            >
+                              <Link2 className="w-2.5 h-2.5 mr-0.5" />
+                              {linkedLead.name.split(' ')[0]}
+                            </Badge>
+                            <Badge 
+                              className={cn(
+                                "text-[10px] h-4 px-1.5 cursor-pointer",
+                                linkedLead.status === 'novo' && "bg-blue-500 hover:bg-blue-600",
+                                linkedLead.status === 'em_contato' && "bg-yellow-500 hover:bg-yellow-600 text-yellow-950",
+                                linkedLead.status === 'orcamento_enviado' && "bg-purple-500 hover:bg-purple-600",
+                                linkedLead.status === 'aguardando_resposta' && "bg-orange-500 hover:bg-orange-600",
+                                linkedLead.status === 'fechado' && "bg-green-500 hover:bg-green-600",
+                                linkedLead.status === 'perdido' && "bg-red-500 hover:bg-red-600"
+                              )}
+                              onClick={() => setShowLinkLeadModal(true)}
+                            >
+                              {linkedLead.status === 'novo' && 'Novo'}
+                              {linkedLead.status === 'em_contato' && 'Contato'}
+                              {linkedLead.status === 'orcamento_enviado' && 'Orçamento'}
+                              {linkedLead.status === 'aguardando_resposta' && 'Aguardando'}
+                              {linkedLead.status === 'fechado' && 'Fechado'}
+                              {linkedLead.status === 'perdido' && 'Perdido'}
+                            </Badge>
+                          </div>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
