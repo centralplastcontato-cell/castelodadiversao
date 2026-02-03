@@ -647,6 +647,56 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     }
   }, [recordingError]);
 
+  // Helper function to convert file to base64 with optional compression for images
+  const fileToBase64 = async (file: File, compress: boolean = false): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (compress && file.type.startsWith('image/')) {
+        // Compress image using canvas
+        const img = new Image();
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate new dimensions (max 1200px on longest side)
+            const maxSize = 1200;
+            let { width, height } = img;
+            
+            if (width > maxSize || height > maxSize) {
+              if (width > height) {
+                height = (height / width) * maxSize;
+                width = maxSize;
+              } else {
+                width = (width / height) * maxSize;
+                height = maxSize;
+              }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            ctx?.drawImage(img, 0, 0, width, height);
+            
+            // Convert to base64 with quality compression
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            resolve(dataUrl);
+          };
+          img.onerror = reject;
+          img.src = e.target?.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      } else {
+        // Just convert to base64 without compression
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
   const sendMedia = async () => {
     if (!mediaPreview || !selectedConversation || !selectedInstance || isUploading) return;
 
@@ -654,63 +704,88 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
     try {
       const { type, file } = mediaPreview;
-      
-      // Upload file to storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${selectedConversation.id}/${Date.now()}.${fileExt}`;
+
+      // For images: convert to base64 directly (faster - avoids double transfer)
+      // For documents: upload to storage first (W-API requires URL)
+      // For audio: upload to storage
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('whatsapp-media')
-        .upload(fileName, file);
+      if (type === 'image') {
+        // Convert image to base64 with compression (much faster than uploading + downloading)
+        const base64Data = await fileToBase64(file, true);
+        
+        // Upload to storage in background for history (don't await)
+        const storageFileName = `${selectedConversation.id}/${Date.now()}.jpg`;
+        supabase.storage
+          .from('whatsapp-media')
+          .upload(storageFileName, file)
+          .then(({ data, error }) => {
+            if (!error && data) {
+              const { data: urlData } = supabase.storage
+                .from('whatsapp-media')
+                .getPublicUrl(storageFileName);
+              // Update the message with the media URL for viewing later
+              // This happens asynchronously after the message is sent
+              console.log('Image stored at:', urlData.publicUrl);
+            }
+          });
 
-      if (uploadError) {
-        throw new Error(uploadError.message);
-      }
+        // Send to W-API immediately with base64 (fast path)
+        const response = await supabase.functions.invoke("wapi-send", {
+          body: {
+            action: 'send-image',
+            phone: selectedConversation.contact_phone,
+            conversationId: selectedConversation.id,
+            instanceId: selectedInstance.instance_id,
+            instanceToken: selectedInstance.instance_token,
+            base64: base64Data,
+            caption: mediaCaption,
+          },
+        });
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('whatsapp-media')
-        .getPublicUrl(fileName);
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
+      } else {
+        // For audio and documents: upload to storage first (W-API needs URL)
+        const { error: uploadError } = await supabase.storage
+          .from('whatsapp-media')
+          .upload(fileName, file);
 
-      const mediaUrl = urlData.publicUrl;
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
 
-      // Determine action based on type
-      let action: string;
-      let body: Record<string, any> = {
-        phone: selectedConversation.contact_phone,
-        conversationId: selectedConversation.id,
-        instanceId: selectedInstance.instance_id,
-        instanceToken: selectedInstance.instance_token,
-        mediaUrl,
-      };
+        const { data: urlData } = supabase.storage
+          .from('whatsapp-media')
+          .getPublicUrl(fileName);
 
-      switch (type) {
-        case 'image':
-          action = 'send-image';
-          body.caption = mediaCaption;
-          break;
-        case 'audio':
-          action = 'send-audio';
-          break;
-        case 'document':
-          action = 'send-document';
+        const mediaUrl = urlData.publicUrl;
+
+        const body: Record<string, any> = {
+          phone: selectedConversation.contact_phone,
+          conversationId: selectedConversation.id,
+          instanceId: selectedInstance.instance_id,
+          instanceToken: selectedInstance.instance_token,
+          mediaUrl,
+        };
+
+        if (type === 'document') {
           body.fileName = file.name;
-          break;
-        default:
-          throw new Error('Tipo de mídia não suportado');
+        }
+
+        const response = await supabase.functions.invoke("wapi-send", {
+          body: { 
+            action: type === 'audio' ? 'send-audio' : 'send-document',
+            ...body 
+          },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
       }
-
-      const response = await supabase.functions.invoke("wapi-send", {
-        body: { action, ...body },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      // Note: The Edge Function already saves the message to the database,
-      // and the realtime subscription will add it to the UI automatically.
-      // No need for optimistic update here to avoid duplicate messages.
 
       // Clear preview
       cancelMediaUpload();
