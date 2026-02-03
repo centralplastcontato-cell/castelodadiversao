@@ -395,6 +395,11 @@ export default function CentralAtendimento() {
                         Central de Atendimento
                       </Button>
                       
+                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/configuracoes"); setIsMobileMenuOpen(false); }}>
+                        <Settings className="w-5 h-5 mr-3" />
+                        Configurações
+                      </Button>
+                      
                       {canManageUsers && (
                         <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/users"); setIsMobileMenuOpen(false); }}>
                           <UsersIcon className="w-5 h-5 mr-3" />
