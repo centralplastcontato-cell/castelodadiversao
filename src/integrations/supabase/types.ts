@@ -324,6 +324,7 @@ export type Database = {
           messages_count: number | null
           phone_number: string | null
           status: string | null
+          unit: string | null
           updated_at: string
           user_id: string
         }
@@ -338,6 +339,7 @@ export type Database = {
           messages_count?: number | null
           phone_number?: string | null
           status?: string | null
+          unit?: string | null
           updated_at?: string
           user_id: string
         }
@@ -352,6 +354,7 @@ export type Database = {
           messages_count?: number | null
           phone_number?: string | null
           status?: string | null
+          unit?: string | null
           updated_at?: string
           user_id?: string
         }

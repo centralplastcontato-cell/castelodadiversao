@@ -38,32 +38,44 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, phone, message, conversationId } = body;
+    const { action, phone, message, conversationId, instanceId, instanceToken } = body;
 
-    // Get user's W-API instance
-    const { data: instance, error: instanceError } = await supabase
-      .from('wapi_instances')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    // Use provided instanceId/token or fallback to fetching from database
+    let instance_id = instanceId;
+    let instance_token = instanceToken;
+    let db_instance_id: string | null = null;
 
-    if (instanceError || !instance) {
-      return new Response(JSON.stringify({ error: 'No W-API instance configured' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // If no instance credentials provided, try to get from database (legacy behavior)
+    if (!instance_id || !instance_token) {
+      const { data: instance } = await supabase
+        .from('wapi_instances')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (!instance) {
+        return new Response(JSON.stringify({ error: 'No W-API instance configured' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      instance_id = instance.instance_id;
+      instance_token = instance.instance_token;
+      db_instance_id = instance.id;
     }
 
     switch (action) {
       case 'send-text': {
         // Send text message via W-API
         const response = await fetch(
-          `${WAPI_BASE_URL}/message/send-text?instanceId=${instance.instance_id}`,
+          `${WAPI_BASE_URL}/message/send-text?instanceId=${instance_id}`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${instance.instance_token}`,
+              'Authorization': `Bearer ${instance_token}`,
             },
             body: JSON.stringify({
               phone: phone,
@@ -112,11 +124,11 @@ Deno.serve(async (req) => {
       case 'get-status': {
         // Get instance status from W-API
         const response = await fetch(
-          `${WAPI_BASE_URL}/instance/info?instanceId=${instance.instance_id}`,
+          `${WAPI_BASE_URL}/instance/info?instanceId=${instance_id}`,
           {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${instance.instance_token}`,
+              'Authorization': `Bearer ${instance_token}`,
             },
           }
         );
@@ -124,20 +136,14 @@ Deno.serve(async (req) => {
         const result = await response.json();
         console.log('W-API instance info:', result);
 
-        // Update local status
-        if (result.connected !== undefined) {
-          await supabase
-            .from('wapi_instances')
-            .update({
-              status: result.connected ? 'connected' : 'disconnected',
-              phone_number: result.phone || instance.phone_number,
-              messages_count: result.messagesThisMonth || instance.messages_count,
-              credits_available: result.credits || instance.credits_available,
-            })
-            .eq('id', instance.id);
-        }
-
-        return new Response(JSON.stringify(result), {
+        // Return the result with parsed status
+        const status = result.connected ? 'connected' : 'disconnected';
+        
+        return new Response(JSON.stringify({ 
+          ...result, 
+          status,
+          phoneNumber: result.phone || null,
+        }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -156,12 +162,12 @@ Deno.serve(async (req) => {
         };
 
         const response = await fetch(
-          `${WAPI_BASE_URL}/instance/webhooks?instanceId=${instance.instance_id}`,
+          `${WAPI_BASE_URL}/instance/webhooks?instanceId=${instance_id}`,
           {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${instance.instance_token}`,
+              'Authorization': `Bearer ${instance_token}`,
             },
             body: JSON.stringify(webhookConfig),
           }

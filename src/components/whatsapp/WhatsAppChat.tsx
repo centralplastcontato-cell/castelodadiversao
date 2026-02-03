@@ -2,19 +2,23 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Send, Search, MessageSquare, Phone, Check, CheckCheck, Clock, WifiOff, ArrowLeft } from "lucide-react";
+import { Send, Search, MessageSquare, Phone, Check, CheckCheck, Clock, WifiOff, ArrowLeft, Building2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 interface WapiInstance {
   id: string;
+  instance_id: string;
+  instance_token: string;
   status: string;
+  unit: string | null;
 }
 
 interface Conversation {
@@ -42,10 +46,12 @@ interface Message {
 
 interface WhatsAppChatProps {
   userId: string;
+  allowedUnits: string[];
 }
 
-export function WhatsAppChat({ userId }: WhatsAppChatProps) {
-  const [instance, setInstance] = useState<WapiInstance | null>(null);
+export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
+  const [instances, setInstances] = useState<WapiInstance[]>([]);
+  const [selectedInstance, setSelectedInstance] = useState<WapiInstance | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -56,11 +62,11 @@ export function WhatsAppChat({ userId }: WhatsAppChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchInstance();
-  }, [userId]);
+    fetchInstances();
+  }, [userId, allowedUnits]);
 
   useEffect(() => {
-    if (instance) {
+    if (selectedInstance) {
       fetchConversations();
 
       // Subscribe to realtime updates for conversations
@@ -72,7 +78,7 @@ export function WhatsAppChat({ userId }: WhatsAppChatProps) {
             event: '*',
             schema: 'public',
             table: 'wapi_conversations',
-            filter: `instance_id=eq.${instance.id}`,
+            filter: `instance_id=eq.${selectedInstance.id}`,
           },
           () => {
             fetchConversations();
@@ -84,7 +90,7 @@ export function WhatsAppChat({ userId }: WhatsAppChatProps) {
         supabase.removeChannel(conversationsChannel);
       };
     }
-  }, [instance]);
+  }, [selectedInstance]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -123,26 +129,36 @@ export function WhatsAppChat({ userId }: WhatsAppChatProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const fetchInstance = async () => {
-    const { data } = await supabase
+  const fetchInstances = async () => {
+    setIsLoading(true);
+    
+    // Build query based on allowed units
+    let query = supabase
       .from("wapi_instances")
-      .select("id, status")
-      .eq("user_id", userId)
-      .single();
+      .select("id, instance_id, instance_token, status, unit");
 
-    if (data) {
-      setInstance(data as WapiInstance);
+    // Filter by allowed units if not "all"
+    if (!allowedUnits.includes('all') && allowedUnits.length > 0) {
+      query = query.in("unit", allowedUnits);
+    }
+
+    const { data } = await query.order("unit", { ascending: true });
+
+    if (data && data.length > 0) {
+      setInstances(data as WapiInstance[]);
+      // Auto-select first instance
+      setSelectedInstance(data[0] as WapiInstance);
     }
     setIsLoading(false);
   };
 
   const fetchConversations = async () => {
-    if (!instance) return;
+    if (!selectedInstance) return;
 
     const { data } = await supabase
       .from("wapi_conversations")
       .select("*")
-      .eq("instance_id", instance.id)
+      .eq("instance_id", selectedInstance.id)
       .order("last_message_at", { ascending: false });
 
     if (data) {
@@ -163,7 +179,7 @@ export function WhatsAppChat({ userId }: WhatsAppChatProps) {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || isSending) return;
+    if (!newMessage.trim() || !selectedConversation || !selectedInstance || isSending) return;
 
     setIsSending(true);
 
@@ -174,6 +190,8 @@ export function WhatsAppChat({ userId }: WhatsAppChatProps) {
           phone: selectedConversation.contact_phone,
           message: newMessage,
           conversationId: selectedConversation.id,
+          instanceId: selectedInstance.instance_id,
+          instanceToken: selectedInstance.instance_token,
         },
       });
 
@@ -239,6 +257,16 @@ export function WhatsAppChat({ userId }: WhatsAppChatProps) {
       .includes(searchQuery.toLowerCase())
   );
 
+  const handleInstanceChange = (instanceId: string) => {
+    const instance = instances.find(i => i.id === instanceId);
+    if (instance) {
+      setSelectedInstance(instance);
+      setSelectedConversation(null);
+      setMessages([]);
+      setConversations([]);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -247,204 +275,262 @@ export function WhatsAppChat({ userId }: WhatsAppChatProps) {
     );
   }
 
-  if (!instance) {
+  if (instances.length === 0) {
     return (
       <Card className="h-96">
         <CardContent className="flex flex-col items-center justify-center h-full text-center">
           <WifiOff className="w-12 h-12 text-muted-foreground mb-4" />
-          <h3 className="font-semibold mb-2">Instância não configurada</h3>
+          <h3 className="font-semibold mb-2">Nenhuma instância disponível</h3>
           <p className="text-sm text-muted-foreground">
-            Configure sua instância W-API na aba Configurações.
+            {allowedUnits.length === 0 
+              ? "Você não tem permissão para acessar nenhuma unidade."
+              : "O administrador ainda não configurou as instâncias para suas unidades."}
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  if (instance.status !== 'connected') {
+  const connectedInstances = instances.filter(i => i.status === 'connected');
+  const hasDisconnectedInstances = instances.some(i => i.status !== 'connected');
+
+  if (connectedInstances.length === 0) {
     return (
       <Card className="h-96">
         <CardContent className="flex flex-col items-center justify-center h-full text-center">
           <WifiOff className="w-12 h-12 text-muted-foreground mb-4" />
           <h3 className="font-semibold mb-2">WhatsApp desconectado</h3>
           <p className="text-sm text-muted-foreground">
-            Conecte seu WhatsApp na W-API para começar a conversar.
+            As instâncias configuradas estão desconectadas. Aguarde o administrador conectar.
           </p>
+          <div className="mt-4 space-y-2">
+            {instances.map(instance => (
+              <Badge key={instance.id} variant="secondary">
+                <Building2 className="w-3 h-3 mr-1" />
+                {instance.unit}: {instance.status}
+              </Badge>
+            ))}
+          </div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-200px)] min-h-[400px] border rounded-lg overflow-hidden bg-card">
-      {/* Conversations List */}
-      <div className={cn(
-        "w-full md:w-80 border-r flex flex-col",
-        selectedConversation && "hidden md:flex"
-      )}>
-        <div className="p-3 border-b">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar conversa..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
-
-        <ScrollArea className="flex-1">
-          {filteredConversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-center p-4">
-              <MessageSquare className="w-8 h-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                {searchQuery ? "Nenhuma conversa encontrada" : "Nenhuma conversa ainda"}
-              </p>
-            </div>
-          ) : (
-            filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => setSelectedConversation(conv)}
-                className={cn(
-                  "w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors text-left border-b",
-                  selectedConversation?.id === conv.id && "bg-accent"
+    <div className="flex flex-col h-[calc(100vh-200px)] min-h-[400px]">
+      {/* Unit Tabs - only show if multiple instances */}
+      {instances.length > 1 && (
+        <Tabs 
+          value={selectedInstance?.id || ""} 
+          onValueChange={handleInstanceChange}
+          className="mb-2"
+        >
+          <TabsList>
+            {instances.map((instance) => (
+              <TabsTrigger 
+                key={instance.id} 
+                value={instance.id}
+                disabled={instance.status !== 'connected'}
+                className="flex items-center gap-2"
+              >
+                <Building2 className="w-4 h-4" />
+                {instance.unit}
+                {instance.status !== 'connected' && (
+                  <WifiOff className="w-3 h-3 text-destructive" />
                 )}
-              >
-                <Avatar>
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium truncate">
-                      {conv.contact_name || conv.contact_phone}
-                    </p>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatConversationDate(conv.last_message_at)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
-                      <Phone className="w-3 h-3" />
-                      {conv.contact_phone}
-                    </p>
-                    {conv.unread_count > 0 && (
-                      <Badge className="h-5 min-w-5 flex items-center justify-center p-0 text-xs">
-                        {conv.unread_count}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </ScrollArea>
-      </div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
 
-      {/* Messages Area */}
-      <div className={cn(
-        "flex-1 flex flex-col",
-        !selectedConversation && "hidden md:flex"
-      )}>
-        {selectedConversation ? (
-          <>
-            {/* Chat Header */}
-            <div className="p-3 border-b flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden"
-                onClick={() => setSelectedConversation(null)}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <Avatar>
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  {(selectedConversation.contact_name || selectedConversation.contact_phone)
-                    .charAt(0)
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">
-                  {selectedConversation.contact_name || selectedConversation.contact_phone}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {selectedConversation.contact_phone}
-                </p>
+      {/* Disconnected warning */}
+      {hasDisconnectedInstances && selectedInstance?.status !== 'connected' && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 mb-2 text-sm text-center">
+          <WifiOff className="w-4 h-4 inline mr-2" />
+          Esta unidade está desconectada. Selecione outra ou aguarde o administrador.
+        </div>
+      )}
+
+      {/* Chat Area */}
+      {selectedInstance?.status === 'connected' && (
+        <div className="flex flex-1 border rounded-lg overflow-hidden bg-card">
+          {/* Conversations List */}
+          <div className={cn(
+            "w-full md:w-80 border-r flex flex-col",
+            selectedConversation && "hidden md:flex"
+          )}>
+            <div className="p-3 border-b">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar conversa..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
               </div>
             </div>
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4 bg-muted/30">
-              <div className="space-y-3">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
+            <ScrollArea className="flex-1">
+              {filteredConversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-center p-4">
+                  <MessageSquare className="w-8 h-8 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {searchQuery ? "Nenhuma conversa encontrada" : "Nenhuma conversa ainda"}
+                  </p>
+                </div>
+              ) : (
+                filteredConversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => setSelectedConversation(conv)}
                     className={cn(
-                      "flex",
-                      msg.from_me ? "justify-end" : "justify-start"
+                      "w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors text-left border-b",
+                      selectedConversation?.id === conv.id && "bg-accent"
                     )}
                   >
-                    <div
-                      className={cn(
-                        "max-w-[80%] rounded-lg px-3 py-2 text-sm",
-                        msg.from_me
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-card border"
-                      )}
-                    >
-                      <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                      <div
-                        className={cn(
-                          "flex items-center justify-end gap-1 mt-1",
-                          msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                    <Avatar>
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium truncate">
+                          {conv.contact_name || conv.contact_phone}
+                        </p>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatConversationDate(conv.last_message_at)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {conv.contact_phone}
+                        </p>
+                        {conv.unread_count > 0 && (
+                          <Badge className="h-5 min-w-5 flex items-center justify-center p-0 text-xs">
+                            {conv.unread_count}
+                          </Badge>
                         )}
-                      >
-                        <span className="text-xs">{formatMessageTime(msg.timestamp)}</span>
-                        {msg.from_me && getStatusIcon(msg.status)}
                       </div>
                     </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
+                  </button>
+                ))
+              )}
             </ScrollArea>
-
-            {/* Message Input */}
-            <div className="p-3 border-t">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendMessage();
-                }}
-                className="flex gap-2"
-              >
-                <Input
-                  placeholder="Digite uma mensagem..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  disabled={isSending}
-                />
-                <Button type="submit" size="icon" disabled={isSending || !newMessage.trim()}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </form>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-            <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="font-semibold mb-2">Selecione uma conversa</h3>
-            <p className="text-sm text-muted-foreground">
-              Escolha uma conversa para começar a enviar mensagens.
-            </p>
           </div>
-        )}
-      </div>
+
+          {/* Messages Area */}
+          <div className={cn(
+            "flex-1 flex flex-col",
+            !selectedConversation && "hidden md:flex"
+          )}>
+            {selectedConversation ? (
+              <>
+                {/* Chat Header */}
+                <div className="p-3 border-b flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    onClick={() => setSelectedConversation(null)}
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
+                  <Avatar>
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {(selectedConversation.contact_name || selectedConversation.contact_phone)
+                        .charAt(0)
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {selectedConversation.contact_name || selectedConversation.contact_phone}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedConversation.contact_phone}
+                    </p>
+                  </div>
+                  {selectedInstance && (
+                    <Badge variant="outline">
+                      <Building2 className="w-3 h-3 mr-1" />
+                      {selectedInstance.unit}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Messages */}
+                <ScrollArea className="flex-1 p-4 bg-muted/30">
+                  <div className="space-y-3">
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          "flex",
+                          msg.from_me ? "justify-end" : "justify-start"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "max-w-[80%] rounded-lg px-3 py-2 text-sm",
+                            msg.from_me
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-card border"
+                          )}
+                        >
+                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          <div
+                            className={cn(
+                              "flex items-center justify-end gap-1 mt-1",
+                              msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                            )}
+                          >
+                            <span className="text-xs">{formatMessageTime(msg.timestamp)}</span>
+                            {msg.from_me && getStatusIcon(msg.status)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+
+                {/* Message Input */}
+                <div className="p-3 border-t">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }}
+                    className="flex gap-2"
+                  >
+                    <Input
+                      placeholder="Digite uma mensagem..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      disabled={isSending}
+                    />
+                    <Button type="submit" size="icon" disabled={isSending || !newMessage.trim()}>
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </form>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+                <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="font-semibold mb-2">Selecione uma conversa</h3>
+                <p className="text-sm text-muted-foreground">
+                  Escolha uma conversa para começar a enviar mensagens.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

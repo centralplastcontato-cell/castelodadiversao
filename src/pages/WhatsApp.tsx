@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUnitPermissions } from "@/hooks/useUnitPermissions";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { WhatsAppConfig } from "@/components/whatsapp/WhatsAppConfig";
 import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
@@ -38,7 +39,8 @@ export default function WhatsApp() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
 
-  const { role, isLoading: isLoadingRole, canManageUsers } = useUserRole(user?.id);
+  const { role, isLoading: isLoadingRole, canManageUsers, isAdmin } = useUserRole(user?.id);
+  const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -92,7 +94,7 @@ export default function WhatsApp() {
     window.location.reload();
   };
 
-  if (isLoading || isLoadingRole) {
+  if (isLoading || isLoadingRole || isLoadingUnitPerms) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -182,11 +184,11 @@ export default function WhatsApp() {
             </TabsList>
 
             <TabsContent value="chat" className="flex-1 mt-0 p-0">
-              <WhatsAppChat userId={user.id} />
+              <WhatsAppChat userId={user.id} allowedUnits={canViewAll ? ['all'] : allowedUnits} />
             </TabsContent>
 
             <TabsContent value="config" className="flex-1 p-3">
-              <WhatsAppConfig userId={user.id} />
+              <WhatsAppConfig userId={user.id} isAdmin={isAdmin} />
             </TabsContent>
           </Tabs>
         </main>
@@ -231,11 +233,11 @@ export default function WhatsApp() {
               </TabsList>
 
               <TabsContent value="chat" className="flex-1 mt-4">
-                <WhatsAppChat userId={user.id} />
+                <WhatsAppChat userId={user.id} allowedUnits={canViewAll ? ['all'] : allowedUnits} />
               </TabsContent>
 
               <TabsContent value="config" className="flex-1 mt-4">
-                <WhatsAppConfig userId={user.id} />
+                <WhatsAppConfig userId={user.id} isAdmin={isAdmin} />
               </TabsContent>
             </Tabs>
           </main>
