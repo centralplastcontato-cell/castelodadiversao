@@ -91,7 +91,51 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
       .select("*")
       .order("unit", { ascending: true });
 
-    if (data) {
+    if (data && data.length > 0) {
+      // Sync status with W-API for each instance
+      const syncedInstances = await Promise.all(
+        data.map(async (instance) => {
+          try {
+            const response = await supabase.functions.invoke("wapi-send", {
+              body: { 
+                action: "get-status",
+                instanceId: instance.instance_id,
+                instanceToken: instance.instance_token,
+              },
+            });
+
+            const wapiStatus = response.data?.status;
+            const wapiPhone = response.data?.phoneNumber || response.data?.phone;
+
+            // If W-API status differs from local, update database
+            if (wapiStatus && wapiStatus !== instance.status) {
+              const updateData: Record<string, unknown> = { status: wapiStatus };
+              
+              if (wapiStatus === 'connected' && wapiPhone) {
+                updateData.phone_number = wapiPhone;
+                updateData.connected_at = new Date().toISOString();
+              } else if (wapiStatus === 'disconnected') {
+                updateData.connected_at = null;
+              }
+
+              await supabase
+                .from("wapi_instances")
+                .update(updateData)
+                .eq("id", instance.id);
+
+              return { ...instance, ...updateData } as WapiInstance;
+            }
+
+            return instance as WapiInstance;
+          } catch (err) {
+            console.error(`Error syncing status for instance ${instance.unit}:`, err);
+            return instance as WapiInstance;
+          }
+        })
+      );
+
+      setInstances(syncedInstances);
+    } else if (data) {
       setInstances(data as WapiInstance[]);
     }
     setIsLoading(false);
