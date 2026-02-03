@@ -237,16 +237,27 @@ Deno.serve(async (req) => {
           .replace('@lid', '') || '';
         
         // Get contact/group name from various sources
-        // For groups: prioritize chat name over sender name
+        // For groups: ONLY use explicit group name fields, never use sender's pushName
         // For individuals: use pushName or sender info
-        let contactName: string;
+        let contactName: string | null = null;
+        let senderName: string | null = null;
+        
         if (isGroup) {
-          // For groups, get the group name from chat object, NOT the sender's pushName
-          contactName = message.chat?.name || 
-                       message.groupName ||
-                       message.subject ||
-                       `Grupo ${contactPhone}`;
-          console.log(`Group message - Group name: ${contactName}, Sender: ${message.pushName || 'unknown'}`);
+          // For groups, ONLY use explicit group name sources - never pushName
+          const groupName = message.chat?.name || 
+                           message.groupName ||
+                           message.subject ||
+                           message.chat?.subject ||
+                           null;
+          
+          // Store sender name separately for logging
+          senderName = message.pushName || message.sender?.pushName || null;
+          
+          if (groupName) {
+            contactName = groupName;
+          }
+          // If no group name, we'll use existing name from DB or fallback to generic
+          console.log(`Group message - Group name: ${groupName || 'NOT PROVIDED'}, Sender: ${senderName || 'unknown'}`);
         } else {
           // For individual chats, use sender info
           contactName = message.pushName || 
@@ -350,13 +361,16 @@ Deno.serve(async (req) => {
           }
           
           // Create new conversation with optional lead link
+          // For groups without a name, use a generic fallback
+          const finalContactName = contactName || (isGroup ? `Grupo ${contactPhone}` : contactPhone);
+          
           const { data: newConv, error: convError } = await supabase
             .from('wapi_conversations')
             .insert({
               instance_id: instance.id,
               remote_jid: remoteJid,
               contact_phone: contactPhone,
-              contact_name: contactName,
+              contact_name: finalContactName,
               contact_picture: contactPicture,
               last_message_at: new Date().toISOString(),
               unread_count: fromMe ? 0 : 1,
