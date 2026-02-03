@@ -158,6 +158,8 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [searchedLeads, setSearchedLeads] = useState<Lead[]>([]);
   const [isSearchingLeads, setIsSearchingLeads] = useState(false);
   const [linkedLead, setLinkedLead] = useState<Lead | null>(null);
+  const [showClassificationCard, setShowClassificationCard] = useState(false);
+  const [isCreatingLead, setIsCreatingLead] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -540,6 +542,84 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       title: "Lead desvinculado",
       description: "A conversa não está mais vinculada a nenhum lead.",
     });
+  };
+
+  // Create a new lead and classify it directly
+  const createAndClassifyLead = async (status: string) => {
+    if (!selectedConversation || !selectedInstance) return;
+
+    setIsCreatingLead(true);
+
+    try {
+      // Create a new lead with conversation data
+      const contactName = selectedConversation.contact_name || selectedConversation.contact_phone;
+      const cleanPhone = selectedConversation.contact_phone.replace(/\D/g, '');
+
+      const { data: newLead, error: createError } = await supabase
+        .from('campaign_leads')
+        .insert({
+          name: contactName,
+          whatsapp: cleanPhone,
+          unit: selectedInstance.unit,
+          status: status as "novo" | "em_contato" | "orcamento_enviado" | "aguardando_resposta" | "fechado" | "perdido",
+          campaign_id: 'whatsapp-chat',
+          campaign_name: 'WhatsApp Chat',
+        })
+        .select('id, name, whatsapp, unit, status')
+        .single();
+
+      if (createError) {
+        throw createError;
+      }
+
+      // Link the conversation to the new lead
+      const { error: linkError } = await supabase
+        .from('wapi_conversations')
+        .update({ lead_id: newLead.id })
+        .eq('id', selectedConversation.id);
+
+      if (linkError) {
+        throw linkError;
+      }
+
+      // Add history entry
+      const statusLabels: Record<string, string> = {
+        novo: 'Novo',
+        em_contato: 'Em Contato',
+        orcamento_enviado: 'Orçamento Enviado',
+        aguardando_resposta: 'Aguardando Resposta',
+        fechado: 'Fechado',
+        perdido: 'Perdido',
+      };
+
+      await supabase.from('lead_history').insert({
+        lead_id: newLead.id,
+        action: 'lead_created',
+        new_value: `Lead criado via WhatsApp com status: ${statusLabels[status]}`,
+        user_id: userId,
+      });
+
+      // Update local state
+      setLinkedLead(newLead as Lead);
+      setConversations(prev => 
+        prev.map(c => c.id === selectedConversation.id ? { ...c, lead_id: newLead.id } : c)
+      );
+      setSelectedConversation({ ...selectedConversation, lead_id: newLead.id });
+      setShowClassificationCard(false);
+
+      toast({
+        title: "Lead criado e classificado",
+        description: `${contactName} classificado como "${statusLabels[status]}"`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar lead",
+        description: error.message || "Não foi possível criar o lead.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingLead(false);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -1561,59 +1641,116 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                         </div>
                       </div>
                     ) : (
-                      // Show inline search when no lead is linked
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-muted-foreground shrink-0">Lead:</span>
-                        <div className="relative flex-1 max-w-xs">
-                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
-                          <Input
-                            placeholder="Buscar lead por nome ou telefone..."
-                            value={leadSearchQuery}
-                            onChange={(e) => {
-                              setLeadSearchQuery(e.target.value);
-                              searchLeads(e.target.value);
-                            }}
-                            className="h-7 text-xs pl-7 pr-2"
-                          />
-                        </div>
-                        {isSearchingLeads && (
-                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      // Show classification card or button when no lead is linked
+                      <div className="flex flex-col gap-2">
+                        {showClassificationCard ? (
+                          // Classification card with status options
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-muted-foreground">Classificar Lead:</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => setShowClassificationCard(false)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {[
+                                { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                                { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
+                                { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
+                                { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+                                { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                                { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                              ].map((statusOption) => (
+                                <Button
+                                  key={statusOption.value}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs gap-1.5"
+                                  disabled={isCreatingLead}
+                                  onClick={() => createAndClassifyLead(statusOption.value)}
+                                >
+                                  {isCreatingLead ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
+                                  )}
+                                  {statusOption.label}
+                                </Button>
+                              ))}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Será criado um novo lead com o nome e telefone da conversa
+                            </p>
+                          </div>
+                        ) : (
+                          // Show button to open classification card and inline search
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="h-7 text-xs gap-1.5"
+                              onClick={() => setShowClassificationCard(true)}
+                            >
+                              <FileText className="w-3 h-3" />
+                              Classificar Lead
+                            </Button>
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-xs text-muted-foreground hidden sm:block">ou</span>
+                              <div className="relative flex-1 max-w-xs">
+                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                                <Input
+                                  placeholder="Vincular lead existente..."
+                                  value={leadSearchQuery}
+                                  onChange={(e) => {
+                                    setLeadSearchQuery(e.target.value);
+                                    searchLeads(e.target.value);
+                                  }}
+                                  className="h-7 text-xs pl-7 pr-2"
+                                />
+                              </div>
+                              {isSearchingLeads && (
+                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                              )}
+                              {!isSearchingLeads && searchedLeads.length > 0 && (
+                                <Popover open={searchedLeads.length > 0 && leadSearchQuery.length > 0} onOpenChange={() => setSearchedLeads([])}>
+                                  <PopoverTrigger asChild>
+                                    <span />
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-64 p-1" align="start">
+                                    <ScrollArea className="max-h-48">
+                                      {searchedLeads.map((lead) => (
+                                        <button
+                                          key={lead.id}
+                                          onClick={() => {
+                                            linkLeadToConversation(lead);
+                                            setLeadSearchQuery("");
+                                            setSearchedLeads([]);
+                                          }}
+                                          className="w-full flex items-center gap-2 p-2 hover:bg-accent rounded text-left text-sm"
+                                        >
+                                          <Avatar className="h-6 w-6">
+                                            <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                              {lead.name.charAt(0).toUpperCase()}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-xs truncate">{lead.name}</p>
+                                            <p className="text-[10px] text-muted-foreground truncate">{lead.whatsapp}</p>
+                                          </div>
+                                        </button>
+                                      ))}
+                                    </ScrollArea>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
+                          </div>
                         )}
-                        {!isSearchingLeads && searchedLeads.length > 0 && (
-                          <Popover open={searchedLeads.length > 0 && leadSearchQuery.length > 0} onOpenChange={() => setSearchedLeads([])}>
-                            <PopoverTrigger asChild>
-                              <span />
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 p-1" align="start">
-                              <ScrollArea className="max-h-48">
-                                {searchedLeads.map((lead) => (
-                                  <button
-                                    key={lead.id}
-                                    onClick={() => {
-                                      linkLeadToConversation(lead);
-                                      setLeadSearchQuery("");
-                                      setSearchedLeads([]);
-                                    }}
-                                    className="w-full flex items-center gap-2 p-2 hover:bg-accent rounded text-left text-sm"
-                                  >
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                                        {lead.name.charAt(0).toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-xs truncate">{lead.name}</p>
-                                      <p className="text-[10px] text-muted-foreground truncate">{lead.whatsapp}</p>
-                                    </div>
-                                  </button>
-                                ))}
-                              </ScrollArea>
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                        <span className="text-[10px] text-muted-foreground hidden sm:block">
-                          Vincule para classificar
-                        </span>
                       </div>
                     )}
                   </div>
@@ -2032,6 +2169,151 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </p>
                   </div>
                 </div>
+
+                {/* Mobile Lead Classification Panel */}
+                <div className="border-b bg-card/50 p-2 shrink-0">
+                  {linkedLead ? (
+                    // Show classification buttons when lead is linked
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">Status:</span>
+                        {[
+                          { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                          { value: 'em_contato', label: 'Contato', color: 'bg-yellow-500' },
+                          { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
+                          { value: 'aguardando_resposta', label: 'Aguard.', color: 'bg-orange-500' },
+                          { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                          { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                        ].map((statusOption) => (
+                          <Button
+                            key={statusOption.value}
+                            variant={linkedLead.status === statusOption.value ? "default" : "outline"}
+                            size="sm"
+                            className={cn(
+                              "h-6 text-[10px] gap-1 px-1.5",
+                              linkedLead.status === statusOption.value && "ring-2 ring-offset-1"
+                            )}
+                            onClick={async () => {
+                              const oldStatus = linkedLead.status;
+                              const newStatus = statusOption.value as "novo" | "em_contato" | "orcamento_enviado" | "aguardando_resposta" | "fechado" | "perdido";
+                              
+                              if (oldStatus === newStatus) return;
+                              
+                              const { error } = await supabase
+                                .from('campaign_leads')
+                                .update({ status: newStatus })
+                                .eq('id', linkedLead.id);
+                              
+                              if (error) {
+                                toast({
+                                  title: "Erro ao atualizar",
+                                  description: error.message,
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              
+                              const statusLabels: Record<string, string> = {
+                                novo: 'Novo',
+                                em_contato: 'Em Contato',
+                                orcamento_enviado: 'Orçamento Enviado',
+                                aguardando_resposta: 'Aguardando Resposta',
+                                fechado: 'Fechado',
+                                perdido: 'Perdido',
+                              };
+                              
+                              await supabase.from('lead_history').insert({
+                                lead_id: linkedLead.id,
+                                action: 'status_change',
+                                old_value: statusLabels[oldStatus] || oldStatus,
+                                new_value: statusLabels[newStatus] || newStatus,
+                                user_id: userId,
+                              });
+                              
+                              setLinkedLead({ ...linkedLead, status: statusOption.value });
+                              toast({
+                                title: "Status atualizado",
+                                description: `Lead classificado como "${statusOption.label}"`,
+                              });
+                            }}
+                          >
+                            <div className={cn("w-1.5 h-1.5 rounded-full", statusOption.color)} />
+                            {statusOption.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    // Show classification card or button when no lead is linked
+                    <div className="flex flex-col gap-2">
+                      {showClassificationCard ? (
+                        // Classification card with status options
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-muted-foreground">Classificar Lead:</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => setShowClassificationCard(false)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {[
+                              { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                              { value: 'em_contato', label: 'Contato', color: 'bg-yellow-500' },
+                              { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
+                              { value: 'aguardando_resposta', label: 'Aguard.', color: 'bg-orange-500' },
+                              { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                              { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                            ].map((statusOption) => (
+                              <Button
+                                key={statusOption.value}
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] gap-1 px-1.5"
+                                disabled={isCreatingLead}
+                                onClick={() => createAndClassifyLead(statusOption.value)}
+                              >
+                                {isCreatingLead ? (
+                                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                ) : (
+                                  <div className={cn("w-1.5 h-1.5 rounded-full", statusOption.color)} />
+                                )}
+                                {statusOption.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        // Show button to open classification card
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-6 text-[10px] gap-1"
+                            onClick={() => setShowClassificationCard(true)}
+                          >
+                            <FileText className="w-3 h-3" />
+                            Classificar Lead
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px] gap-1"
+                            onClick={() => setShowLinkLeadModal(true)}
+                          >
+                            <Link2 className="w-3 h-3" />
+                            Vincular
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <ScrollArea className="flex-1 p-3 bg-muted/30">
                   <div className="space-y-2">
                     {messages.map((msg) => (
