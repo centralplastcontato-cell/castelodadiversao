@@ -717,26 +717,23 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       // For audio: upload to storage
       
       if (type === 'image') {
-        // Convert image to base64 with compression (much faster than uploading + downloading)
-        const base64Data = await fileToBase64(file, true);
-        
-        // Upload to storage in background for history (don't await)
+        // Convert image to base64 and upload to storage in parallel for speed
         const storageFileName = `${selectedConversation.id}/${Date.now()}.jpg`;
-        supabase.storage
-          .from('whatsapp-media')
-          .upload(storageFileName, file)
-          .then(({ data, error }) => {
-            if (!error && data) {
-              const { data: urlData } = supabase.storage
-                .from('whatsapp-media')
-                .getPublicUrl(storageFileName);
-              // Update the message with the media URL for viewing later
-              // This happens asynchronously after the message is sent
-              console.log('Image stored at:', urlData.publicUrl);
-            }
-          });
+        
+        const [base64Data, uploadResult] = await Promise.all([
+          fileToBase64(file, true),
+          supabase.storage.from('whatsapp-media').upload(storageFileName, file)
+        ]);
+        
+        let mediaUrl: string | null = null;
+        if (!uploadResult.error && uploadResult.data) {
+          const { data: urlData } = supabase.storage
+            .from('whatsapp-media')
+            .getPublicUrl(storageFileName);
+          mediaUrl = urlData.publicUrl;
+        }
 
-        // Send to W-API immediately with base64 (fast path)
+        // Send to W-API with base64 (fast) and include mediaUrl for display in chat
         const response = await supabase.functions.invoke("wapi-send", {
           body: {
             action: 'send-image',
@@ -746,14 +743,15 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
             instanceToken: selectedInstance.instance_token,
             base64: base64Data,
             caption: mediaCaption,
+            mediaUrl: mediaUrl,
           },
         });
 
         if (response.error) {
           throw new Error(response.error.message);
         }
-      } else {
-        // For audio and documents: upload to storage first (W-API needs URL)
+      } else if (type === 'document') {
+        // For documents: upload to storage first (W-API needs URL)
         const { error: uploadError } = await supabase.storage
           .from('whatsapp-media')
           .upload(fileName, file);
@@ -768,22 +766,15 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
         const mediaUrl = urlData.publicUrl;
 
-        const body: Record<string, any> = {
-          phone: selectedConversation.contact_phone,
-          conversationId: selectedConversation.id,
-          instanceId: selectedInstance.instance_id,
-          instanceToken: selectedInstance.instance_token,
-          mediaUrl,
-        };
-
-        if (type === 'document') {
-          body.fileName = file.name;
-        }
-
         const response = await supabase.functions.invoke("wapi-send", {
-          body: { 
-            action: type === 'audio' ? 'send-audio' : 'send-document',
-            ...body 
+          body: {
+            action: 'send-document',
+            phone: selectedConversation.contact_phone,
+            conversationId: selectedConversation.id,
+            instanceId: selectedInstance.instance_id,
+            instanceToken: selectedInstance.instance_token,
+            mediaUrl,
+            fileName: file.name,
           },
         });
 
