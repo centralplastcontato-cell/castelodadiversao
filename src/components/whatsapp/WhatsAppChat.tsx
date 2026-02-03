@@ -1894,9 +1894,15 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           linkedLead.status === statusOption.value && "ring-2 ring-offset-2"
                         )}
                         onClick={async () => {
+                          const oldStatus = linkedLead.status;
+                          const newStatus = statusOption.value as "novo" | "em_contato" | "orcamento_enviado" | "aguardando_resposta" | "fechado" | "perdido";
+                          
+                          // Skip if same status
+                          if (oldStatus === newStatus) return;
+                          
                           const { error } = await supabase
                             .from('campaign_leads')
-                            .update({ status: statusOption.value as "novo" | "em_contato" | "orcamento_enviado" | "aguardando_resposta" | "fechado" | "perdido" })
+                            .update({ status: newStatus })
                             .eq('id', linkedLead.id);
                           
                           if (error) {
@@ -1907,6 +1913,24 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             });
                             return;
                           }
+                          
+                          // Register in lead history
+                          const statusLabels: Record<string, string> = {
+                            novo: 'Novo',
+                            em_contato: 'Em Contato',
+                            orcamento_enviado: 'Orçamento Enviado',
+                            aguardando_resposta: 'Aguardando Resposta',
+                            fechado: 'Fechado',
+                            perdido: 'Perdido',
+                          };
+                          
+                          await supabase.from('lead_history').insert({
+                            lead_id: linkedLead.id,
+                            action: 'status_change',
+                            old_value: statusLabels[oldStatus] || oldStatus,
+                            new_value: statusLabels[newStatus] || newStatus,
+                            user_id: userId,
+                          });
                           
                           setLinkedLead({ ...linkedLead, status: statusOption.value });
                           toast({
