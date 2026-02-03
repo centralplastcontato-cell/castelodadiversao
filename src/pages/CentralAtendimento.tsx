@@ -18,6 +18,7 @@ import { WhatsAppConfig } from "@/components/whatsapp/WhatsAppConfig";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
   SheetContent,
@@ -338,6 +339,15 @@ export default function CentralAtendimento() {
     return null;
   }
 
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   // Mobile layout with Sheet
@@ -401,6 +411,14 @@ export default function CentralAtendimento() {
                   <h1 className="font-display font-bold text-foreground text-sm truncate">Central de Atendimento</h1>
                 </div>
               </div>
+              
+              {/* User Avatar Mobile */}
+              <Avatar className="h-9 w-9 border-2 border-primary/20" onClick={() => navigate("/configuracoes")}>
+                <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                  {getInitials(currentUserProfile?.full_name || user.email || "U")}
+                </AvatarFallback>
+              </Avatar>
             </div>
           </div>
         </header>
@@ -535,12 +553,25 @@ export default function CentralAtendimento() {
         <SidebarInset className="flex-1 flex flex-col">
           {/* Desktop Header */}
           <header className="bg-card border-b border-border sticky top-0 z-10">
-            <div className="px-4 py-3 flex items-center gap-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="font-display font-bold text-foreground text-lg">Central de Atendimento</h1>
-                <p className="text-sm text-muted-foreground">{currentUserProfile?.full_name || user.email}</p>
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger />
+                <div>
+                  <h1 className="font-display font-bold text-foreground text-lg">Central de Atendimento</h1>
+                  <p className="text-sm text-muted-foreground">{currentUserProfile?.full_name || user.email}</p>
+                </div>
               </div>
+              
+              {/* User Avatar Desktop */}
+              <Avatar 
+                className="h-10 w-10 border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors" 
+                onClick={() => navigate("/configuracoes")}
+              >
+                <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                  {getInitials(currentUserProfile?.full_name || user.email || "U")}
+                </AvatarFallback>
+              </Avatar>
             </div>
           </header>
 
