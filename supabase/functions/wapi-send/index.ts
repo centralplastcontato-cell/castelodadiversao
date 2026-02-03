@@ -555,13 +555,20 @@ Deno.serve(async (req) => {
           });
         }
 
-        const cleanPhone = phoneNumber.replace(/\D/g, '');
+        // Clean phone - must include country code (55 for Brazil)
+        let cleanPhone = phoneNumber.replace(/\D/g, '');
+        
+        // Add Brazil country code if not present
+        if (!cleanPhone.startsWith('55')) {
+          cleanPhone = '55' + cleanPhone;
+        }
         
         console.log(`Requesting pairing code for phone: ${cleanPhone}, instance: ${instance_id}`);
         
         try {
+          // W-API expects phoneNumber as query parameter
           const response = await fetch(
-            `${WAPI_BASE_URL}/instance/pairing-code?instanceId=${instance_id}&phone=${cleanPhone}`,
+            `${WAPI_BASE_URL}/instance/pairing-code?instanceId=${instance_id}&phoneNumber=${cleanPhone}`,
             {
               method: 'GET',
               headers: {
