@@ -258,6 +258,152 @@ export type Database = {
         }
         Relationships: []
       }
+      wapi_conversations: {
+        Row: {
+          contact_name: string | null
+          contact_phone: string
+          created_at: string
+          id: string
+          instance_id: string
+          last_message_at: string | null
+          lead_id: string | null
+          remote_jid: string
+          unread_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          contact_name?: string | null
+          contact_phone: string
+          created_at?: string
+          id?: string
+          instance_id: string
+          last_message_at?: string | null
+          lead_id?: string | null
+          remote_jid: string
+          unread_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string | null
+          contact_phone?: string
+          created_at?: string
+          id?: string
+          instance_id?: string
+          last_message_at?: string | null
+          lead_id?: string | null
+          remote_jid?: string
+          unread_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wapi_conversations_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "wapi_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wapi_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wapi_instances: {
+        Row: {
+          addon_valid_until: string | null
+          connected_at: string | null
+          created_at: string
+          credits_available: number | null
+          id: string
+          instance_id: string
+          instance_token: string
+          messages_count: number | null
+          phone_number: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          addon_valid_until?: string | null
+          connected_at?: string | null
+          created_at?: string
+          credits_available?: number | null
+          id?: string
+          instance_id: string
+          instance_token: string
+          messages_count?: number | null
+          phone_number?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          addon_valid_until?: string | null
+          connected_at?: string | null
+          created_at?: string
+          credits_available?: number | null
+          id?: string
+          instance_id?: string
+          instance_token?: string
+          messages_count?: number | null
+          phone_number?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wapi_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          from_me: boolean
+          id: string
+          media_url: string | null
+          message_id: string | null
+          message_type: string
+          status: string | null
+          timestamp: string
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          from_me?: boolean
+          id?: string
+          media_url?: string | null
+          message_id?: string | null
+          message_type?: string
+          status?: string | null
+          timestamp?: string
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          from_me?: boolean
+          id?: string
+          media_url?: string | null
+          message_id?: string | null
+          message_type?: string
+          status?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wapi_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wapi_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
