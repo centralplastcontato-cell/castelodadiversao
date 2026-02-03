@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { Home, LayoutList, Users, LogOut, RefreshCw } from "lucide-react";
+import { LayoutList, Users, LogOut, RefreshCw, Megaphone } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -25,8 +25,8 @@ interface AdminSidebarProps {
 }
 
 const menuItems = [
-  { title: "Página Inicial", url: "/", icon: Home },
   { title: "Gestão de Leads", url: "/admin", icon: LayoutList },
+  { title: "Landing Page", url: "/promo", icon: Megaphone },
 ];
 
 export function AdminSidebar({ 

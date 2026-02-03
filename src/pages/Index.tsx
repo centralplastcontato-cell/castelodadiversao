@@ -1,36 +1,51 @@
-import { useState } from "react";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { OfferSection } from "@/components/landing/OfferSection";
-import { BenefitsSection } from "@/components/landing/BenefitsSection";
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
-import { UrgencySection } from "@/components/landing/UrgencySection";
-import { VideoGallerySection } from "@/components/landing/VideoGallerySection";
-import { InstagramSection } from "@/components/landing/InstagramSection";
-import { LeadChatbot } from "@/components/landing/LeadChatbot";
-import { FloatingCTA } from "@/components/landing/FloatingCTA";
-import { Footer } from "@/components/landing/Footer";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
+// This page now redirects to Admin (dashboard) for authenticated users
+// or to /auth for non-authenticated users
 const Index = () => {
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const openChat = () => setIsChatOpen(true);
-  const closeChat = () => setIsChatOpen(false);
-
-  return (
-    <div className="min-h-screen bg-background">
-      <HeroSection onCtaClick={openChat} />
-      <OfferSection onCtaClick={openChat} />
-      <BenefitsSection />
-      <TestimonialsSection />
-      <VideoGallerySection />
-      <InstagramSection />
-      <UrgencySection onCtaClick={openChat} />
-      <Footer />
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       
-      <FloatingCTA onClick={openChat} />
-      <LeadChatbot isOpen={isChatOpen} onClose={closeChat} />
-    </div>
-  );
+      if (session) {
+        // User is authenticated, show dashboard content via Admin page
+        navigate("/admin", { replace: true });
+      } else {
+        // User is not authenticated, redirect to login
+        navigate("/auth", { replace: true });
+      }
+      setIsLoading(false);
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/auth", { replace: true });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default Index;

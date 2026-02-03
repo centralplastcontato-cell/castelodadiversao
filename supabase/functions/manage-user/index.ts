@@ -5,8 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface CreateUserRequest {
-  action: 'create' | 'update' | 'toggle_active' | 'delete' | 'reset_password'
+interface ManageUserRequest {
+  action: 'create' | 'update' | 'toggle_active' | 'delete' | 'reset_password' | 'update_permission'
   email?: string
   password?: string
   full_name?: string
@@ -14,6 +14,9 @@ interface CreateUserRequest {
   user_id?: string
   is_active?: boolean
   new_password?: string
+  // Permission-specific fields
+  permission_code?: string
+  granted?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -72,7 +75,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const body: CreateUserRequest = await req.json()
+    const body: ManageUserRequest = await req.json()
     console.log('Request body:', body)
 
     if (body.action === 'create') {
@@ -137,6 +140,26 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: 'Erro ao criar role: ' + roleInsertError.message }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
+      }
+
+      // Grant default permissions based on role
+      const defaultPermissions = getDefaultPermissionsForRole(body.role)
+      if (defaultPermissions.length > 0) {
+        const permissionInserts = defaultPermissions.map(perm => ({
+          user_id: newUser.user!.id,
+          permission: perm,
+          granted: true,
+          granted_by: requestingUser.id,
+        }))
+
+        const { error: permError } = await supabaseAdmin
+          .from('user_permissions')
+          .insert(permissionInserts)
+
+        if (permError) {
+          console.error('Permission insert error:', permError)
+          // Don't fail the whole operation, just log it
+        }
       }
 
       return new Response(
@@ -241,7 +264,17 @@ Deno.serve(async (req) => {
         )
       }
 
-      // Delete user role first
+      // Delete user permissions first
+      const { error: permDeleteError } = await supabaseAdmin
+        .from('user_permissions')
+        .delete()
+        .eq('user_id', body.user_id)
+
+      if (permDeleteError) {
+        console.error('Permissions delete error:', permDeleteError)
+      }
+
+      // Delete user role
       const { error: roleDeleteError } = await supabaseAdmin
         .from('user_roles')
         .delete()
@@ -314,6 +347,71 @@ Deno.serve(async (req) => {
       )
     }
 
+    if (body.action === 'update_permission') {
+      if (!body.user_id || !body.permission_code || body.granted === undefined) {
+        return new Response(
+          JSON.stringify({ error: 'user_id, permission_code e granted são obrigatórios' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Check if permission exists
+      const { data: existingPerm } = await supabaseAdmin
+        .from('user_permissions')
+        .select('id')
+        .eq('user_id', body.user_id)
+        .eq('permission', body.permission_code)
+        .maybeSingle()
+
+      if (existingPerm) {
+        // Update existing permission
+        const { error: updateError } = await supabaseAdmin
+          .from('user_permissions')
+          .update({ 
+            granted: body.granted,
+            granted_by: requestingUser.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingPerm.id)
+
+        if (updateError) {
+          console.error('Permission update error:', updateError)
+          return new Response(
+            JSON.stringify({ error: 'Erro ao atualizar permissão: ' + updateError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      } else {
+        // Insert new permission
+        const { error: insertError } = await supabaseAdmin
+          .from('user_permissions')
+          .insert({
+            user_id: body.user_id,
+            permission: body.permission_code,
+            granted: body.granted,
+            granted_by: requestingUser.id,
+          })
+
+        if (insertError) {
+          console.error('Permission insert error:', insertError)
+          return new Response(
+            JSON.stringify({ error: 'Erro ao criar permissão: ' + insertError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+
+      console.log('Permission updated:', body.permission_code, 'for user:', body.user_id, 'granted:', body.granted)
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: body.granted ? 'Permissão concedida' : 'Permissão revogada' 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     return new Response(
       JSON.stringify({ error: 'Ação inválida' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -327,3 +425,32 @@ Deno.serve(async (req) => {
     )
   }
 })
+
+// Helper function to get default permissions based on role
+function getDefaultPermissionsForRole(role: string): string[] {
+  switch (role) {
+    case 'admin':
+      return [
+        'leads.view',
+        'leads.edit',
+        'leads.delete',
+        'leads.export',
+        'leads.assign',
+        'users.view',
+        'users.manage',
+        'permissions.manage',
+      ]
+    case 'comercial':
+      return [
+        'leads.view',
+        'leads.edit',
+        'leads.assign',
+      ]
+    case 'visualizacao':
+      return [
+        'leads.view',
+      ]
+    default:
+      return []
+  }
+}

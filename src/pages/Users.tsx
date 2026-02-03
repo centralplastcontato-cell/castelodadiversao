@@ -42,13 +42,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound, Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserCard } from "@/components/admin/UserCard";
+import { PermissionsPanel } from "@/components/admin/PermissionsPanel";
 
 export default function UsersPage() {
   const navigate = useNavigate();
@@ -62,6 +70,7 @@ export default function UsersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<UserWithRole | null>(null);
+  const [permissionsUser, setPermissionsUser] = useState<UserWithRole | null>(null);
   const [editName, setEditName] = useState("");
   const [desktopNewPassword, setDesktopNewPassword] = useState("");
 
@@ -712,7 +721,7 @@ export default function UsersPage() {
                               }}
                             >
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Resetar senha">
                                   <KeyRound className="w-4 h-4" />
                                 </Button>
                               </DialogTrigger>
@@ -755,6 +764,37 @@ export default function UsersPage() {
                               </DialogContent>
                             </Dialog>
                           )}
+
+                          {/* Permissions button */}
+                          <Sheet 
+                            open={permissionsUser?.id === u.id}
+                            onOpenChange={(open) => {
+                              if (open) {
+                                setPermissionsUser(u);
+                              } else {
+                                setPermissionsUser(null);
+                              }
+                            }}
+                          >
+                            <SheetTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Gerenciar permissões">
+                                <Lock className="w-4 h-4" />
+                              </Button>
+                            </SheetTrigger>
+                            <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                              <SheetHeader className="mb-6">
+                                <SheetTitle>Gerenciar Permissões</SheetTitle>
+                              </SheetHeader>
+                              {permissionsUser && (
+                                <PermissionsPanel
+                                  targetUserId={permissionsUser.user_id}
+                                  targetUserName={permissionsUser.full_name}
+                                  currentUserId={user.id}
+                                  onClose={() => setPermissionsUser(null)}
+                                />
+                              )}
+                            </SheetContent>
+                          </Sheet>
 
                           {/* Delete button */}
                           {u.user_id !== user.id && (
