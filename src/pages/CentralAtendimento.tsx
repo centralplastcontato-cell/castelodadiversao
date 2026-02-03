@@ -14,7 +14,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { MetricsCards } from "@/components/admin/MetricsCards";
 import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
-import { WhatsAppConfig } from "@/components/whatsapp/WhatsAppConfig";
+
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +70,7 @@ export default function CentralAtendimento() {
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"chat" | "leads" | "config">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "leads">("chat");
   const [unreadCount, setUnreadCount] = useState(0);
 
   const { role, isLoading: isLoadingRole, isAdmin, canEdit, canManageUsers } = useUserRole(user?.id);
@@ -432,7 +432,7 @@ export default function CentralAtendimento() {
         </header>
 
         <main className="flex-1 flex flex-col">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads" | "config")} className="flex-1 flex flex-col">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col">
             <TabsList className="mx-3 mt-3 grid grid-cols-2">
               <TabsTrigger value="chat" className="flex items-center gap-1.5 text-xs relative">
                 <MessageSquare className="w-4 h-4" />
@@ -577,7 +577,7 @@ export default function CentralAtendimento() {
           </header>
 
           <main className="flex-1 flex flex-col p-6">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads" | "config")} className="flex-1 flex flex-col">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col">
               <TabsList className="w-fit">
                 <TabsTrigger value="chat" className="flex items-center gap-2 relative">
                   <MessageSquare className="w-4 h-4" />
@@ -594,10 +594,6 @@ export default function CentralAtendimento() {
                 <TabsTrigger value="leads" className="flex items-center gap-2">
                   <LayoutList className="w-4 h-4" />
                   Leads
-                </TabsTrigger>
-                <TabsTrigger value="config" className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  Configurações
                 </TabsTrigger>
               </TabsList>
 
@@ -681,9 +677,6 @@ export default function CentralAtendimento() {
                 </Tabs>
               </TabsContent>
 
-              <TabsContent value="config" className="flex-1 mt-4">
-                <WhatsAppConfig userId={user.id} isAdmin={isAdmin} />
-              </TabsContent>
             </Tabs>
           </main>
 
