@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1420,12 +1421,19 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                         </DropdownMenuContent>
                       </DropdownMenu>
 
-                      <Input
+                      <Textarea
                         placeholder="Digite uma mensagem..."
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
                         disabled={isSending}
-                        className="text-base sm:text-sm flex-1"
+                        className="text-base sm:text-sm flex-1 min-h-[40px] max-h-32 resize-y py-2"
+                        rows={1}
                       />
 
                       {/* Mic button for recording or Send button */}
