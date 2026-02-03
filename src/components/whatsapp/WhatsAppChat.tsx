@@ -120,6 +120,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     preview?: string;
   } | null>(null);
   const [mediaCaption, setMediaCaption] = useState("");
+  const [linkingConversationId, setLinkingConversationId] = useState<string | null>(null);
   const [showLinkLeadModal, setShowLinkLeadModal] = useState(false);
   const [leadSearchQuery, setLeadSearchQuery] = useState("");
   const [searchedLeads, setSearchedLeads] = useState<Lead[]>([]);
@@ -431,13 +432,14 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     setIsSearchingLeads(false);
   };
 
-  const linkLeadToConversation = async (lead: Lead) => {
-    if (!selectedConversation) return;
+  const linkLeadToConversation = async (lead: Lead, targetConversation?: Conversation) => {
+    const conversationToLink = targetConversation || selectedConversation;
+    if (!conversationToLink) return;
 
     const { error } = await supabase
       .from('wapi_conversations')
       .update({ lead_id: lead.id })
-      .eq('id', selectedConversation.id);
+      .eq('id', conversationToLink.id);
 
     if (error) {
       toast({
@@ -449,12 +451,17 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     }
 
     // Update local state
-    setSelectedConversation({ ...selectedConversation, lead_id: lead.id });
     setConversations(prev => 
-      prev.map(c => c.id === selectedConversation.id ? { ...c, lead_id: lead.id } : c)
+      prev.map(c => c.id === conversationToLink.id ? { ...c, lead_id: lead.id } : c)
     );
-    setLinkedLead(lead);
+    
+    if (selectedConversation?.id === conversationToLink.id) {
+      setSelectedConversation({ ...conversationToLink, lead_id: lead.id });
+      setLinkedLead(lead);
+    }
+    
     setShowLinkLeadModal(false);
+    setLinkingConversationId(null);
     setLeadSearchQuery("");
     setSearchedLeads([]);
 
@@ -462,6 +469,15 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       title: "Lead vinculado",
       description: `Conversa vinculada a ${lead.name}`,
     });
+  };
+
+  const openLinkModalForConversation = (conv: Conversation) => {
+    setLinkingConversationId(conv.id);
+    setShowLinkLeadModal(true);
+    // Pre-populate search with contact name or phone
+    const searchTerm = conv.contact_name || conv.contact_phone.replace(/\D/g, '');
+    setLeadSearchQuery(searchTerm);
+    searchLeads(searchTerm);
   };
 
   const unlinkLead = async () => {
@@ -1085,15 +1101,38 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className={cn(
-                          "truncate flex-1",
-                          conv.unread_count > 0 ? "font-bold" : "font-medium"
-                        )}>
-                          {conv.contact_name || conv.contact_phone}
-                        </p>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                          {formatConversationDate(conv.last_message_at)}
-                        </span>
+                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                          <p className={cn(
+                            "truncate",
+                            conv.unread_count > 0 ? "font-bold" : "font-medium"
+                          )}>
+                            {conv.contact_name || conv.contact_phone}
+                          </p>
+                          {conv.lead_id && (
+                            <Link2 className="w-3 h-3 text-primary shrink-0" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openLinkModalForConversation(conv);
+                            }}
+                            className={cn(
+                              "p-1 rounded transition-opacity cursor-pointer hover:bg-muted",
+                              conv.lead_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                            )}
+                            title={conv.lead_id ? "Gerenciar vínculo" : "Vincular ao CRM"}
+                          >
+                            <Link2 className={cn(
+                              "w-3 h-3",
+                              conv.lead_id ? "text-primary" : "text-muted-foreground"
+                            )} />
+                          </span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatConversationDate(conv.last_message_at)}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className={cn(
@@ -1226,6 +1265,22 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               )}
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openLinkModalForConversation(conv);
+                                }}
+                                className={cn(
+                                  "p-1 rounded transition-opacity hover:bg-muted",
+                                  conv.lead_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                )}
+                                title={conv.lead_id ? "Gerenciar vínculo" : "Vincular ao CRM"}
+                              >
+                                <Link2 className={cn(
+                                  "w-3 h-3",
+                                  conv.lead_id ? "text-primary" : "text-muted-foreground"
+                                )} />
+                              </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1920,17 +1975,18 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
         if (!open) {
           setLeadSearchQuery("");
           setSearchedLeads([]);
+          setLinkingConversationId(null);
         }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {linkedLead ? "Lead vinculado" : "Vincular a um lead"}
+              {linkedLead && !linkingConversationId ? "Lead vinculado" : "Vincular a um lead"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Show linked lead if exists */}
-            {linkedLead && (
+            {/* Show linked lead if exists and not linking from list */}
+            {linkedLead && !linkingConversationId && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <div className="flex items-center gap-3">
@@ -2066,7 +2122,12 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   {searchedLeads.map((lead) => (
                     <button
                       key={lead.id}
-                      onClick={() => linkLeadToConversation(lead)}
+                      onClick={() => {
+                        const targetConv = linkingConversationId 
+                          ? conversations.find(c => c.id === linkingConversationId) 
+                          : selectedConversation;
+                        linkLeadToConversation(lead, targetConv || undefined);
+                      }}
                       className="w-full flex items-center gap-3 p-2 hover:bg-accent rounded-lg transition-colors text-left"
                     >
                       <Avatar className="h-8 w-8">
