@@ -33,7 +33,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { User, Mail, Pencil, Trash2, Loader2, KeyRound } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { User, Mail, Pencil, Trash2, Loader2, KeyRound, Lock } from "lucide-react";
+import { PermissionsPanel } from "./PermissionsPanel";
 
 interface UserCardProps {
   user: UserWithRole;
@@ -57,6 +65,7 @@ export function UserCard({
   const isCurrentUser = user.user_id === currentUserId;
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
   const [editName, setEditName] = useState(user.full_name);
   const [newPassword, setNewPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -220,6 +229,26 @@ export function UserCard({
                 </DialogContent>
               </Dialog>
             )}
+
+            {/* Permissions button */}
+            <Sheet open={isPermissionsOpen} onOpenChange={setIsPermissionsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2">
+                  <Lock className="w-4 h-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader className="mb-6">
+                  <SheetTitle>Gerenciar Permissões</SheetTitle>
+                </SheetHeader>
+                <PermissionsPanel
+                  targetUserId={user.user_id}
+                  targetUserName={user.full_name}
+                  currentUserId={currentUserId}
+                  onClose={() => setIsPermissionsOpen(false)}
+                />
+              </SheetContent>
+            </Sheet>
 
             {/* Delete button */}
             {!isCurrentUser && (

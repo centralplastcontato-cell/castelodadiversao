@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, RefreshCw, LayoutList, Columns, Menu, Home, Users as UsersIcon } from "lucide-react";
+import { LogOut, RefreshCw, LayoutList, Columns, Menu, Users as UsersIcon, Megaphone } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -278,14 +278,14 @@ export default function Admin() {
                     </SheetHeader>
                     
                     <nav className="flex flex-col p-2">
-                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/"); setIsMobileMenuOpen(false); }}>
-                        <Home className="w-5 h-5 mr-3" />
-                        Página Inicial
-                      </Button>
-                      
                       <Button variant="secondary" className="justify-start h-11 px-3" onClick={() => setIsMobileMenuOpen(false)}>
                         <LayoutList className="w-5 h-5 mr-3" />
                         Gestão de Leads
+                      </Button>
+                      
+                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/promo"); setIsMobileMenuOpen(false); }}>
+                        <Megaphone className="w-5 h-5 mr-3" />
+                        Landing Page
                       </Button>
                       
                       {canManageUsers && (

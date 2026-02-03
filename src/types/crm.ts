@@ -92,3 +92,35 @@ export interface MessageTemplate {
   created_at: string;
   updated_at: string;
 }
+
+// Permission Types
+export type PermissionCode = 
+  | 'leads.view'
+  | 'leads.edit'
+  | 'leads.delete'
+  | 'leads.export'
+  | 'leads.assign'
+  | 'users.view'
+  | 'users.manage'
+  | 'permissions.manage';
+
+export interface PermissionDefinition {
+  id: string;
+  code: PermissionCode;
+  name: string;
+  description: string | null;
+  category: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface UserPermission {
+  id: string;
+  user_id: string;
+  permission: PermissionCode;
+  granted: boolean;
+  granted_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
