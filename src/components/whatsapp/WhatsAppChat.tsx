@@ -818,20 +818,34 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       // For audio: upload to storage
       
       if (type === 'image') {
-        // Convert image to base64 and upload to storage in parallel for speed
+        // Convert image to base64 (compressed as JPEG) for W-API
+        const base64Data = await fileToBase64(file, true);
+        
+        // Extract the compressed image data to upload to storage
+        // Since fileToBase64 compresses to JPEG, we'll save as .jpg
         const storageFileName = `${selectedConversation.id}/${Date.now()}.jpg`;
         
-        const [base64Data, uploadResult] = await Promise.all([
-          fileToBase64(file, true),
-          supabase.storage.from('whatsapp-media').upload(storageFileName, file)
-        ]);
+        // Convert base64 back to blob for storage upload
+        const base64Response = await fetch(base64Data);
+        const imageBlob = await base64Response.blob();
+        
+        // Upload compressed image to storage
+        const { error: uploadError } = await supabase.storage
+          .from('whatsapp-media')
+          .upload(storageFileName, imageBlob, {
+            contentType: 'image/jpeg',
+          });
         
         let mediaUrl: string | null = null;
-        if (!uploadResult.error && uploadResult.data) {
+        if (!uploadError) {
           const { data: urlData } = supabase.storage
             .from('whatsapp-media')
             .getPublicUrl(storageFileName);
           mediaUrl = urlData.publicUrl;
+          console.log('Image uploaded to storage:', mediaUrl);
+        } else {
+          console.error('Error uploading image to storage:', uploadError);
+          // Continue anyway - we'll still send via W-API, just won't have a local copy
         }
 
         // Send to W-API with base64 (fast) and include mediaUrl for display in chat
@@ -1631,14 +1645,29 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                   : "bg-card border"
                               )}
                             >
-                              {msg.message_type === 'image' && msg.media_url && (
+                              {msg.message_type === 'image' && (
                                 <div className="mb-2">
-                                  <img 
-                                    src={msg.media_url} 
-                                    alt="Imagem" 
-                                    className="rounded max-w-full max-h-64 object-contain cursor-pointer"
-                                    onClick={() => window.open(msg.media_url!, '_blank')}
-                                  />
+                                  {msg.media_url ? (
+                                    <img 
+                                      src={msg.media_url} 
+                                      alt="Imagem" 
+                                      className="rounded max-w-full max-h-64 object-contain cursor-pointer"
+                                      onClick={() => window.open(msg.media_url!, '_blank')}
+                                    />
+                                  ) : (
+                                    <MediaDownloadButton
+                                      messageId={msg.message_id}
+                                      content={msg.content || 'Imagem'}
+                                      fromMe={msg.from_me}
+                                      mediaType="image"
+                                      selectedInstance={selectedInstance}
+                                      onDownloadSuccess={(url) => {
+                                        setMessages(prev => prev.map(m => 
+                                          m.id === msg.id ? { ...m, media_url: url } : m
+                                        ));
+                                      }}
+                                    />
+                                  )}
                                 </div>
                               )}
                               {msg.message_type === 'audio' && (
@@ -2021,13 +2050,28 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               : "bg-card border"
                           )}
                         >
-                          {msg.message_type === 'image' && msg.media_url && (
+                          {msg.message_type === 'image' && (
                             <div className="mb-2">
-                              <img 
-                                src={msg.media_url} 
-                                alt="Imagem" 
-                                className="rounded max-w-full max-h-48 object-contain"
-                              />
+                              {msg.media_url ? (
+                                <img 
+                                  src={msg.media_url} 
+                                  alt="Imagem" 
+                                  className="rounded max-w-full max-h-48 object-contain"
+                                />
+                              ) : (
+                                <MediaDownloadButton
+                                  messageId={msg.message_id}
+                                  content={msg.content || 'Imagem'}
+                                  fromMe={msg.from_me}
+                                  mediaType="image"
+                                  selectedInstance={selectedInstance}
+                                  onDownloadSuccess={(url) => {
+                                    setMessages(prev => prev.map(m => 
+                                      m.id === msg.id ? { ...m, media_url: url } : m
+                                    ));
+                                  }}
+                                />
+                              )}
                             </div>
                           )}
                           {msg.message_type === 'audio' && (
