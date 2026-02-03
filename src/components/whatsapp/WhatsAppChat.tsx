@@ -105,6 +105,26 @@ interface WhatsAppChatProps {
 // Now uses the MediaProgressIndicator for visual progress
 import { MediaProgressIndicator } from "@/components/whatsapp/MediaProgressIndicator";
 
+/**
+ * Check if a media URL is from our persistent storage (Supabase)
+ * URLs from WhatsApp CDN (mmg.whatsapp.net) expire quickly and won't work
+ */
+function isPersistedMediaUrl(url: string | null): boolean {
+  if (!url) return false;
+  
+  // Our Supabase storage URLs are permanent
+  if (url.includes('supabase.co/storage')) return true;
+  if (url.includes('knyzkwgdmclcwvzhdmyk')) return true; // Our project ID
+  
+  // WhatsApp CDN URLs expire quickly - treat as not persisted
+  if (url.includes('mmg.whatsapp.net')) return false;
+  if (url.includes('.whatsapp.net')) return false;
+  if (url.includes('whatsapp.com')) return false;
+  
+  // Other URLs (might be external) - assume they work
+  return true;
+}
+
 function MediaDownloadButton({
   messageId,
   content,
@@ -1780,9 +1800,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             >
                               {msg.message_type === 'image' && (
                                 <div className="mb-2">
-                                  {msg.media_url ? (
+                                  {isPersistedMediaUrl(msg.media_url) ? (
                                     <img 
-                                      src={msg.media_url} 
+                                      src={msg.media_url!} 
                                       alt="Imagem" 
                                       className="rounded max-w-full max-h-64 object-contain cursor-pointer"
                                       onClick={() => window.open(msg.media_url!, '_blank')}
@@ -1805,9 +1825,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               )}
                               {msg.message_type === 'audio' && (
                                 <div className="mb-2">
-                                  {msg.media_url ? (
+                                  {isPersistedMediaUrl(msg.media_url) ? (
                                     <audio controls className="max-w-full">
-                                      <source src={msg.media_url} />
+                                      <source src={msg.media_url!} />
                                     </audio>
                                   ) : (
                                     <MediaDownloadButton
@@ -1827,9 +1847,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               )}
                               {msg.message_type === 'document' && (
                                 <div className="mb-2">
-                                  {msg.media_url ? (
+                                  {isPersistedMediaUrl(msg.media_url) ? (
                                     <a 
-                                      href={msg.media_url} 
+                                      href={msg.media_url!} 
                                       target="_blank" 
                                       rel="noopener noreferrer"
                                       download
@@ -1871,13 +1891,13 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               )}
                               {msg.message_type === 'video' && (
                                 <div className="mb-2">
-                                  {msg.media_url ? (
+                                  {isPersistedMediaUrl(msg.media_url) ? (
                                     <video 
                                       controls 
                                       className="rounded max-w-full max-h-64"
                                       preload="metadata"
                                     >
-                                      <source src={msg.media_url} />
+                                      <source src={msg.media_url!} />
                                     </video>
                                   ) : (
                                     <MediaDownloadButton
@@ -2291,9 +2311,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                         >
                           {msg.message_type === 'image' && (
                             <div className="mb-2">
-                              {msg.media_url ? (
+                              {isPersistedMediaUrl(msg.media_url) ? (
                                 <img 
-                                  src={msg.media_url} 
+                                  src={msg.media_url!} 
                                   alt="Imagem" 
                                   className="rounded max-w-full max-h-48 object-contain"
                                 />
@@ -2315,9 +2335,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           )}
                           {msg.message_type === 'audio' && (
                             <div className="mb-2">
-                              {msg.media_url ? (
+                              {isPersistedMediaUrl(msg.media_url) ? (
                                 <audio controls className="max-w-full">
-                                  <source src={msg.media_url} />
+                                  <source src={msg.media_url!} />
                                 </audio>
                               ) : (
                                 <MediaDownloadButton
@@ -2337,9 +2357,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           )}
                           {msg.message_type === 'document' && (
                             <div className="mb-2">
-                              {msg.media_url ? (
+                              {isPersistedMediaUrl(msg.media_url) ? (
                                 <a 
-                                  href={msg.media_url} 
+                                  href={msg.media_url!} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   download
@@ -2372,9 +2392,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           )}
                           {msg.message_type === 'video' && (
                             <div className="mb-2">
-                              {msg.media_url ? (
+                              {isPersistedMediaUrl(msg.media_url) ? (
                                 <video controls className="rounded max-w-full max-h-48" preload="metadata">
-                                  <source src={msg.media_url} />
+                                  <source src={msg.media_url!} />
                                 </video>
                               ) : (
                                 <MediaDownloadButton
