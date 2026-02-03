@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUnitPermissions } from "@/hooks/useUnitPermissions";
 import { Lead, LeadStatus, UserWithRole, Profile } from "@/types/crm";
 import { LeadsTable } from "@/components/admin/LeadsTable";
 import { LeadsFilters } from "@/components/admin/LeadsFilters";
@@ -65,7 +66,7 @@ export default function Admin() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { role, isLoading: isLoadingRole, isAdmin, canEdit, canManageUsers } = useUserRole(user?.id);
-
+  const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -136,7 +137,7 @@ export default function Admin() {
   // Fetch leads
   useEffect(() => {
     const fetchLeads = async () => {
-      if (!role) return;
+      if (!role || isLoadingUnitPerms) return;
 
       setIsLoadingLeads(true);
 
@@ -145,7 +146,18 @@ export default function Admin() {
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false });
 
-      // Apply filters
+      // Apply unit permission filter (before user-selected filters)
+      if (!canViewAll && allowedUnits.length > 0 && !allowedUnits.includes('all')) {
+        query = query.in("unit", allowedUnits);
+      } else if (!canViewAll && allowedUnits.length === 0) {
+        // No unit permission granted - return empty
+        setLeads([]);
+        setTotalCount(0);
+        setIsLoadingLeads(false);
+        return;
+      }
+
+      // Apply user-selected filters
       if (filters.unit && filters.unit !== "all") {
         query = query.eq("unit", filters.unit);
       }
@@ -199,7 +211,7 @@ export default function Admin() {
     };
 
     fetchLeads();
-  }, [filters, refreshKey, role]);
+  }, [filters, refreshKey, role, canViewAll, allowedUnits, isLoadingUnitPerms]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -235,7 +247,7 @@ export default function Admin() {
     });
   };
 
-  if (isLoading || isLoadingRole) {
+  if (isLoading || isLoadingRole || isLoadingUnitPerms) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
