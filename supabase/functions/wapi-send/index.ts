@@ -7,6 +7,16 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
+// Helper to convert base64 to Uint8Array
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -111,7 +121,256 @@ Deno.serve(async (req) => {
           // Update conversation last message
           await supabase
             .from('wapi_conversations')
-            .update({ last_message_at: new Date().toISOString() })
+            .update({ 
+              last_message_at: new Date().toISOString(),
+              last_message_content: message.substring(0, 100),
+              last_message_from_me: true,
+            })
+            .eq('id', conversationId);
+        }
+
+        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'send-image': {
+        const { base64, caption, fileName, mediaUrl } = body;
+        
+        let imageBase64 = base64;
+        
+        // If we received a mediaUrl (from storage), fetch and convert to base64
+        if (mediaUrl && !base64) {
+          try {
+            const imageResponse = await fetch(mediaUrl);
+            const arrayBuffer = await imageResponse.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            imageBase64 = btoa(binary);
+          } catch (err) {
+            console.error('Error fetching image from URL:', err);
+            return new Response(JSON.stringify({ error: 'Failed to fetch image' }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+
+        const response = await fetch(
+          `${WAPI_BASE_URL}/message/send-image?instanceId=${instance_id}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${instance_token}`,
+            },
+            body: JSON.stringify({
+              phone: phone,
+              base64: imageBase64,
+              caption: caption || '',
+            }),
+          }
+        );
+
+        const result = await response.json();
+        console.log('W-API send-image response:', result);
+
+        if (!response.ok || result.error) {
+          return new Response(JSON.stringify({ error: result.message || 'Failed to send image' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Save message to database
+        if (conversationId) {
+          await supabase
+            .from('wapi_messages')
+            .insert({
+              conversation_id: conversationId,
+              message_id: result.messageId,
+              from_me: true,
+              message_type: 'image',
+              content: caption || '[Imagem]',
+              media_url: mediaUrl || null,
+              status: 'sent',
+              timestamp: new Date().toISOString(),
+            });
+
+          await supabase
+            .from('wapi_conversations')
+            .update({ 
+              last_message_at: new Date().toISOString(),
+              last_message_content: caption ? `📷 ${caption.substring(0, 90)}` : '📷 Imagem',
+              last_message_from_me: true,
+            })
+            .eq('id', conversationId);
+        }
+
+        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'send-audio': {
+        const { base64: audioBase64, mediaUrl: audioMediaUrl } = body;
+        
+        let finalAudioBase64 = audioBase64;
+        
+        // If we received a mediaUrl (from storage), fetch and convert to base64
+        if (audioMediaUrl && !audioBase64) {
+          try {
+            const audioResponse = await fetch(audioMediaUrl);
+            const arrayBuffer = await audioResponse.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            finalAudioBase64 = btoa(binary);
+          } catch (err) {
+            console.error('Error fetching audio from URL:', err);
+            return new Response(JSON.stringify({ error: 'Failed to fetch audio' }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+
+        const response = await fetch(
+          `${WAPI_BASE_URL}/message/send-audio?instanceId=${instance_id}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${instance_token}`,
+            },
+            body: JSON.stringify({
+              phone: phone,
+              base64: finalAudioBase64,
+            }),
+          }
+        );
+
+        const result = await response.json();
+        console.log('W-API send-audio response:', result);
+
+        if (!response.ok || result.error) {
+          return new Response(JSON.stringify({ error: result.message || 'Failed to send audio' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Save message to database
+        if (conversationId) {
+          await supabase
+            .from('wapi_messages')
+            .insert({
+              conversation_id: conversationId,
+              message_id: result.messageId,
+              from_me: true,
+              message_type: 'audio',
+              content: '[Áudio]',
+              media_url: audioMediaUrl || null,
+              status: 'sent',
+              timestamp: new Date().toISOString(),
+            });
+
+          await supabase
+            .from('wapi_conversations')
+            .update({ 
+              last_message_at: new Date().toISOString(),
+              last_message_content: '🎤 Áudio',
+              last_message_from_me: true,
+            })
+            .eq('id', conversationId);
+        }
+
+        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'send-document': {
+        const { base64: docBase64, fileName: docFileName, mediaUrl: docMediaUrl } = body;
+        
+        let finalDocBase64 = docBase64;
+        
+        // If we received a mediaUrl (from storage), fetch and convert to base64
+        if (docMediaUrl && !docBase64) {
+          try {
+            const docResponse = await fetch(docMediaUrl);
+            const arrayBuffer = await docResponse.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            finalDocBase64 = btoa(binary);
+          } catch (err) {
+            console.error('Error fetching document from URL:', err);
+            return new Response(JSON.stringify({ error: 'Failed to fetch document' }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+
+        const response = await fetch(
+          `${WAPI_BASE_URL}/message/send-document?instanceId=${instance_id}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${instance_token}`,
+            },
+            body: JSON.stringify({
+              phone: phone,
+              base64: finalDocBase64,
+              fileName: docFileName || 'document',
+            }),
+          }
+        );
+
+        const result = await response.json();
+        console.log('W-API send-document response:', result);
+
+        if (!response.ok || result.error) {
+          return new Response(JSON.stringify({ error: result.message || 'Failed to send document' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Save message to database
+        if (conversationId) {
+          await supabase
+            .from('wapi_messages')
+            .insert({
+              conversation_id: conversationId,
+              message_id: result.messageId,
+              from_me: true,
+              message_type: 'document',
+              content: docFileName || '[Documento]',
+              media_url: docMediaUrl || null,
+              status: 'sent',
+              timestamp: new Date().toISOString(),
+            });
+
+          await supabase
+            .from('wapi_conversations')
+            .update({ 
+              last_message_at: new Date().toISOString(),
+              last_message_content: `📄 ${docFileName || 'Documento'}`,
+              last_message_from_me: true,
+            })
             .eq('id', conversationId);
         }
 
