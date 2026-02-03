@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -42,6 +42,7 @@ export interface LeadFilters {
 
 export default function Admin() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -216,6 +217,37 @@ export default function Admin() {
 
     fetchLeads();
   }, [filters, refreshKey, role, canViewAll, allowedUnits, isLoadingUnitPerms]);
+
+  // Handle lead ID from URL parameters (deep linking from WhatsApp)
+  useEffect(() => {
+    const leadId = searchParams.get('lead');
+    if (leadId && leads.length > 0 && !isLoadingLeads) {
+      const lead = leads.find(l => l.id === leadId);
+      if (lead) {
+        setSelectedLead(lead);
+        setIsDetailOpen(true);
+        // Clear the URL parameter after opening
+        searchParams.delete('lead');
+        setSearchParams(searchParams, { replace: true });
+      } else {
+        // Lead not in current view - fetch it directly
+        supabase
+          .from('campaign_leads')
+          .select('*')
+          .eq('id', leadId)
+          .single()
+          .then(({ data }) => {
+            if (data) {
+              setSelectedLead(data as Lead);
+              setIsDetailOpen(true);
+            }
+            // Clear the URL parameter
+            searchParams.delete('lead');
+            setSearchParams(searchParams, { replace: true });
+          });
+      }
+    }
+  }, [leads, isLoadingLeads, searchParams, setSearchParams]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

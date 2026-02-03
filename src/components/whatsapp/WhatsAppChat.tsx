@@ -11,8 +11,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { 
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
-  ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
-  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff, GripVertical
+  ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile, ExternalLink,
+  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -1932,9 +1932,19 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       <p className="text-xs text-muted-foreground">{linkedLead.whatsapp}</p>
                     </div>
                   </div>
-                  <Button variant="destructive" size="sm" onClick={unlinkLead}>
-                    Desvincular
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.open(`/admin?lead=${linkedLead.id}`, '_blank')}
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      Ver no CRM
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={unlinkLead}>
+                      Desvincular
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Lead Status Classification */}
