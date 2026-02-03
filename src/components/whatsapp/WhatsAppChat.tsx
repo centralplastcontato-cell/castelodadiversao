@@ -101,6 +101,9 @@ interface WhatsAppChatProps {
 }
 
 // Component for downloading media that wasn't stored properly
+// Now uses the MediaProgressIndicator for visual progress
+import { MediaProgressIndicator } from "@/components/whatsapp/MediaProgressIndicator";
+
 function MediaDownloadButton({
   messageId,
   content,
@@ -116,94 +119,16 @@ function MediaDownloadButton({
   selectedInstance: WapiInstance | null;
   onDownloadSuccess: (url: string) => void;
 }) {
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleDownload = async () => {
-    if (!messageId || !selectedInstance) {
-      setError('Dados insuficientes para download');
-      return;
-    }
-
-    setIsDownloading(true);
-    setError(null);
-
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('wapi-send', {
-        body: {
-          action: 'download-media',
-          messageId,
-          instanceId: selectedInstance.instance_id,
-          instanceToken: selectedInstance.instance_token,
-        },
-      });
-
-      if (fnError || !data?.success) {
-        throw new Error(data?.error || fnError?.message || 'Falha ao baixar');
-      }
-
-      onDownloadSuccess(data.url);
-      
-      // Also update in database
-      await supabase
-        .from('wapi_messages')
-        .update({ media_url: data.url })
-        .eq('message_id', messageId);
-
-    } catch (err) {
-      console.error('Download error:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao baixar');
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const iconMap = {
-    document: FileText,
-    audio: Mic,
-    video: FileText,
-    image: ImageIcon,
-  };
-  const Icon = iconMap[mediaType];
-
   return (
-    <div className={cn(
-      "flex items-center gap-2 p-2 rounded border",
-      fromMe ? "border-primary-foreground/30" : "border-border"
-    )}>
-      <Icon className="w-5 h-5 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{content || 'Arquivo'}</p>
-        {error ? (
-          <p className={cn(
-            "text-xs text-destructive",
-            fromMe && "text-red-200"
-          )}>
-            {error}
-          </p>
-        ) : (
-          <p className={cn(
-            "text-xs",
-            fromMe ? "text-primary-foreground/60" : "text-muted-foreground"
-          )}>
-            {isDownloading ? 'Baixando...' : 'Clique para tentar baixar'}
-          </p>
-        )}
-      </div>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="shrink-0 h-7 w-7"
-        onClick={handleDownload}
-        disabled={isDownloading || !messageId}
-      >
-        {isDownloading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <ExternalLink className="w-4 h-4" />
-        )}
-      </Button>
-    </div>
+    <MediaProgressIndicator
+      messageId={messageId}
+      mediaType={mediaType}
+      content={content}
+      fromMe={fromMe}
+      instanceId={selectedInstance?.instance_id}
+      instanceToken={selectedInstance?.instance_token}
+      onDownloadComplete={onDownloadSuccess}
+    />
   );
 }
 
