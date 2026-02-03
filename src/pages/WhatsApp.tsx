@@ -174,9 +174,9 @@ export default function WhatsApp() {
     );
   }
 
-  // Desktop layout
+  // Desktop layout - start collapsed for more chat space
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <AdminSidebar 
           canManageUsers={canManageUsers} 
@@ -186,10 +186,9 @@ export default function WhatsApp() {
         />
         
         <SidebarInset className="flex-1 flex flex-col">
-          {/* Desktop Header */}
+          {/* Desktop Header - minimal */}
           <header className="bg-card border-b border-border sticky top-0 z-10">
             <div className="px-4 py-3 flex items-center gap-4">
-              <SidebarTrigger />
               <div>
                 <h1 className="font-display font-bold text-foreground text-lg">WhatsApp</h1>
                 <p className="text-sm text-muted-foreground">{currentUserProfile?.full_name || user.email}</p>
@@ -197,7 +196,7 @@ export default function WhatsApp() {
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col p-6">
+          <main className="flex-1 flex flex-col p-4">
             <WhatsAppChat userId={user.id} allowedUnits={canViewAll ? ['all'] : allowedUnits} />
           </main>
         </SidebarInset>
