@@ -79,17 +79,22 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'send-text': {
         // Send text message via W-API
+        // Ensure proper UTF-8 encoding for emojis and special characters
+        const textEncoder = new TextEncoder();
+        const encodedMessage = textEncoder.encode(message);
+        const decodedMessage = new TextDecoder('utf-8').decode(encodedMessage);
+        
         const response = await fetch(
           `${WAPI_BASE_URL}/message/send-text?instanceId=${instance_id}`,
           {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type': 'application/json; charset=utf-8',
               'Authorization': `Bearer ${instance_token}`,
             },
             body: JSON.stringify({
               phone: phone,
-              message: message,
+              message: decodedMessage,
             }),
           }
         );
