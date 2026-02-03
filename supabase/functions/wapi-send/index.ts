@@ -393,7 +393,27 @@ Deno.serve(async (req) => {
           });
         }
 
-        console.log('Sending document to W-API, phone:', phone, 'url:', docMediaUrl, 'fileName:', docFileName);
+        // Extract file extension from fileName or URL
+        let fileExtension = '';
+        if (docFileName) {
+          const parts = docFileName.split('.');
+          if (parts.length > 1) {
+            fileExtension = parts[parts.length - 1].toLowerCase();
+          }
+        }
+        
+        // Fallback: try to extract from URL if no extension found
+        if (!fileExtension && docMediaUrl) {
+          const urlParts = docMediaUrl.split('.');
+          if (urlParts.length > 1) {
+            const lastPart = urlParts[urlParts.length - 1].split('?')[0]; // Remove query params
+            if (lastPart.length <= 5) { // Reasonable extension length
+              fileExtension = lastPart.toLowerCase();
+            }
+          }
+        }
+
+        console.log('Sending document to W-API, phone:', phone, 'url:', docMediaUrl, 'fileName:', docFileName, 'extension:', fileExtension);
 
         const response = await fetch(
           `${WAPI_BASE_URL}/message/send-document?instanceId=${instance_id}`,
@@ -405,8 +425,9 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               phone: phone,
-              document: docMediaUrl, // W-API expects 'document' field with URL
+              document: docMediaUrl,
               fileName: docFileName || 'document',
+              extension: fileExtension || 'pdf', // W-API requires extension field
             }),
           }
         );
