@@ -23,6 +23,7 @@ import {
   MoreVertical,
   Phone,
   AlertCircle,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
@@ -38,6 +39,7 @@ interface KanbanCardProps {
   onStatusChange: (leadId: string, newStatus: LeadStatus) => void;
   onNameUpdate: (leadId: string, newName: string) => Promise<void>;
   onDescriptionUpdate: (leadId: string, newDescription: string) => Promise<void>;
+  onTransfer?: (lead: Lead) => void;
   getPreviousStatus: (status: LeadStatus) => LeadStatus | null;
   getNextStatus: (status: LeadStatus) => LeadStatus | null;
 }
@@ -52,6 +54,7 @@ export function KanbanCard({
   onStatusChange,
   onNameUpdate,
   onDescriptionUpdate,
+  onTransfer,
   getPreviousStatus,
   getNextStatus,
 }: KanbanCardProps) {
@@ -415,6 +418,21 @@ export function KanbanCard({
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Editar observações
               </DropdownMenuItem>
+            )}
+            
+            {canEdit && onTransfer && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTransfer(lead);
+                  }}
+                >
+                  <ArrowRightLeft className="w-4 h-4 mr-2" />
+                  Transferir lead
+                </DropdownMenuItem>
+              </>
             )}
             
             <DropdownMenuSeparator />

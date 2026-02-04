@@ -11,6 +11,7 @@ import { LeadsFilters } from "@/components/admin/LeadsFilters";
 import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { LeadDetailSheet } from "@/components/admin/LeadDetailSheet";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { TransferLeadDialog } from "@/components/admin/TransferLeadDialog";
 import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { MetricsCards } from "@/components/admin/MetricsCards";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,8 @@ export default function Admin() {
   const [responsaveis, setResponsaveis] = useState<UserWithRole[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [transferLead, setTransferLead] = useState<Lead | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -267,6 +270,11 @@ export default function Admin() {
     setIsDetailOpen(true);
   };
 
+  const handleTransferClick = (lead: Lead) => {
+    setTransferLead(lead);
+    setIsTransferOpen(true);
+  };
+
   const handleStatusChange = (leadId: string, newStatus: LeadStatus) => {
     setLeads((prev) =>
       prev.map((lead) =>
@@ -442,12 +450,23 @@ export default function Admin() {
                 canEdit={canEdit}
                 canEditName={canEditName}
                 canEditDescription={canEditDescription}
+                onTransfer={canEdit ? handleTransferClick : undefined}
               />
             </TabsContent>
           </Tabs>
         </main>
 
         <LeadDetailSheet lead={selectedLead} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} onUpdate={handleRefresh} responsaveis={responsaveis} currentUserId={user.id} currentUserName={currentUserProfile?.full_name || user.email || ""} canEdit={canEdit} />
+        
+        <TransferLeadDialog
+          lead={transferLead}
+          isOpen={isTransferOpen}
+          onClose={() => setIsTransferOpen(false)}
+          onSuccess={handleRefresh}
+          responsaveis={responsaveis}
+          currentUserId={user.id}
+          currentUserName={currentUserProfile?.full_name || user.email || ""}
+        />
       </div>
     );
   }
@@ -546,12 +565,23 @@ export default function Admin() {
                   canEdit={canEdit}
                   canEditName={canEditName}
                   canEditDescription={canEditDescription}
+                  onTransfer={canEdit ? handleTransferClick : undefined}
                 />
               </TabsContent>
             </Tabs>
           </main>
 
           <LeadDetailSheet lead={selectedLead} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} onUpdate={handleRefresh} responsaveis={responsaveis} currentUserId={user.id} currentUserName={currentUserProfile?.full_name || user.email || ""} canEdit={canEdit} />
+          
+          <TransferLeadDialog
+            lead={transferLead}
+            isOpen={isTransferOpen}
+            onClose={() => setIsTransferOpen(false)}
+            onSuccess={handleRefresh}
+            responsaveis={responsaveis}
+            currentUserId={user.id}
+            currentUserName={currentUserProfile?.full_name || user.email || ""}
+          />
         </SidebarInset>
       </div>
     </SidebarProvider>

@@ -11,6 +11,7 @@ interface LeadsKanbanProps {
   onStatusChange: (leadId: string, newStatus: LeadStatus) => void;
   onNameUpdate?: (leadId: string, newName: string) => Promise<void>;
   onDescriptionUpdate?: (leadId: string, newDescription: string) => Promise<void>;
+  onTransfer?: (lead: Lead) => void;
   canEdit: boolean;
   canEditName?: boolean;
   canEditDescription?: boolean;
@@ -23,6 +24,7 @@ export function LeadsKanban({
   onStatusChange,
   onNameUpdate,
   onDescriptionUpdate,
+  onTransfer,
   canEdit,
   canEditName = false,
   canEditDescription = false,
@@ -134,6 +136,7 @@ export function LeadsKanban({
                         onStatusChange={onStatusChange}
                         onNameUpdate={handleNameUpdate}
                         onDescriptionUpdate={handleDescriptionUpdate}
+                        onTransfer={onTransfer}
                         getPreviousStatus={getPreviousStatus}
                         getNextStatus={getNextStatus}
                       />
