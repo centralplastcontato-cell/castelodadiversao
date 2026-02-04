@@ -15,7 +15,7 @@ import {
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
   Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2,
-  CheckCircle, CalendarCheck, Briefcase
+  CheckCircle, CalendarCheck, Briefcase, FileCheck
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -150,7 +150,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'favorites'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'oe' | 'favorites'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -170,6 +170,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [closedLeadConversationIds, setClosedLeadConversationIds] = useState<Set<string>>(new Set());
+  const [orcamentoEnviadoConversationIds, setOrcamentoEnviadoConversationIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -538,12 +539,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         .filter((id): id is string => id !== null);
       
       if (leadIds.length > 0) {
-        // Find leads with status 'fechado'
+        // Find leads with status 'fechado' and 'orcamento_enviado'
         const { data: closedLeads } = await supabase
           .from("campaign_leads")
           .select("id")
           .in("id", leadIds)
           .eq("status", "fechado");
+        
+        const { data: oeLeads } = await supabase
+          .from("campaign_leads")
+          .select("id")
+          .in("id", leadIds)
+          .eq("status", "orcamento_enviado");
         
         if (closedLeads) {
           const closedLeadIds = new Set(closedLeads.map(l => l.id));
@@ -553,6 +560,16 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
               .map((conv: Conversation) => conv.id)
           );
           setClosedLeadConversationIds(closedConvIds);
+        }
+        
+        if (oeLeads) {
+          const oeLeadIds = new Set(oeLeads.map(l => l.id));
+          const oeConvIds = new Set(
+            data
+              .filter((conv: Conversation) => conv.lead_id && oeLeadIds.has(conv.lead_id))
+              .map((conv: Conversation) => conv.id)
+          );
+          setOrcamentoEnviadoConversationIds(oeConvIds);
         }
       }
       
@@ -1212,6 +1229,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       if (filter === 'unread') return matchesSearch && conv.unread_count > 0;
       if (filter === 'closed') return matchesSearch && conv.is_closed;
       if (filter === 'fechados') return matchesSearch && closedLeadConversationIds.has(conv.id);
+      if (filter === 'oe') return matchesSearch && orcamentoEnviadoConversationIds.has(conv.id);
       if (filter === 'visitas') return matchesSearch && conv.has_scheduled_visit;
       if (filter === 'freelancer') return matchesSearch && conv.is_freelancer;
       if (filter === 'favorites') return matchesSearch && conv.is_favorite;
@@ -1466,6 +1484,20 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   )}
                 </Button>
                 <Button 
+                  variant={filter === 'oe' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('oe')}
+                >
+                  <FileCheck className="w-3 h-3 mr-1" />
+                  O.E
+                  {orcamentoEnviadoConversationIds.size > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-purple-500/20 text-purple-700">
+                      {orcamentoEnviadoConversationIds.size}
+                    </Badge>
+                  )}
+                </Button>
+                <Button
                   variant={filter === 'visitas' ? 'secondary' : 'ghost'} 
                   size="sm" 
                   className="h-7 text-xs"
@@ -1664,6 +1696,20 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       )}
                     </Button>
                     <Button 
+                      variant={filter === 'oe' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('oe')}
+                    >
+                      <FileCheck className="w-3 h-3 mr-1" />
+                      O.E
+                      {orcamentoEnviadoConversationIds.size > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-purple-500/20 text-purple-700">
+                          {orcamentoEnviadoConversationIds.size}
+                        </Badge>
+                      )}
+                    </Button>
+                    <Button
                       variant={filter === 'visitas' ? 'secondary' : 'ghost'} 
                       size="sm" 
                       className="h-7 text-xs"
