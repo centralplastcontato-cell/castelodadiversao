@@ -175,7 +175,6 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [orcamentoEnviadoConversationIds, setOrcamentoEnviadoConversationIds] = useState<Set<string>>(new Set());
   const [conversationLeadsMap, setConversationLeadsMap] = useState<Record<string, Lead | null>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -224,13 +223,17 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
-    // Find the ScrollArea viewport and scroll to bottom
-    const viewport = messagesContainerRef.current?.closest('[data-radix-scroll-area-viewport]');
-    if (viewport) {
-      viewport.scrollTop = viewport.scrollHeight;
-    } else {
-      // Fallback: try scrollIntoView
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Find the ScrollArea viewport through the messagesEndRef
+    const endElement = messagesEndRef.current;
+    if (endElement) {
+      // Find the scrollable viewport parent
+      const viewport = endElement.closest('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+      } else {
+        // Fallback: try scrollIntoView
+        endElement.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
@@ -2540,7 +2543,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
                   {/* Messages */}
                   <ScrollArea className="flex-1 bg-muted/30 relative">
-                    <div ref={messagesContainerRef} className="space-y-2 sm:space-y-3 p-3 sm:p-4">
+                    <div className="space-y-2 sm:space-y-3 p-3 sm:p-4">
                       {messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                           <MessageSquare className="w-10 h-10 text-muted-foreground mb-3" />
@@ -3267,7 +3270,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 </div>
 
                 <ScrollArea className="flex-1 bg-muted/30 relative">
-                  <div ref={messagesContainerRef} className="space-y-2 p-3">
+                  <div className="space-y-2 p-3">
                     {messages.map((msg) => (
                       <div
                         key={msg.id}
