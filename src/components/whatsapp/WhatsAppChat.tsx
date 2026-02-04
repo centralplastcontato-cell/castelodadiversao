@@ -534,35 +534,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     searchLeads(searchTerm);
   };
 
-  const unlinkLead = async () => {
-    if (!selectedConversation) return;
-
-    const { error } = await supabase
-      .from('wapi_conversations')
-      .update({ lead_id: null })
-      .eq('id', selectedConversation.id);
-
-    if (error) {
-      toast({
-        title: "Erro ao desvincular",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Update local state
-    setSelectedConversation({ ...selectedConversation, lead_id: null });
-    setConversations(prev => 
-      prev.map(c => c.id === selectedConversation.id ? { ...c, lead_id: null } : c)
-    );
-    setLinkedLead(null);
-
-    toast({
-      title: "Lead desvinculado",
-      description: "A conversa não está mais vinculada a nenhum lead.",
-    });
-  };
 
   // Create a new lead and classify it directly
   const createAndClassifyLead = async (status: string) => {
@@ -2707,15 +2678,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   </div>
                 </div>
 
-                {/* Unlink Action */}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={unlinkLead}
-                  className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                >
-                  Desvincular lead
-                </Button>
               </div>
             ) : (
               <>
