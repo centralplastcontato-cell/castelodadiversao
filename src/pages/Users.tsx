@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
-import { usePermissions } from "@/hooks/usePermissions";
 import { UserWithRole, AppRole, ROLE_LABELS } from "@/types/crm";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { Button } from "@/components/ui/button";
@@ -95,8 +94,6 @@ export default function UsersPage() {
   const [newUserRole, setNewUserRole] = useState<AppRole>("comercial");
 
   const { isAdmin, isLoading: isLoadingRole, hasFetched, error: roleError, canManageUsers } = useUserRole(user?.id);
-  const { hasPermission } = usePermissions(user?.id);
-  const canViewTeam = isAdmin || hasPermission('equipe.view');
   const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
@@ -901,8 +898,7 @@ export default function UsersPage() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AdminSidebar 
-          canManageUsers={canManageUsers}
-          canViewTeam={canViewTeam}
+          canManageUsers={canManageUsers} 
           currentUserName={currentUserProfile?.full_name || user.email || ""} 
           onRefresh={handleRefresh} 
           onLogout={handleLogout} 

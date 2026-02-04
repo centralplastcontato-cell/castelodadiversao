@@ -7,7 +7,6 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CentralAtendimento from "./pages/CentralAtendimento";
 import Configuracoes from "./pages/Configuracoes";
-import Equipe from "./pages/Equipe";
 import Users from "./pages/Users";
 import UserSettings from "./pages/UserSettings";
 import LandingPage from "./pages/LandingPage";
@@ -26,7 +25,6 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/atendimento" element={<CentralAtendimento />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
-          <Route path="/equipe" element={<Equipe />} />
           <Route path="/dashboard" element={<Index />} />
           <Route path="/users" element={<Users />} />
           <Route path="/promo" element={<LandingPage />} />

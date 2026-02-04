@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUnitPermissions } from "@/hooks/useUnitPermissions";
-import { usePermissions } from "@/hooks/usePermissions";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
@@ -37,10 +36,8 @@ export default function WhatsApp() {
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const { role, isLoading: isLoadingRole, canManageUsers, isAdmin } = useUserRole(user?.id);
+  const { role, isLoading: isLoadingRole, canManageUsers } = useUserRole(user?.id);
   const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
-  const { hasPermission } = usePermissions(user?.id);
-  const canViewTeam = isAdmin || hasPermission('equipe.view');
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -182,8 +179,7 @@ export default function WhatsApp() {
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <AdminSidebar 
-          canManageUsers={canManageUsers}
-          canViewTeam={canViewTeam}
+          canManageUsers={canManageUsers} 
           currentUserName={currentUserProfile?.full_name || user.email || ""} 
           onRefresh={handleRefresh} 
           onLogout={handleLogout} 

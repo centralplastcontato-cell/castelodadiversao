@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
-import { usePermissions } from "@/hooks/usePermissions";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,9 +49,7 @@ export default function UserSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   
-  const { role, isLoading: isLoadingRole, canManageUsers, isAdmin } = useUserRole(user?.id);
-  const { hasPermission } = usePermissions(user?.id);
-  const canViewTeam = isAdmin || hasPermission('equipe.view');
+  const { role, isLoading: isLoadingRole, canManageUsers } = useUserRole(user?.id);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -524,8 +521,7 @@ export default function UserSettings() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AdminSidebar 
-          canManageUsers={canManageUsers}
-          canViewTeam={canViewTeam}
+          canManageUsers={canManageUsers} 
           currentUserName={fullName || user.email || ""} 
           onRefresh={handleRefresh} 
           onLogout={handleLogout} 

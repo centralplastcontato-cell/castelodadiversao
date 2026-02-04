@@ -73,7 +73,7 @@ export default function CentralAtendimento() {
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"chat" | "leads" | "equipe">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "leads">("chat");
   const [unreadCount, setUnreadCount] = useState(0);
   const [newLeadsCount, setNewLeadsCount] = useState(0);
   const [initialPhone, setInitialPhone] = useState<string | null>(null);
@@ -101,7 +101,6 @@ export default function CentralAtendimento() {
   const { hasPermission } = usePermissions(user?.id);
   const canEditName = isAdmin || hasPermission('leads.edit.name');
   const canEditDescription = isAdmin || hasPermission('leads.edit.description');
-  const canViewTeam = isAdmin || hasPermission('equipe.view');
   
   // Sound notification for new leads
   useLeadNotifications();
@@ -586,8 +585,8 @@ export default function CentralAtendimento() {
         </header>
 
         <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads" | "equipe")} className="flex-1 flex flex-col overflow-hidden min-h-0">
-            <TabsList className="mx-3 mt-3 grid grid-cols-3">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <TabsList className="mx-3 mt-3 grid grid-cols-2">
               <TabsTrigger value="chat" className="flex items-center gap-1.5 text-xs relative">
                 <MessageSquare className="w-4 h-4" />
                 Chat
@@ -608,10 +607,6 @@ export default function CentralAtendimento() {
                     className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center rounded-full bg-blue-500 text-white"
                   />
                 )}
-              </TabsTrigger>
-              <TabsTrigger value="equipe" className="flex items-center gap-1.5 text-xs">
-                <UsersIcon className="w-4 h-4" />
-                Equipe
               </TabsTrigger>
             </TabsList>
 
@@ -703,14 +698,6 @@ export default function CentralAtendimento() {
               )}
             </TabsContent>
 
-            <TabsContent value="equipe" className="flex-1 overflow-auto min-h-0 mt-0 px-3 py-4">
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <UsersIcon className="w-12 h-12 mb-4 opacity-50" />
-                <h2 className="text-lg font-semibold text-foreground mb-2">Equipe</h2>
-                <p className="text-sm max-w-xs">Gerencie sua equipe e acompanhe a performance dos colaboradores.</p>
-              </div>
-            </TabsContent>
-
           </Tabs>
         </main>
 
@@ -724,8 +711,7 @@ export default function CentralAtendimento() {
     <SidebarProvider>
       <div className="h-dvh flex w-full overflow-hidden">
         <AdminSidebar 
-          canManageUsers={canManageUsers}
-          canViewTeam={canViewTeam}
+          canManageUsers={canManageUsers} 
           currentUserName={currentUserProfile?.full_name || user.email || ""} 
           onRefresh={handleRefresh} 
           onLogout={handleLogout} 
@@ -775,15 +761,6 @@ export default function CentralAtendimento() {
                     )}
                   </Button>
                   <Button
-                    variant={activeTab === "equipe" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setActiveTab("equipe")}
-                    className="h-8 px-3"
-                  >
-                    <UsersIcon className="w-4 h-4 mr-1.5" />
-                    Equipe
-                  </Button>
-                  <Button
                     variant="ghost"
                     size="sm"
                     onClick={toggleNotifications}
@@ -824,7 +801,7 @@ export default function CentralAtendimento() {
           </header>
 
           <main className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads" | "equipe")} className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col overflow-hidden min-h-0">
               {/* TabsList removed - buttons are now in the header */}
 
               <TabsContent value="chat" className="flex-1 overflow-hidden min-h-0 mt-0">
@@ -915,14 +892,6 @@ export default function CentralAtendimento() {
                     />
                   </TabsContent>
                 </Tabs>
-              </TabsContent>
-
-              <TabsContent value="equipe" className="flex-1 overflow-auto min-h-0 mt-0">
-                <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
-                  <UsersIcon className="w-12 h-12 mb-4 opacity-50" />
-                  <h2 className="text-lg font-semibold text-foreground mb-2">Equipe</h2>
-                  <p className="text-sm max-w-xs">Gerencie sua equipe e acompanhe a performance dos colaboradores.</p>
-                </div>
               </TabsContent>
 
             </Tabs>
