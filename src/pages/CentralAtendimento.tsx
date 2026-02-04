@@ -408,9 +408,9 @@ export default function CentralAtendimento() {
   // Mobile layout with Sheet
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="h-dvh flex flex-col overflow-hidden bg-background">
         {/* Mobile Header */}
-        <header className="bg-card border-b border-border sticky top-0 z-10">
+        <header className="bg-card border-b border-border shrink-0 z-10">
           <div className="px-3 py-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -485,8 +485,8 @@ export default function CentralAtendimento() {
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col overflow-hidden min-h-0">
             <TabsList className="mx-3 mt-3 grid grid-cols-2">
               <TabsTrigger value="chat" className="flex items-center gap-1.5 text-xs relative">
                 <MessageSquare className="w-4 h-4" />
@@ -511,7 +511,7 @@ export default function CentralAtendimento() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="chat" className="flex-1 mt-0 p-0">
+            <TabsContent value="chat" className="flex-1 overflow-hidden min-h-0 mt-0 p-0">
               <WhatsAppChat 
                 userId={user.id} 
                 allowedUnits={canViewAll ? ['all'] : allowedUnits} 
@@ -520,7 +520,7 @@ export default function CentralAtendimento() {
               />
             </TabsContent>
 
-            <TabsContent value="leads" className="flex-1 mt-0 px-3 py-4 overflow-auto">
+            <TabsContent value="leads" className="flex-1 overflow-auto min-h-0 mt-0 px-3 py-4">
               {/* View Mode Toggle - at top like unit tabs in Chat */}
               <div className="flex items-center gap-2 mb-4">
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="flex-1">
@@ -608,7 +608,7 @@ export default function CentralAtendimento() {
   // Desktop layout with Sidebar
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="h-dvh flex w-full overflow-hidden">
         <AdminSidebar 
           canManageUsers={canManageUsers} 
           currentUserName={currentUserProfile?.full_name || user.email || ""} 
@@ -616,9 +616,9 @@ export default function CentralAtendimento() {
           onLogout={handleLogout} 
         />
         
-        <SidebarInset className="flex-1 flex flex-col">
+        <SidebarInset className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Desktop Header - Compact */}
-          <header className="bg-card border-b border-border sticky top-0 z-10">
+          <header className="bg-card border-b border-border shrink-0 z-10">
             <div className="px-4 py-2 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <SidebarTrigger />
@@ -641,8 +641,8 @@ export default function CentralAtendimento() {
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col p-4">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col">
+          <main className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col overflow-hidden min-h-0">
               <TabsList className="w-fit">
                 <TabsTrigger value="chat" className="flex items-center gap-2 relative">
                   <MessageSquare className="w-4 h-4" />
@@ -669,7 +669,7 @@ export default function CentralAtendimento() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="chat" className="flex-1 mt-3">
+              <TabsContent value="chat" className="flex-1 overflow-hidden min-h-0 mt-3">
                 <WhatsAppChat 
                   userId={user.id} 
                   allowedUnits={canViewAll ? ['all'] : allowedUnits}
@@ -678,7 +678,7 @@ export default function CentralAtendimento() {
                 />
               </TabsContent>
 
-              <TabsContent value="leads" className="flex-1 mt-3">
+              <TabsContent value="leads" className="flex-1 overflow-auto min-h-0 mt-3">
                 {/* View mode toggle - positioned at top like mobile */}
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")}>
                   <div className="mb-4">
