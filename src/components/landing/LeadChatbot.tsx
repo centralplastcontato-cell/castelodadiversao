@@ -257,32 +257,62 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
 
       try {
         const finalLeadData = { ...leadData, name: leadData.name, whatsapp: whatsappValue };
+        const cleanPhone = whatsappValue.replace(/\D/g, '');
+        const phoneVariants = [
+          cleanPhone,
+          cleanPhone.startsWith('55') ? cleanPhone.slice(2) : `55${cleanPhone}`,
+        ];
         
-        // Se a unidade for "As duas", criar dois leads separados
+        // Função auxiliar para criar ou atualizar lead
+        const upsertLead = async (unit: string) => {
+          // Verificar se já existe lead com este telefone para esta unidade
+          const { data: existingLead } = await supabase
+            .from("campaign_leads")
+            .select("id, whatsapp")
+            .eq("unit", unit)
+            .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (existingLead) {
+            // Atualizar lead existente
+            const { error } = await supabase
+              .from("campaign_leads")
+              .update({
+                name: leadData.name,
+                month: leadData.month,
+                day_of_month: leadData.dayOfMonth,
+                guests: leadData.guests,
+                campaign_id: campaignConfig.campaignId,
+                campaign_name: campaignConfig.campaignName,
+              })
+              .eq("id", existingLead.id);
+            if (error) throw error;
+            console.log(`Lead atualizado para ${unit}:`, existingLead.id);
+          } else {
+            // Criar novo lead
+            const { error } = await supabase.from("campaign_leads").insert({
+              name: leadData.name,
+              whatsapp: whatsappValue,
+              unit: unit,
+              month: leadData.month,
+              day_of_month: leadData.dayOfMonth,
+              guests: leadData.guests,
+              campaign_id: campaignConfig.campaignId,
+              campaign_name: campaignConfig.campaignName,
+            });
+            if (error) throw error;
+            console.log(`Novo lead criado para ${unit}`);
+          }
+        };
+        
+        // Se a unidade for "As duas", processar ambas as unidades
         if (leadData.unit === "As duas") {
-          const baseLeadData = {
-            name: leadData.name,
-            whatsapp: whatsappValue,
-            month: leadData.month,
-            day_of_month: leadData.dayOfMonth,
-            guests: leadData.guests,
-            campaign_id: campaignConfig.campaignId,
-            campaign_name: campaignConfig.campaignName,
-          };
-
-          // Inserir lead para Manchester
-          const { error: manchesterError } = await supabase.from("campaign_leads").insert({
-            ...baseLeadData,
-            unit: "Manchester",
-          });
-          if (manchesterError) throw manchesterError;
-
-          // Inserir lead para Trujillo
-          const { error: trujilloError } = await supabase.from("campaign_leads").insert({
-            ...baseLeadData,
-            unit: "Trujillo",
-          });
-          if (trujilloError) throw trujilloError;
+          await Promise.all([
+            upsertLead("Manchester"),
+            upsertLead("Trujillo"),
+          ]);
 
           // Enviar mensagem para ambas as unidades
           await Promise.all([
@@ -290,18 +320,8 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
             sendWelcomeMessage(whatsappValue, "Trujillo", finalLeadData),
           ]);
         } else {
-          // Comportamento padrão: criar um único lead
-          const { error } = await supabase.from("campaign_leads").insert({
-            name: leadData.name,
-            whatsapp: whatsappValue,
-            unit: leadData.unit,
-            month: leadData.month,
-            day_of_month: leadData.dayOfMonth,
-            guests: leadData.guests,
-            campaign_id: campaignConfig.campaignId,
-            campaign_name: campaignConfig.campaignName,
-          });
-          if (error) throw error;
+          // Comportamento padrão: processar uma única unidade
+          await upsertLead(leadData.unit!);
 
           // Enviar mensagem automática para a unidade selecionada
           if (leadData.unit) {
