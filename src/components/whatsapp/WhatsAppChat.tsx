@@ -2648,7 +2648,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     {linkedLead.created_at && (
                       <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Clock className="w-3.5 h-3.5" />
-                        <span>{format(new Date(linkedLead.created_at), "dd/MM/yy", { locale: ptBR })}</span>
+                        <span>{format(new Date(linkedLead.created_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
                       </div>
                     )}
                   </div>
