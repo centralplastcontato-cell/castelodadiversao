@@ -1628,15 +1628,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           </Button>
                         ))}
                         <div className="ml-auto flex items-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => window.open(`/admin?lead=${linkedLead.id}`, '_blank')}
-                          >
-                            <ExternalLink className="w-3 h-3 mr-1" />
-                            CRM
-                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
