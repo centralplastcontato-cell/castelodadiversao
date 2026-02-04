@@ -22,10 +22,9 @@ import {
   X,
   MoreVertical,
   Phone,
-  MapPin,
-  Calendar,
-  Users,
+  AlertCircle,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -66,6 +65,13 @@ export function KanbanCard({
 
   const hasPrev = getPreviousStatus(lead.status) !== null;
   const hasNext = getNextStatus(lead.status) !== null;
+  
+  // Check for incomplete lead data
+  const missingFields: string[] = [];
+  if (!lead.unit) missingFields.push("Unidade");
+  if (!lead.month) missingFields.push("Data");
+  if (!lead.guests) missingFields.push("Convidados");
+  const isIncomplete = missingFields.length > 0;
 
   useEffect(() => {
     if (isEditingName && inputRef.current) {
@@ -242,6 +248,16 @@ export function KanbanCard({
             ) : (
               <div className="flex items-center gap-1 flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{lead.name}</p>
+                {isIncomplete && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      <p>Faltando: {missingFields.join(", ")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 {canEditName && (
                   <Button
                     variant="ghost"
