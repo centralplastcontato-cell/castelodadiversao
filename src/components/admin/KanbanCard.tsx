@@ -415,7 +415,7 @@ export function KanbanCard({
 
       <div className="mt-2 pt-2 border-t border-border flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {format(new Date(lead.created_at), "dd/MM/yyyy", {
+          {format(new Date(lead.created_at), "dd/MM/yy 'às' HH:mm", {
             locale: ptBR,
           })}
         </p>
