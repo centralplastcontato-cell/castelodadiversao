@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { Wifi, MessageSquare, Bell, Bot, Settings, Lock } from "lucide-react";
+import { Wifi, MessageSquare, Bell, Bot, Settings, Lock, HelpCircle } from "lucide-react";
 import { ConnectionSection } from "./settings/ConnectionSection";
 import { MessagesSection } from "./settings/MessagesSection";
 import { NotificationsSection } from "./settings/NotificationsSection";
 import { AutomationsSection } from "./settings/AutomationsSection";
 import { AdvancedSection } from "./settings/AdvancedSection";
+import { VisualGuideSection } from "./settings/VisualGuideSection";
 import { useConfigPermissions } from "@/hooks/useConfigPermissions";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -51,14 +52,23 @@ const allConfigSections = [
     description: "Sincronização e logs",
     icon: Settings,
   },
+  {
+    id: "guide",
+    permissionKey: null as any, // Available to everyone
+    title: "Guia Visual",
+    description: "Legenda de ícones",
+    icon: HelpCircle,
+  },
 ];
 
 export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
   const { permissions, isLoading, hasAnyPermission } = useConfigPermissions(userId, isAdmin);
   
-  // Filter sections based on permissions
+  // Filter sections based on permissions (guide is always available)
   const configSections = useMemo(() => {
-    return allConfigSections.filter(section => permissions[section.permissionKey]);
+    return allConfigSections.filter(section => 
+      section.permissionKey === null || permissions[section.permissionKey]
+    );
   }, [permissions]);
 
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -82,6 +92,8 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
         return <AutomationsSection />;
       case "advanced":
         return <AdvancedSection userId={userId} isAdmin={isAdmin} />;
+      case "guide":
+        return <VisualGuideSection />;
       default:
         return null;
     }
