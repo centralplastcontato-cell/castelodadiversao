@@ -379,8 +379,8 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
                 className="h-10 w-auto"
               />
               <div>
-                <h3 className="font-display font-bold text-primary-foreground">Castelo da Diversão</h3>
-                <p className="text-sm text-primary-foreground/80">Online agora</p>
+                <h3 className="font-display font-bold bg-gradient-to-r from-yellow-300 via-white to-pink-200 bg-clip-text text-transparent drop-shadow-sm">Castelo da Diversão</h3>
+                <p className="text-sm text-white/90">Online agora</p>
               </div>
             </div>
             <button
