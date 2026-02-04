@@ -14,7 +14,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile, ExternalLink,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
-  Users, Calendar, MapPin, ArrowRightLeft
+  Users, Calendar, MapPin, ArrowRightLeft, Info
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -1633,7 +1633,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0">
-                                  <Users className="w-3 h-3 text-muted-foreground" />
+                                  <Info className="w-3 h-3 text-muted-foreground" />
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent align="start" className="w-72 p-3">
