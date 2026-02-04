@@ -43,7 +43,6 @@ export function AdminSidebar({
   const collapsed = state === "collapsed";
   const location = useLocation();
   const [isPinned, setIsPinned] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
 
   const allItems = canManageUsers 
     ? [...menuItems, { title: "Gerenciar Usuários", url: "/users", icon: Users }]
@@ -52,14 +51,12 @@ export function AdminSidebar({
   // Handle hover expand/collapse only when not pinned
   const handleMouseEnter = () => {
     if (!isPinned) {
-      setIsHovering(true);
       setOpen(true);
     }
   };
 
   const handleMouseLeave = () => {
-    if (!isPinned && isHovering) {
-      setIsHovering(false);
+    if (!isPinned) {
       setOpen(false);
     }
   };
@@ -67,21 +64,8 @@ export function AdminSidebar({
   const handlePinToggle = () => {
     const newPinned = !isPinned;
     setIsPinned(newPinned);
-    setIsHovering(false);
-    if (newPinned) {
-      setOpen(true);
-    } else {
-      setOpen(false);
-    }
+    setOpen(newPinned);
   };
-
-  // Ensure sidebar collapses when navigating (unless pinned)
-  useEffect(() => {
-    if (!isPinned) {
-      setOpen(false);
-      setIsHovering(false);
-    }
-  }, [location.pathname, isPinned, setOpen]);
 
   return (
     <Sidebar 
