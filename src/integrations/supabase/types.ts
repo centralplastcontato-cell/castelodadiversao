@@ -348,6 +348,7 @@ export type Database = {
           id: string
           instance_id: string
           is_closed: boolean | null
+          is_equipe: boolean
           is_favorite: boolean | null
           is_freelancer: boolean
           last_message_at: string | null
@@ -370,6 +371,7 @@ export type Database = {
           id?: string
           instance_id: string
           is_closed?: boolean | null
+          is_equipe?: boolean
           is_favorite?: boolean | null
           is_freelancer?: boolean
           last_message_at?: string | null
@@ -392,6 +394,7 @@ export type Database = {
           id?: string
           instance_id?: string
           is_closed?: boolean | null
+          is_equipe?: boolean
           is_favorite?: boolean | null
           is_freelancer?: boolean
           last_message_at?: string | null

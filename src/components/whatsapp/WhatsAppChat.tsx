@@ -90,6 +90,7 @@ interface Conversation {
   is_closed: boolean;
   has_scheduled_visit: boolean;
   is_freelancer: boolean;
+  is_equipe: boolean;
   last_message_content: string | null;
   last_message_from_me: boolean;
   bot_enabled: boolean | null;
@@ -151,7 +152,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'oe' | 'favorites'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -1245,6 +1246,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       if (filter === 'oe') return matchesSearch && orcamentoEnviadoConversationIds.has(conv.id);
       if (filter === 'visitas') return matchesSearch && conv.has_scheduled_visit;
       if (filter === 'freelancer') return matchesSearch && conv.is_freelancer;
+      if (filter === 'equipe') return matchesSearch && conv.is_equipe;
       if (filter === 'favorites') return matchesSearch && conv.is_favorite;
       // 'all' filter - show non-closed conversations only
       return matchesSearch && !conv.is_closed;
@@ -1325,6 +1327,30 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       description: newValue 
         ? "O contato foi classificado como freelancer." 
         : "A classificação de freelancer foi removida.",
+    });
+  };
+
+  const toggleEquipe = async (conv: Conversation) => {
+    const newValue = !conv.is_equipe;
+    
+    await supabase
+      .from('wapi_conversations')
+      .update({ is_equipe: newValue })
+      .eq('id', conv.id);
+
+    setConversations(prev => 
+      prev.map(c => c.id === conv.id ? { ...c, is_equipe: newValue } : c)
+    );
+
+    if (selectedConversation?.id === conv.id) {
+      setSelectedConversation({ ...selectedConversation, is_equipe: newValue });
+    }
+
+    toast({
+      title: newValue ? "Marcado como Equipe" : "Desmarcado como Equipe",
+      description: newValue 
+        ? "O contato foi classificado como membro da equipe." 
+        : "A classificação de equipe foi removida.",
     });
   };
 
@@ -1586,6 +1612,20 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     </Badge>
                   )}
                 </Button>
+                <Button 
+                  variant={filter === 'equipe' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('equipe')}
+                >
+                  <Users className="w-3 h-3 mr-1" />
+                  Equipe
+                  {conversations.filter(c => c.is_equipe).length > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-cyan-500/20 text-cyan-700">
+                      {conversations.filter(c => c.is_equipe).length}
+                    </Badge>
+                  )}
+                </Button>
                 <Button
                   variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
                   size="sm" 
@@ -1808,6 +1848,20 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         </Badge>
                       )}
                     </Button>
+                    <Button 
+                      variant={filter === 'equipe' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('equipe')}
+                    >
+                      <Users className="w-3 h-3 mr-1" />
+                      Equipe
+                      {conversations.filter(c => c.is_equipe).length > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-cyan-500/20 text-cyan-700">
+                          {conversations.filter(c => c.is_equipe).length}
+                        </Badge>
+                      )}
+                    </Button>
                     <Button
                       variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
                       size="sm" 
@@ -1918,6 +1972,19 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                 <Briefcase className={cn(
                                   "w-3 h-3",
                                   conv.is_freelancer ? "text-orange-600" : "text-muted-foreground"
+                                )} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleEquipe(conv);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
+                                title={conv.is_equipe ? "Desmarcar como Equipe" : "Marcar como Equipe"}
+                              >
+                                <Users className={cn(
+                                  "w-3 h-3",
+                                  conv.is_equipe ? "text-cyan-600" : "text-muted-foreground"
                                 )} />
                               </button>
                               <button
