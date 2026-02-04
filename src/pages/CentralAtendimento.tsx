@@ -447,7 +447,7 @@ export default function CentralAtendimento() {
         {/* Mobile Header */}
         <header className="bg-card border-b border-border shrink-0 z-10">
           <div className="px-3 py-3">
-            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                   <SheetTrigger asChild>
@@ -515,6 +515,24 @@ export default function CentralAtendimento() {
                   <img src={logoCastelo} alt="Castelo da Diversão" className="h-8 w-auto shrink-0" />
                   <h1 className="font-display font-bold text-foreground text-sm truncate">Central de Atendimento</h1>
                 </div>
+              </div>
+              
+              {/* Mobile notification controls */}
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleNotifications}
+                  className="h-9 w-9"
+                  title={notificationsEnabled ? "Desativar notificações" : "Ativar notificações"}
+                >
+                  {notificationsEnabled ? (
+                    <Bell className="w-5 h-5" />
+                  ) : (
+                    <BellOff className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </Button>
+                <NotificationBell />
               </div>
             </div>
           </div>
