@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNotifications } from "./useNotifications";
+import { useNotificationSounds } from "./useNotificationSounds";
 
 export interface AppNotification {
   id: string;
@@ -17,7 +18,8 @@ export function useAppNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const { notify: browserNotify, requestPermission } = useNotifications();
+  const { showBrowserNotification, requestPermission } = useNotifications({ soundEnabled: false });
+  const { playMessageSound, playLeadSound } = useNotificationSounds();
 
   const fetchNotifications = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -105,8 +107,15 @@ export function useAppNotifications() {
             setNotifications((prev) => [newNotification, ...prev]);
             setUnreadCount((prev) => prev + 1);
 
-            // Play sound and show browser notification
-            browserNotify({
+            // Play different sound based on notification type
+            if (newNotification.type === "lead_transfer" || newNotification.type === "new_lead") {
+              playLeadSound();
+            } else {
+              playMessageSound();
+            }
+
+            // Show browser notification
+            showBrowserNotification({
               title: newNotification.title,
               body: newNotification.message || "",
               tag: newNotification.id,
@@ -128,7 +137,7 @@ export function useAppNotifications() {
         supabase.removeChannel(channel);
       }
     };
-  }, [fetchNotifications, browserNotify]);
+  }, [fetchNotifications, playMessageSound, playLeadSound, showBrowserNotification]);
 
   return {
     notifications,
