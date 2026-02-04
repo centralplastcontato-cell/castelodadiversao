@@ -205,7 +205,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [searchedLeads, setSearchedLeads] = useState<Lead[]>([]);
   const [isSearchingLeads, setIsSearchingLeads] = useState(false);
   const [linkedLead, setLinkedLead] = useState<Lead | null>(null);
-  const [linkedLeadAccessDenied, setLinkedLeadAccessDenied] = useState(false);
   const [isCreatingLead, setIsCreatingLead] = useState(false);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [responsaveis, setResponsaveis] = useState<{user_id: string; full_name: string}[]>([]);
@@ -477,7 +476,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       };
     } else {
       setLinkedLead(null);
-      setLinkedLeadAccessDenied(false);
     }
   }, [selectedConversation?.id]);
 
@@ -537,7 +535,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const fetchLinkedLead = async (leadId: string | null, conversation?: Conversation | null) => {
     if (leadId) {
       // Lead already linked, just fetch it
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("campaign_leads")
         .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id")
         .eq("id", leadId)
@@ -545,11 +543,8 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
       if (data) {
         setLinkedLead(data as Lead);
-        setLinkedLeadAccessDenied(false);
       } else {
-        // Lead exists (has lead_id) but user can't access it (RLS)
         setLinkedLead(null);
-        setLinkedLeadAccessDenied(true);
       }
       return;
     }
@@ -592,12 +587,11 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
             description: `Conversa vinculada a ${matchingLead.name}`,
           });
         }
-      return;
+        return;
       }
     }
 
     setLinkedLead(null);
-    setLinkedLeadAccessDenied(false);
   };
 
   const searchLeads = async (query: string) => {
@@ -2615,30 +2609,12 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {linkedLead && !linkingConversationId 
-                ? "Lead vinculado" 
-                : linkedLeadAccessDenied && !linkingConversationId
-                  ? "Lead vinculado"
-                  : "Vincular a um lead"}
+              {linkedLead && !linkingConversationId ? "Lead vinculado" : "Vincular a um lead"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Show access denied message when lead exists but user can't see it */}
-            {linkedLeadAccessDenied && !linkingConversationId ? (
-              <div className="p-4 rounded-xl bg-muted border border-border text-center">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-muted-foreground/10 flex items-center justify-center">
-                    <Link2 className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Lead vinculado</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Esta conversa está vinculada a um lead de outra unidade que você não tem acesso.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : linkedLead && !linkingConversationId ? (
+            {/* Show linked lead if exists and not linking from list */}
+            {linkedLead && !linkingConversationId ? (
               <div className="space-y-4">
                 {/* Lead Info Card - Enhanced visual */}
                 <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20">
