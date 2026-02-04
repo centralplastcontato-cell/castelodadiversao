@@ -14,7 +14,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
-  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot
+  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -163,6 +163,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [selectedTransferUserId, setSelectedTransferUserId] = useState<string>("");
   const [isTransferring, setIsTransferring] = useState(false);
   const [currentUserName, setCurrentUserName] = useState<string>("");
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -182,9 +184,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     error: recordingError,
   } = useAudioRecorder({ maxDuration: 120 });
 
-  // Permissions hook - check if user can transfer leads
+  // Permissions hook - check if user can transfer leads and delete from chat
   const { hasPermission: hasUserPermission } = usePermissions(userId);
   const canTransferLeads = hasUserPermission('leads.transfer');
+  const canDeleteFromChat = hasUserPermission('leads.delete.from_chat');
 
   // Notifications hook - uses shared toggle state
   const { notificationsEnabled } = useChatNotificationToggle();
@@ -305,6 +308,71 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       });
     } finally {
       setIsTransferring(false);
+    }
+  };
+
+  // Delete lead and its associated conversation and messages
+  const handleDeleteLeadFromChat = async () => {
+    if (!selectedConversation) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // If there's a linked lead, delete its history and the lead itself
+      if (linkedLead) {
+        // First delete lead history (to avoid foreign key constraint)
+        await supabase
+          .from('lead_history')
+          .delete()
+          .eq('lead_id', linkedLead.id);
+        
+        // Delete the lead
+        const { error: leadError } = await supabase
+          .from('campaign_leads')
+          .delete()
+          .eq('id', linkedLead.id);
+        
+        if (leadError) throw leadError;
+      }
+      
+      // Delete all messages for this conversation
+      await supabase
+        .from('wapi_messages')
+        .delete()
+        .eq('conversation_id', selectedConversation.id);
+      
+      // Delete the conversation itself
+      const { error: convError } = await supabase
+        .from('wapi_conversations')
+        .delete()
+        .eq('id', selectedConversation.id);
+      
+      if (convError) throw convError;
+      
+      // Update local state - remove conversation from list
+      setConversations(prev => prev.filter(c => c.id !== selectedConversation.id));
+      
+      // Clear selection
+      setSelectedConversation(null);
+      setMessages([]);
+      setLinkedLead(null);
+      
+      toast({
+        title: linkedLead ? "Lead excluído" : "Conversa excluída",
+        description: linkedLead 
+          ? "O lead, suas mensagens e a conversa foram removidos permanentemente."
+          : "A conversa e suas mensagens foram removidas permanentemente.",
+      });
+    } catch (error: unknown) {
+      console.error("Error deleting lead/conversation:", error);
+      toast({
+        title: "Erro ao excluir",
+        description: error instanceof Error ? error.message : "Não foi possível excluir. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirmDialog(false);
     }
   };
 
@@ -1734,6 +1802,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                     Transferir Lead
                                   </Button>
                                 )}
+                                
+                                {canDeleteFromChat && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full text-xs h-7 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                                    onClick={() => setShowDeleteConfirmDialog(true)}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Excluir Lead
+                                  </Button>
+                                )}
                               </div>
                             ) : (
                               <div className="space-y-3">
@@ -1807,6 +1887,19 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                     {selectedConversation.bot_enabled !== false ? "Ativo" : "Inativo"}
                                   </Button>
                                 </div>
+                                
+                                {/* Delete button for unqualified contacts */}
+                                {canDeleteFromChat && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full text-xs h-7 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                                    onClick={() => setShowDeleteConfirmDialog(true)}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Excluir Conversa
+                                  </Button>
+                                )}
                               </div>
                             )}
                           </PopoverContent>
@@ -2845,6 +2938,61 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 </>
               ) : (
                 "Transferir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">
+              {linkedLead ? "Excluir Lead e Conversa" : "Excluir Conversa"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {linkedLead ? (
+                <>
+                  Esta ação é <strong>permanente e irreversível</strong>. Serão excluídos:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>O lead <strong>{linkedLead.name}</strong></li>
+                    <li>Todo o histórico de alterações do lead</li>
+                    <li>Todas as mensagens da conversa</li>
+                    <li>A conversa do WhatsApp</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  Esta ação é <strong>permanente e irreversível</strong>. Serão excluídos:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Todas as mensagens da conversa</li>
+                    <li>A conversa do WhatsApp</li>
+                  </ul>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteLeadFromChat}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir Permanentemente
+                </>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
