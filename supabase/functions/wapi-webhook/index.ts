@@ -459,6 +459,16 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'call':
+      case 'webhookCall':
+      case 'call_offer':
+      case 'call_reject':
+      case 'call_timeout': {
+        // Voice/Video call events - just log and ignore
+        console.log('Call event received, ignoring. Event:', eventType, 'callId:', body.call?.id || body.callId);
+        break;
+      }
+
       case 'message':
       case 'message-received':
       case 'webhookReceived': {
@@ -561,6 +571,22 @@ Deno.serve(async (req) => {
         let previewContent = '';
         const msgContent = message.message || message.msgContent || {};
         
+        // Check for call events early - they often come with empty msgContent
+        // and we should skip them entirely before creating/updating conversations
+        if (Object.keys(msgContent).length === 0 && !message.body && !message.text) {
+          console.log('Empty message content detected (likely a call event), skipping. MessageId:', messageId);
+          break;
+        }
+        
+        // Also check for specific call-related message types
+        if (msgContent.call || msgContent.callLogMessage || 
+            msgContent.bcallMessage || msgContent.missedCallMessage ||
+            message.type === 'call' || message.type === 'call_log' ||
+            message.callId) {
+          console.log('Call event detected, skipping message save. Type:', message.type, 'callId:', message.callId);
+          break;
+        }
+        
         if (msgContent.conversation) {
           previewContent = msgContent.conversation;
         } else if (msgContent.extendedTextMessage?.text) {
@@ -573,8 +599,17 @@ Deno.serve(async (req) => {
           previewContent = '🎤 Áudio';
         } else if (msgContent.documentMessage) {
           previewContent = '📄 ' + (msgContent.documentMessage.fileName || 'Documento');
+        } else if (msgContent.locationMessage) {
+          previewContent = '📍 Localização';
+        } else if (msgContent.contactMessage || msgContent.contactsArrayMessage) {
+          previewContent = '👤 Contato';
+        } else if (msgContent.stickerMessage) {
+          previewContent = '🎭 Figurinha';
         } else if (message.body || message.text) {
           previewContent = message.body || message.text;
+        } else {
+          // No recognizable content for preview - likely an unsupported message type
+          console.log('Unrecognized message content for preview, msgContent keys:', Object.keys(msgContent));
         }
 
         // Check if this is a human response (fromMe=true from web platform, not bot)
