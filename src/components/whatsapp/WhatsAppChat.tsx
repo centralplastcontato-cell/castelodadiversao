@@ -2801,7 +2801,15 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">{lead.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{lead.whatsapp}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="truncate">{lead.whatsapp}</span>
+                              {lead.created_at && (
+                                <>
+                                  <span>•</span>
+                                  <span className="whitespace-nowrap">{format(new Date(lead.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                           <Badge variant="outline" className="text-[10px]">
                             {lead.status}
