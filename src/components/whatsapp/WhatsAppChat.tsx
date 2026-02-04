@@ -1669,7 +1669,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                   <h4 className="font-semibold text-sm">Contato não qualificado</h4>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                  Este contato ainda não foi classificado como lead. Use os botões de status abaixo para criar e classificar.
+                                  Este contato ainda não foi classificado como lead. Clique em um status para criar e classificar.
                                 </p>
                                 <div className="grid gap-2 text-xs">
                                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -1689,6 +1689,38 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                     </div>
                                   )}
                                 </div>
+                                
+                                {/* Qualification Status Buttons */}
+                                <div className="pt-2 border-t">
+                                  <span className="text-xs font-medium text-muted-foreground block mb-2">Qualificar como:</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                      { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                                      { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
+                                      { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
+                                      { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+                                      { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                                      { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                                    ].map((statusOption) => (
+                                      <Button
+                                        key={statusOption.value}
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 text-[10px] gap-1 px-2"
+                                        disabled={isCreatingLead}
+                                        onClick={() => createAndClassifyLead(statusOption.value)}
+                                      >
+                                        {isCreatingLead ? (
+                                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                        ) : (
+                                          <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
+                                        )}
+                                        {statusOption.label}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+
                                 {/* Bot Toggle */}
                                 <div className="pt-2 border-t flex items-center justify-between">
                                   <span className="text-xs text-muted-foreground">Bot de qualificação:</span>
@@ -2259,7 +2291,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                 <h4 className="font-semibold text-sm">Contato não qualificado</h4>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Este contato ainda não foi classificado como lead. Use os botões de status abaixo para criar e classificar.
+                                Este contato ainda não foi classificado como lead. Clique em um status para criar e classificar.
                               </p>
                               <div className="grid gap-2 text-xs">
                                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -2279,6 +2311,38 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                   </div>
                                 )}
                               </div>
+                              
+                              {/* Qualification Status Buttons */}
+                              <div className="pt-2 border-t">
+                                <span className="text-xs font-medium text-muted-foreground block mb-2">Qualificar como:</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {[
+                                    { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                                    { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
+                                    { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
+                                    { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+                                    { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                                    { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                                  ].map((statusOption) => (
+                                    <Button
+                                      key={statusOption.value}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 text-[10px] gap-1 px-2"
+                                      disabled={isCreatingLead}
+                                      onClick={() => createAndClassifyLead(statusOption.value)}
+                                    >
+                                      {isCreatingLead ? (
+                                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                      ) : (
+                                        <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
+                                      )}
+                                      {statusOption.label}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+
                               {/* Bot Toggle */}
                               <div className="pt-2 border-t flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">Bot de qualificação:</span>
