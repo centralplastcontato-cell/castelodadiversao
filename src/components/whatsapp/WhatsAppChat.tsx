@@ -1662,12 +1662,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           <Star className="w-4 h-4 text-muted-foreground" />
                         )}
                       </Button>
-                      {selectedInstance && (
-                        <Badge variant="outline" className="hidden sm:flex">
-                          <Building2 className="w-3 h-3 mr-1" />
-                          {selectedInstance.unit}
-                        </Badge>
-                      )}
                     </div>
                   </div>
 
