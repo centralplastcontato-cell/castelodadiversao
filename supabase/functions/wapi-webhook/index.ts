@@ -687,7 +687,40 @@ Deno.serve(async (req) => {
         let shouldDownloadMedia = false;
         let mediaFileName: string | undefined;
 
-        if (msgContent.conversation) {
+        // Check for call events (voice/video calls) - skip saving these
+        if (msgContent.call || msgContent.callLogMessage || message.type === 'call' || message.type === 'call_log') {
+          console.log('Call event detected, skipping message save');
+          break;
+        }
+
+        // Check for location messages
+        if (msgContent.locationMessage) {
+          messageType = 'location';
+          const lat = msgContent.locationMessage.degreesLatitude;
+          const lng = msgContent.locationMessage.degreesLongitude;
+          content = `📍 Localização: ${lat?.toFixed(6) || '?'}, ${lng?.toFixed(6) || '?'}`;
+        } else if (msgContent.liveLocationMessage) {
+          messageType = 'location';
+          content = '📍 Localização ao vivo';
+        // Check for contact/vcard messages
+        } else if (msgContent.contactMessage || msgContent.contactsArrayMessage) {
+          messageType = 'contact';
+          const contactName = msgContent.contactMessage?.displayName || 'Contato';
+          content = `👤 ${contactName}`;
+        // Check for stickers
+        } else if (msgContent.stickerMessage) {
+          messageType = 'sticker';
+          content = '🎭 Figurinha';
+        // Check for reactions
+        } else if (msgContent.reactionMessage) {
+          console.log('Reaction message detected, skipping save');
+          break;
+        // Check for poll messages
+        } else if (msgContent.pollCreationMessage || msgContent.pollUpdateMessage) {
+          messageType = 'poll';
+          content = '📊 Enquete';
+        // Regular text/media messages
+        } else if (msgContent.conversation) {
           content = msgContent.conversation;
         } else if (msgContent.extendedTextMessage?.text) {
           content = msgContent.extendedTextMessage.text;
@@ -718,6 +751,10 @@ Deno.serve(async (req) => {
           shouldDownloadMedia = true;
         } else if (message.body || message.text) {
           content = message.body || message.text;
+        } else {
+          // No recognizable content - skip to avoid saving empty/null messages
+          console.log('Unrecognized message type, msgContent keys:', Object.keys(msgContent));
+          break;
         }
         
         // Log media key availability for debugging
