@@ -72,6 +72,7 @@ export default function CentralAtendimento() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "leads">("chat");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [newLeadsCount, setNewLeadsCount] = useState(0);
 
   const { role, isLoading: isLoadingRole, isAdmin, canEdit, canManageUsers } = useUserRole(user?.id);
   const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
@@ -294,6 +295,40 @@ export default function CentralAtendimento() {
     };
   }, []);
 
+  // Fetch new leads count with realtime updates
+  useEffect(() => {
+    const fetchNewLeadsCount = async () => {
+      const { count } = await supabase
+        .from("campaign_leads")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "novo");
+      
+      setNewLeadsCount(count || 0);
+    };
+
+    fetchNewLeadsCount();
+
+    // Subscribe to realtime changes
+    const leadsChannel = supabase
+      .channel('new-leads-count-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'campaign_leads',
+        },
+        () => {
+          fetchNewLeadsCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(leadsChannel);
+    };
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({
@@ -445,9 +480,15 @@ export default function CentralAtendimento() {
                   />
                 )}
               </TabsTrigger>
-              <TabsTrigger value="leads" className="flex items-center gap-1.5 text-xs">
+              <TabsTrigger value="leads" className="flex items-center gap-1.5 text-xs relative">
                 <LayoutList className="w-4 h-4" />
                 Leads
+                {newLeadsCount > 0 && (
+                  <AnimatedBadge 
+                    value={newLeadsCount > 99 ? "99+" : newLeadsCount}
+                    className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center rounded-full bg-blue-500 text-white"
+                  />
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -594,6 +635,13 @@ export default function CentralAtendimento() {
                 <TabsTrigger value="leads" className="flex items-center gap-2">
                   <LayoutList className="w-4 h-4" />
                   Leads
+                  {newLeadsCount > 0 && (
+                    <Badge 
+                      className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] flex items-center justify-center bg-blue-500 text-white"
+                    >
+                      {newLeadsCount > 99 ? "99+" : newLeadsCount}
+                    </Badge>
+                  )}
                 </TabsTrigger>
               </TabsList>
 
