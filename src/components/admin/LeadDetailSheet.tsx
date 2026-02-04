@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +33,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  ExternalLink,
   MessageSquare,
   User,
   Calendar,
@@ -69,6 +69,8 @@ export function LeadDetailSheet({
   currentUserName,
   canEdit,
 }: LeadDetailSheetProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [status, setStatus] = useState<LeadStatus>("novo");
   const [responsavelId, setResponsavelId] = useState<string>("");
   const [observacoes, setObservacoes] = useState("");
@@ -78,6 +80,22 @@ export function LeadDetailSheet({
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [sendingTemplate, setSendingTemplate] = useState<string | null>(null);
   const [wapiInstance, setWapiInstance] = useState<{ instance_id: string; instance_token: string; id: string } | null>(null);
+
+  // Navigate to WhatsApp chat with this lead's phone
+  const openWhatsAppChat = () => {
+    const cleanPhone = lead?.whatsapp.replace(/\D/g, '') || '';
+    const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    
+    // If we're already on the Central de Atendimento page, just use URL params
+    if (location.pathname === '/central-atendimento') {
+      // Close the sheet first and let the parent handle the navigation
+      onClose();
+      navigate(`/central-atendimento?phone=${phoneWithCountry}`, { replace: true });
+    } else {
+      // Navigate to Central de Atendimento with phone parameter
+      navigate(`/central-atendimento?phone=${phoneWithCountry}`);
+    }
+  };
 
   useEffect(() => {
     if (lead) {
@@ -354,16 +372,10 @@ export function LeadDetailSheet({
             <Button
               variant="outline"
               className="w-full justify-start"
-              asChild
+              onClick={openWhatsAppChat}
             >
-              <a
-                href={formatWhatsAppLink(lead.whatsapp)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Abrir WhatsApp ({lead.whatsapp})
-              </a>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Abrir Conversa ({lead.whatsapp})
             </Button>
 
             {templates.length > 0 && (

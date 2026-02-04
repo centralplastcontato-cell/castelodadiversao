@@ -73,6 +73,25 @@ export default function CentralAtendimento() {
   const [activeTab, setActiveTab] = useState<"chat" | "leads">("chat");
   const [unreadCount, setUnreadCount] = useState(0);
   const [newLeadsCount, setNewLeadsCount] = useState(0);
+  const [initialPhone, setInitialPhone] = useState<string | null>(null);
+
+  // Handle URL params for phone navigation
+  useEffect(() => {
+    const phoneParam = searchParams.get("phone");
+    if (phoneParam) {
+      setInitialPhone(phoneParam);
+      setActiveTab("chat");
+    }
+  }, [searchParams]);
+
+  const handlePhoneHandled = () => {
+    // Clear the phone param from URL after it's been processed
+    if (searchParams.has("phone")) {
+      searchParams.delete("phone");
+      setSearchParams(searchParams, { replace: true });
+    }
+    setInitialPhone(null);
+  };
 
   const { role, isLoading: isLoadingRole, isAdmin, canEdit, canManageUsers } = useUserRole(user?.id);
   const { allowedUnits, canViewAll, isLoading: isLoadingUnitPerms } = useUnitPermissions(user?.id);
@@ -493,7 +512,12 @@ export default function CentralAtendimento() {
             </TabsList>
 
             <TabsContent value="chat" className="flex-1 mt-0 p-0">
-              <WhatsAppChat userId={user.id} allowedUnits={canViewAll ? ['all'] : allowedUnits} />
+              <WhatsAppChat 
+                userId={user.id} 
+                allowedUnits={canViewAll ? ['all'] : allowedUnits} 
+                initialPhone={initialPhone}
+                onPhoneHandled={handlePhoneHandled}
+              />
             </TabsContent>
 
             <TabsContent value="leads" className="flex-1 mt-0 px-3 py-4 overflow-auto">
@@ -646,7 +670,12 @@ export default function CentralAtendimento() {
               </TabsList>
 
               <TabsContent value="chat" className="flex-1 mt-3">
-                <WhatsAppChat userId={user.id} allowedUnits={canViewAll ? ['all'] : allowedUnits} />
+                <WhatsAppChat 
+                  userId={user.id} 
+                  allowedUnits={canViewAll ? ['all'] : allowedUnits}
+                  initialPhone={initialPhone}
+                  onPhoneHandled={handlePhoneHandled}
+                />
               </TabsContent>
 
               <TabsContent value="leads" className="flex-1 mt-3">
