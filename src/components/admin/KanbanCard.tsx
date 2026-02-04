@@ -249,8 +249,8 @@ export function KanbanCard({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-1 flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{lead.name}</p>
+              <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
+                <p className="font-medium text-sm truncate max-w-[160px]" title={lead.name}>{lead.name}</p>
                 {isIncomplete && (
                   <Tooltip>
                     <TooltipTrigger asChild>
