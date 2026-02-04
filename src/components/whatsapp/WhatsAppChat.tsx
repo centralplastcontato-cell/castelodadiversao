@@ -2303,6 +2303,42 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        onClick={() => toggleScheduledVisit(selectedConversation)}
+                        title={selectedConversation.has_scheduled_visit ? "Desmarcar visita" : "Marcar visita agendada"}
+                      >
+                        <CalendarCheck className={cn(
+                          "w-4 h-4",
+                          selectedConversation.has_scheduled_visit ? "text-blue-600" : "text-muted-foreground"
+                        )} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => toggleFreelancer(selectedConversation)}
+                        title={selectedConversation.is_freelancer ? "Desmarcar como Freelancer" : "Marcar como Freelancer"}
+                      >
+                        <Briefcase className={cn(
+                          "w-4 h-4",
+                          selectedConversation.is_freelancer ? "text-orange-600" : "text-muted-foreground"
+                        )} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => toggleEquipe(selectedConversation)}
+                        title={selectedConversation.is_equipe ? "Desmarcar como Equipe" : "Marcar como Equipe"}
+                      >
+                        <Users className={cn(
+                          "w-4 h-4",
+                          selectedConversation.is_equipe ? "text-cyan-600" : "text-muted-foreground"
+                        )} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => toggleFavorite(selectedConversation)}
                       >
                         {selectedConversation.is_favorite ? (
@@ -2921,6 +2957,42 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         </PopoverContent>
                       </Popover>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => toggleScheduledVisit(selectedConversation)}
+                      title={selectedConversation.has_scheduled_visit ? "Desmarcar visita" : "Marcar visita agendada"}
+                    >
+                      <CalendarCheck className={cn(
+                        "w-4 h-4",
+                        selectedConversation.has_scheduled_visit ? "text-blue-600" : "text-muted-foreground"
+                      )} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => toggleFreelancer(selectedConversation)}
+                      title={selectedConversation.is_freelancer ? "Desmarcar como Freelancer" : "Marcar como Freelancer"}
+                    >
+                      <Briefcase className={cn(
+                        "w-4 h-4",
+                        selectedConversation.is_freelancer ? "text-orange-600" : "text-muted-foreground"
+                      )} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => toggleEquipe(selectedConversation)}
+                      title={selectedConversation.is_equipe ? "Desmarcar como Equipe" : "Marcar como Equipe"}
+                    >
+                      <Users className={cn(
+                        "w-4 h-4",
+                        selectedConversation.is_equipe ? "text-cyan-600" : "text-muted-foreground"
+                      )} />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
