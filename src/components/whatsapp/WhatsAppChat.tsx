@@ -2118,6 +2118,29 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                   )}
                                 </div>
                                 
+                                {/* Quick Message Templates */}
+                                {templates.length > 0 && (
+                                  <div className="pt-2 border-t">
+                                    <span className="text-xs font-medium text-muted-foreground block mb-2">Mensagem rápida:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {templates.slice(0, 4).map((template) => (
+                                        <Button
+                                          key={template.id}
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-6 text-[10px] gap-1 px-2"
+                                          onClick={() => {
+                                            applyTemplate(template);
+                                          }}
+                                        >
+                                          <Send className="w-2.5 h-2.5" />
+                                          {template.name.length > 12 ? template.name.slice(0, 12) + '...' : template.name}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
                                 {canTransferLeads && (
                                   <Button 
                                     variant="outline" 
