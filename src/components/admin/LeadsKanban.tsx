@@ -87,18 +87,18 @@ export function LeadsKanban({
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="flex gap-4 overflow-x-auto pb-4 h-full">
       {columns.map((status) => {
         const columnLeads = getLeadsByStatus(status);
         return (
           <div
             key={status}
-            className="flex-shrink-0 w-72 bg-muted/30 rounded-xl border border-border"
+            className="flex-shrink-0 w-72 bg-muted/30 rounded-xl border border-border flex flex-col max-h-[calc(100vh-220px)]"
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, status)}
           >
             {/* Column Header */}
-            <div className="p-3 border-b border-border">
+            <div className="p-3 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div
@@ -115,7 +115,7 @@ export function LeadsKanban({
             </div>
 
             {/* Column Content */}
-            <ScrollArea className="h-[calc(100vh-280px)]">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="p-2 space-y-2">
                 {columnLeads.length === 0 ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
