@@ -14,7 +14,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
-  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot
+  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, CheckCircle2
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -84,6 +84,7 @@ interface Conversation {
   last_message_at: string | null;
   unread_count: number;
   is_favorite: boolean;
+  is_closed: boolean;
   last_message_content: string | null;
   last_message_from_me: boolean;
   bot_enabled: boolean | null;
@@ -142,7 +143,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all' | 'unread' | 'favorites'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'favorites'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -1027,8 +1028,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       
       // Apply filter
       if (filter === 'unread') return matchesSearch && conv.unread_count > 0;
+      if (filter === 'closed') return matchesSearch && conv.is_closed;
       if (filter === 'favorites') return matchesSearch && conv.is_favorite;
-      return matchesSearch;
+      // 'all' filter - show non-closed conversations only
+      return matchesSearch && !conv.is_closed;
     })
     .sort((a, b) => {
       // Favorites first, then by last message
@@ -1036,6 +1039,30 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       if (!a.is_favorite && b.is_favorite) return 1;
       return 0;
     });
+
+  const toggleConversationClosed = async (conv: Conversation) => {
+    const newValue = !conv.is_closed;
+    
+    await supabase
+      .from('wapi_conversations')
+      .update({ is_closed: newValue })
+      .eq('id', conv.id);
+
+    setConversations(prev => 
+      prev.map(c => c.id === conv.id ? { ...c, is_closed: newValue } : c)
+    );
+
+    if (selectedConversation?.id === conv.id) {
+      setSelectedConversation({ ...selectedConversation, is_closed: newValue });
+    }
+
+    toast({
+      title: newValue ? "Conversa encerrada" : "Conversa reaberta",
+      description: newValue 
+        ? "A conversa foi movida para Encerradas." 
+        : "A conversa foi movida de volta para a lista principal.",
+    });
+  };
 
   const handleInstanceChange = (instanceId: string) => {
     const instance = instances.find(i => i.id === instanceId);
@@ -1196,6 +1223,20 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   )}
                 </Button>
                 <Button 
+                  variant={filter === 'closed' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('closed')}
+                >
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Encerradas
+                  {conversations.filter(c => c.is_closed).length > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
+                      {conversations.filter(c => c.is_closed).length}
+                    </Badge>
+                  )}
+                </Button>
+                <Button 
                   variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
                   size="sm" 
                   className="h-7 text-xs"
@@ -1243,6 +1284,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       </Avatar>
                       {conv.is_favorite && (
                         <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
+                      )}
+                      {conv.is_closed && (
+                        <CheckCircle2 className="absolute -bottom-1 -right-1 w-3 h-3 text-green-500 fill-green-500/20" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1333,6 +1377,20 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       )}
                     </Button>
                     <Button 
+                      variant={filter === 'closed' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('closed')}
+                    >
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Encerradas
+                      {conversations.filter(c => c.is_closed).length > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
+                          {conversations.filter(c => c.is_closed).length}
+                        </Badge>
+                      )}
+                    </Button>
+                    <Button 
                       variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
                       size="sm" 
                       className="h-7 text-xs"
@@ -1380,6 +1438,9 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           </Avatar>
                           {conv.is_favorite && (
                             <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
+                          )}
+                          {conv.is_closed && (
+                            <CheckCircle2 className="absolute -bottom-1 -right-1 w-3 h-3 text-green-500 fill-green-500/20" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1627,6 +1688,20 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                         ) : (
                           <Star className="w-4 h-4 text-muted-foreground" />
                         )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => toggleConversationClosed(selectedConversation)}
+                        title={selectedConversation.is_closed ? "Reabrir conversa" : "Encerrar conversa"}
+                      >
+                        <CheckCircle2 className={cn(
+                          "w-4 h-4",
+                          selectedConversation.is_closed 
+                            ? "text-green-500 fill-green-500/20" 
+                            : "text-muted-foreground"
+                        )} />
                       </Button>
                     </div>
                   </div>
@@ -2173,6 +2248,20 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       ) : (
                         <Star className="w-4 h-4 text-muted-foreground" />
                       )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => toggleConversationClosed(selectedConversation)}
+                      title={selectedConversation.is_closed ? "Reabrir conversa" : "Encerrar conversa"}
+                    >
+                      <CheckCircle2 className={cn(
+                        "w-4 h-4",
+                        selectedConversation.is_closed 
+                          ? "text-green-500 fill-green-500/20" 
+                          : "text-muted-foreground"
+                      )} />
                     </Button>
                   </div>
                 </div>

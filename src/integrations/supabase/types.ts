@@ -346,6 +346,7 @@ export type Database = {
           created_at: string
           id: string
           instance_id: string
+          is_closed: boolean | null
           is_favorite: boolean | null
           last_message_at: string | null
           last_message_content: string | null
@@ -365,6 +366,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id: string
+          is_closed?: boolean | null
           is_favorite?: boolean | null
           last_message_at?: string | null
           last_message_content?: string | null
@@ -384,6 +386,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id?: string
+          is_closed?: boolean | null
           is_favorite?: boolean | null
           last_message_at?: string | null
           last_message_content?: string | null
