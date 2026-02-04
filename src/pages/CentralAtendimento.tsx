@@ -14,6 +14,7 @@ import { LeadDetailSheet } from "@/components/admin/LeadDetailSheet";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { MetricsCards } from "@/components/admin/MetricsCards";
+import { NotificationBell } from "@/components/admin/NotificationBell";
 import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
 
 import { Button } from "@/components/ui/button";
@@ -694,8 +695,9 @@ export default function CentralAtendimento() {
                 </div>
               </div>
               
-              {/* User Avatar Desktop */}
+              {/* Notification Bell and User Avatar Desktop */}
               <div className="flex items-center gap-2">
+                <NotificationBell />
                 <span className="text-sm text-muted-foreground hidden lg:block">{currentUserProfile?.full_name || user.email}</span>
                 <Avatar 
                   className="h-8 w-8 border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors" 
@@ -712,33 +714,9 @@ export default function CentralAtendimento() {
 
           <main className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col overflow-hidden min-h-0">
-              <TabsList className="w-fit">
-                <TabsTrigger value="chat" className="flex items-center gap-2 relative">
-                  <MessageSquare className="w-4 h-4" />
-                  Chat
-                  {unreadCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] flex items-center justify-center"
-                    >
-                      {unreadCount > 99 ? "99+" : unreadCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="leads" className="flex items-center gap-2">
-                  <LayoutList className="w-4 h-4" />
-                  Leads
-                  {newLeadsCount > 0 && (
-                    <Badge 
-                      className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] flex items-center justify-center bg-blue-500 text-white"
-                    >
-                      {newLeadsCount > 99 ? "99+" : newLeadsCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
+              {/* TabsList removed - buttons are now in the header */}
 
-              <TabsContent value="chat" className="flex-1 overflow-hidden min-h-0 mt-3">
+              <TabsContent value="chat" className="flex-1 overflow-hidden min-h-0 mt-0">
                 <WhatsAppChat 
                   userId={user.id} 
                   allowedUnits={canViewAll ? ['all'] : allowedUnits}
@@ -747,7 +725,7 @@ export default function CentralAtendimento() {
                 />
               </TabsContent>
 
-              <TabsContent value="leads" className="flex-1 overflow-auto min-h-0 mt-3">
+              <TabsContent value="leads" className="flex-1 overflow-auto min-h-0 mt-0">
                 {/* View mode toggle - positioned at top like mobile */}
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")}>
                   <div className="mb-4">
