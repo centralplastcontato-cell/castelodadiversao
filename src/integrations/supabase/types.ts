@@ -294,8 +294,52 @@ export type Database = {
         }
         Relationships: []
       }
+      wapi_bot_settings: {
+        Row: {
+          bot_enabled: boolean
+          created_at: string
+          id: string
+          instance_id: string
+          test_mode_enabled: boolean
+          test_mode_number: string | null
+          updated_at: string
+          welcome_message: string | null
+        }
+        Insert: {
+          bot_enabled?: boolean
+          created_at?: string
+          id?: string
+          instance_id: string
+          test_mode_enabled?: boolean
+          test_mode_number?: string | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Update: {
+          bot_enabled?: boolean
+          created_at?: string
+          id?: string
+          instance_id?: string
+          test_mode_enabled?: boolean
+          test_mode_number?: string | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wapi_bot_settings_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: true
+            referencedRelation: "wapi_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wapi_conversations: {
         Row: {
+          bot_data: Json | null
+          bot_enabled: boolean | null
+          bot_step: string | null
           contact_name: string | null
           contact_phone: string
           contact_picture: string | null
@@ -312,6 +356,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bot_data?: Json | null
+          bot_enabled?: boolean | null
+          bot_step?: string | null
           contact_name?: string | null
           contact_phone: string
           contact_picture?: string | null
@@ -328,6 +375,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bot_data?: Json | null
+          bot_enabled?: boolean | null
+          bot_step?: string | null
           contact_name?: string | null
           contact_phone?: string
           contact_picture?: string | null
@@ -454,6 +504,44 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "wapi_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wapi_vip_numbers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          instance_id: string
+          name: string | null
+          phone: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          instance_id: string
+          name?: string | null
+          phone: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          instance_id?: string
+          name?: string | null
+          phone?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wapi_vip_numbers_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "wapi_instances"
             referencedColumns: ["id"]
           },
         ]

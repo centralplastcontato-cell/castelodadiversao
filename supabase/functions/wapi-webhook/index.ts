@@ -7,6 +7,263 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
+// Bot configuration
+const BOT_QUESTIONS = {
+  nome: {
+    message: 'Por favor, qual é o seu nome completo? 😊',
+    next: 'mes',
+  },
+  mes: {
+    message: 'Ótimo! Para qual mês você está pensando em fazer a festa? 🎂\n\nExemplo: Janeiro, Fevereiro, Março...',
+    next: 'dia',
+  },
+  dia: {
+    message: 'E tem alguma preferência de dia da semana? 📅\n\nExemplo: Sábado, Domingo, ou "Qualquer dia"',
+    next: 'convidados',
+  },
+  convidados: {
+    message: 'Quantos convidados você está pensando em convidar? 👥\n\nExemplo: 30, 50, 80...',
+    next: 'complete',
+  },
+};
+
+// Helper function to normalize phone numbers for comparison
+function normalizePhoneNumber(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+// Helper function to check if a phone number is in the VIP list
+async function isVipNumber(
+  supabase: SupabaseClient,
+  instanceId: string,
+  phone: string
+): Promise<boolean> {
+  const normalizedPhone = normalizePhoneNumber(phone);
+  
+  const { data } = await supabase
+    .from('wapi_vip_numbers')
+    .select('id')
+    .eq('instance_id', instanceId)
+    .or(`phone.ilike.%${normalizedPhone}%,phone.ilike.%${normalizedPhone.replace(/^55/, '')}%`)
+    .limit(1);
+  
+  return Boolean(data && data.length > 0);
+}
+
+// Helper function to get bot settings for an instance
+async function getBotSettings(
+  supabase: SupabaseClient,
+  instanceId: string
+): Promise<{
+  bot_enabled: boolean;
+  test_mode_enabled: boolean;
+  test_mode_number: string | null;
+  welcome_message: string;
+} | null> {
+  const { data } = await supabase
+    .from('wapi_bot_settings')
+    .select('*')
+    .eq('instance_id', instanceId)
+    .single();
+  
+  return data;
+}
+
+// Helper function to send a WhatsApp message via W-API
+async function sendBotMessage(
+  instanceId: string,
+  instanceToken: string,
+  remoteJid: string,
+  message: string
+): Promise<string | null> {
+  try {
+    const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+    
+    const response = await fetch(`${WAPI_BASE_URL}/message/send-text?instanceId=${instanceId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${instanceToken}`,
+      },
+      body: JSON.stringify({
+        phone: phone,
+        message: message,
+        delayTyping: 1,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to send bot message:', await response.text());
+      return null;
+    }
+
+    const result = await response.json();
+    return result.messageId || result.id || null;
+  } catch (error) {
+    console.error('Error sending bot message:', error);
+    return null;
+  }
+}
+
+// Process bot qualification flow
+async function processBotQualification(
+  supabase: SupabaseClient,
+  instance: { id: string; instance_id: string; instance_token: string; unit: string | null },
+  conversation: { id: string; remote_jid: string; bot_enabled: boolean | null; bot_step: string | null; bot_data: Record<string, unknown> | null; lead_id: string | null },
+  messageContent: string,
+  contactPhone: string,
+  contactName: string | null
+): Promise<void> {
+  // Get bot settings
+  const settings = await getBotSettings(supabase, instance.id);
+  
+  if (!settings) {
+    console.log('No bot settings found for instance:', instance.id);
+    return;
+  }
+
+  const normalizedPhone = normalizePhoneNumber(contactPhone);
+  const testModeNormalized = settings.test_mode_number ? normalizePhoneNumber(settings.test_mode_number) : null;
+  
+  // Check if bot should run for this conversation:
+  // 1. Conversation bot_enabled must be true (individual toggle)
+  // 2. Either global bot is enabled OR test mode is enabled AND this is the test number
+  const isTestNumber = testModeNormalized && normalizedPhone.includes(testModeNormalized.replace(/^55/, ''));
+  const shouldRunBot = (
+    conversation.bot_enabled !== false && // Individual toggle (default true)
+    (
+      settings.bot_enabled || // Global toggle
+      (settings.test_mode_enabled && isTestNumber) // Test mode for specific number
+    )
+  );
+
+  if (!shouldRunBot) {
+    console.log('Bot not active for this conversation. Global:', settings.bot_enabled, 'TestMode:', settings.test_mode_enabled, 'IsTestNumber:', isTestNumber, 'ConvBot:', conversation.bot_enabled);
+    return;
+  }
+
+  // Check if number is in VIP list
+  if (await isVipNumber(supabase, instance.id, contactPhone)) {
+    console.log('Phone is in VIP list, skipping bot:', contactPhone);
+    return;
+  }
+
+  // Skip if lead is already linked (already qualified)
+  if (conversation.lead_id) {
+    console.log('Conversation already has a lead linked, skipping bot');
+    return;
+  }
+
+  const currentStep = conversation.bot_step || 'welcome';
+  const botData = (conversation.bot_data || {}) as Record<string, string>;
+
+  console.log('Processing bot step:', currentStep, 'for conversation:', conversation.id);
+
+  let nextStep: string;
+  let messageToSend: string;
+  const updatedBotData = { ...botData };
+
+  if (currentStep === 'welcome') {
+    // First contact - send welcome message and ask for name
+    messageToSend = settings.welcome_message + '\n\n' + BOT_QUESTIONS.nome.message;
+    nextStep = 'nome';
+  } else if (currentStep === 'nome') {
+    // Save name and ask for month
+    updatedBotData.nome = messageContent.trim();
+    messageToSend = `Prazer, ${updatedBotData.nome}! 😊\n\n${BOT_QUESTIONS.mes.message}`;
+    nextStep = 'mes';
+  } else if (currentStep === 'mes') {
+    // Save month and ask for day preference
+    updatedBotData.mes = messageContent.trim();
+    messageToSend = BOT_QUESTIONS.dia.message;
+    nextStep = 'dia';
+  } else if (currentStep === 'dia') {
+    // Save day preference and ask for guests
+    updatedBotData.dia = messageContent.trim();
+    messageToSend = BOT_QUESTIONS.convidados.message;
+    nextStep = 'convidados';
+  } else if (currentStep === 'convidados') {
+    // Save guests and complete qualification
+    updatedBotData.convidados = messageContent.trim();
+    nextStep = 'complete';
+    
+    // Create the lead
+    const leadName = updatedBotData.nome || contactName || contactPhone;
+    
+    const { data: newLead, error: leadError } = await supabase
+      .from('campaign_leads')
+      .insert({
+        name: leadName,
+        whatsapp: normalizedPhone,
+        unit: instance.unit,
+        campaign_id: 'whatsapp-bot',
+        campaign_name: 'WhatsApp Bot',
+        status: 'novo',
+        month: updatedBotData.mes || null,
+        day_preference: updatedBotData.dia || null,
+        guests: updatedBotData.convidados || null,
+      })
+      .select('id')
+      .single();
+
+    if (leadError) {
+      console.error('Error creating lead from bot:', leadError);
+      messageToSend = 'Obrigado pelas informações! Em breve um de nossos atendentes entrará em contato com você. 🎉';
+    } else {
+      console.log('Lead created from bot:', newLead.id);
+      
+      // Link conversation to lead
+      await supabase
+        .from('wapi_conversations')
+        .update({ lead_id: newLead.id })
+        .eq('id', conversation.id);
+      
+      messageToSend = `Perfeito, ${updatedBotData.nome}! 🎉\n\nRegistramos seu interesse:\n📅 Mês: ${updatedBotData.mes}\n📆 Preferência: ${updatedBotData.dia}\n👥 Convidados: ${updatedBotData.convidados}\n\nEm breve um de nossos atendentes entrará em contato para passar todas as informações sobre nossos pacotes de festa! 🏰✨`;
+    }
+  } else {
+    // Already completed or unknown step
+    console.log('Bot already completed or unknown step:', currentStep);
+    return;
+  }
+
+  // Send the bot message
+  const messageId = await sendBotMessage(
+    instance.instance_id,
+    instance.instance_token,
+    conversation.remote_jid,
+    messageToSend
+  );
+
+  if (messageId) {
+    console.log('Bot message sent:', messageId);
+    
+    // Save bot message to database
+    await supabase
+      .from('wapi_messages')
+      .insert({
+        conversation_id: conversation.id,
+        message_id: messageId,
+        from_me: true,
+        message_type: 'text',
+        content: messageToSend,
+        status: 'sent',
+        timestamp: new Date().toISOString(),
+      });
+  }
+
+  // Update conversation with new step and data
+  await supabase
+    .from('wapi_conversations')
+    .update({
+      bot_step: nextStep,
+      bot_data: updatedBotData,
+      last_message_at: new Date().toISOString(),
+      last_message_content: messageToSend.substring(0, 100),
+      last_message_from_me: true,
+    })
+    .eq('id', conversation.id);
+}
+
 // Helper function to download media from W-API and upload to storage
 async function downloadAndStoreMedia(
   supabase: SupabaseClient,
@@ -295,7 +552,7 @@ Deno.serve(async (req) => {
         let conversation;
         const { data: existingConv } = await supabase
           .from('wapi_conversations')
-          .select('*')
+          .select('*, bot_enabled, bot_step, bot_data')
           .eq('instance_id', instance.id)
           .eq('remote_jid', remoteJid)
           .single();
@@ -318,6 +575,16 @@ Deno.serve(async (req) => {
           previewContent = '📄 ' + (msgContent.documentMessage.fileName || 'Documento');
         } else if (message.body || message.text) {
           previewContent = message.body || message.text;
+        }
+
+        // Check if this is a human response (fromMe=true from web platform, not bot)
+        // If it is, disable the bot for this conversation
+        if (fromMe && existingConv && existingConv.bot_step && existingConv.bot_step !== 'complete') {
+          console.log('Human response detected during bot flow, disabling bot for conversation:', existingConv.id);
+          await supabase
+            .from('wapi_conversations')
+            .update({ bot_enabled: false })
+            .eq('id', existingConv.id);
         }
 
         if (existingConv) {
@@ -377,30 +644,9 @@ Deno.serve(async (req) => {
           if (matchingLead) {
             matchedLeadId = matchingLead.id;
             console.log('Auto-linked conversation to lead:', matchingLead.id);
-          } else if (!isGroup) {
-            // No matching lead found - CREATE ONE AUTOMATICALLY (only for individual chats, not groups)
-            const finalContactName = contactName || contactPhone;
-            
-            const { data: newLead, error: leadError } = await supabase
-              .from('campaign_leads')
-              .insert({
-                name: finalContactName,
-                whatsapp: normalizedPhone,
-                unit: instance.unit,
-                campaign_id: 'whatsapp-incoming',
-                campaign_name: 'WhatsApp (entrada)',
-                status: 'novo',
-              })
-              .select('id')
-              .single();
-            
-            if (!leadError && newLead) {
-              matchedLeadId = newLead.id;
-              console.log('Auto-created lead for new conversation:', newLead.id);
-            } else {
-              console.error('Error auto-creating lead:', leadError);
-            }
           }
+          // Note: We no longer auto-create leads here - the bot will do it after qualification
+          // or if bot is disabled, no lead will be created automatically
           
           // Create new conversation with lead link (now always has a lead for individual chats)
           // For groups without a name, use a generic fallback
@@ -419,8 +665,11 @@ Deno.serve(async (req) => {
               last_message_content: previewContent.substring(0, 100),
               last_message_from_me: fromMe,
               lead_id: matchedLeadId,
+              bot_enabled: true, // Start with bot enabled by default
+              bot_step: matchedLeadId ? null : 'welcome', // Only start bot if no lead linked
+              bot_data: {},
             })
-            .select()
+            .select('*, bot_enabled, bot_step, bot_data')
             .single();
 
           if (convError) {
@@ -524,6 +773,18 @@ Deno.serve(async (req) => {
         } else {
           console.log('Message saved:', messageId, 'content:', content.substring(0, 50), 'mediaUrl:', mediaUrl ? 'yes' : 'no', 'mediaKey:', mediaKey ? 'yes' : 'no');
         }
+
+        // Process bot qualification for incoming text messages only (not from groups)
+        if (!fromMe && !isGroup && messageType === 'text' && content) {
+          await processBotQualification(
+            supabase,
+            instance,
+            conversation,
+            content,
+            contactPhone,
+            contactName
+          );
+        }
         break;
       }
 
@@ -590,14 +851,29 @@ Deno.serve(async (req) => {
                 
                 if (existingConv) {
                   conversation = existingConv;
-                  await supabase
-                    .from('wapi_conversations')
-                    .update({ 
-                      last_message_at: new Date().toISOString(),
-                      last_message_content: previewContent.substring(0, 100),
-                      last_message_from_me: true,
-                    })
-                    .eq('id', existingConv.id);
+                  
+                  // If human is sending message while bot is active, disable bot
+                  if (existingConv.bot_step && existingConv.bot_step !== 'complete') {
+                    console.log('Human response from other device detected during bot flow, disabling bot');
+                    await supabase
+                      .from('wapi_conversations')
+                      .update({ 
+                        bot_enabled: false,
+                        last_message_at: new Date().toISOString(),
+                        last_message_content: previewContent.substring(0, 100),
+                        last_message_from_me: true,
+                      })
+                      .eq('id', existingConv.id);
+                  } else {
+                    await supabase
+                      .from('wapi_conversations')
+                      .update({ 
+                        last_message_at: new Date().toISOString(),
+                        last_message_content: previewContent.substring(0, 100),
+                        last_message_from_me: true,
+                      })
+                      .eq('id', existingConv.id);
+                  }
                 } else {
                   // Create new conversation
                   const contactName = body?.chat?.name || body?.chat?.pushName || contactPhone;
@@ -615,6 +891,7 @@ Deno.serve(async (req) => {
                       unread_count: 0,
                       last_message_content: previewContent.substring(0, 100),
                       last_message_from_me: true,
+                      bot_enabled: false, // Human started conversation, no bot
                     })
                     .select()
                     .single();
