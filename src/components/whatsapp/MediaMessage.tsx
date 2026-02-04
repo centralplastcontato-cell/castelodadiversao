@@ -87,7 +87,17 @@ export function MediaMessage({
       });
 
       if (error || !data?.success) {
-        throw new Error(data?.error || error?.message || 'Falha ao baixar mídia');
+        // Check if the error indicates we can't retry
+        const canRetry = data?.canRetry !== false;
+        const errorMessage = data?.hint || data?.error || error?.message || 'Falha ao baixar mídia';
+        
+        if (!canRetry) {
+          // Don't show retry button for permanent errors
+          setDownloadError('Mídia expirada');
+        } else {
+          throw new Error(errorMessage);
+        }
+        return;
       }
 
       // Update the URL to the persisted one
@@ -299,8 +309,8 @@ export function MediaMessage({
           </div>
         </div>
 
-        {/* Download button */}
-        {!isDownloading && canAttemptDownload && (
+        {/* Download button - only show if we can retry */}
+        {!isDownloading && canAttemptDownload && downloadError !== 'Mídia expirada' && (
           <Button
             size="sm"
             variant={fromMe ? "secondary" : "outline"}
