@@ -211,19 +211,45 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
       setIsSaving(true);
 
       try {
-        // Salvar lead no banco de dados
-        const { error } = await supabase.from("campaign_leads").insert({
-          name: leadData.name,
-          whatsapp: whatsappValue,
-          unit: leadData.unit,
-          month: leadData.month,
-          day_of_month: leadData.dayOfMonth,
-          guests: leadData.guests,
-          campaign_id: campaignConfig.campaignId,
-          campaign_name: campaignConfig.campaignName,
-        });
+        // Se a unidade for "As duas", criar dois leads separados
+        if (leadData.unit === "As duas") {
+          const baseLeadData = {
+            name: leadData.name,
+            whatsapp: whatsappValue,
+            month: leadData.month,
+            day_of_month: leadData.dayOfMonth,
+            guests: leadData.guests,
+            campaign_id: campaignConfig.campaignId,
+            campaign_name: campaignConfig.campaignName,
+          };
 
-        if (error) throw error;
+          // Inserir lead para Manchester
+          const { error: manchesterError } = await supabase.from("campaign_leads").insert({
+            ...baseLeadData,
+            unit: "Manchester",
+          });
+          if (manchesterError) throw manchesterError;
+
+          // Inserir lead para Trujillo
+          const { error: trujilloError } = await supabase.from("campaign_leads").insert({
+            ...baseLeadData,
+            unit: "Trujillo",
+          });
+          if (trujilloError) throw trujilloError;
+        } else {
+          // Comportamento padrão: criar um único lead
+          const { error } = await supabase.from("campaign_leads").insert({
+            name: leadData.name,
+            whatsapp: whatsappValue,
+            unit: leadData.unit,
+            month: leadData.month,
+            day_of_month: leadData.dayOfMonth,
+            guests: leadData.guests,
+            campaign_id: campaignConfig.campaignId,
+            campaign_name: campaignConfig.campaignName,
+          });
+          if (error) throw error;
+        }
 
         setMessages((prev) => [
           ...prev,
