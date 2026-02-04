@@ -2469,7 +2469,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                         }
                       }}
                       disabled={isSending}
-                      className="text-base flex-1 min-h-[40px] max-h-32 resize-y py-2"
+                      className="text-base flex-1 min-h-[40px] max-h-[50vh] resize-y py-2"
                       rows={1}
                     />
                     {newMessage.trim() ? (
