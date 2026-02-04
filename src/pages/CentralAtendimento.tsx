@@ -552,31 +552,31 @@ export default function CentralAtendimento() {
         />
         
         <SidebarInset className="flex-1 flex flex-col">
-          {/* Desktop Header */}
+          {/* Desktop Header - Compact */}
           <header className="bg-card border-b border-border sticky top-0 z-10">
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <SidebarTrigger />
-                <div>
-                  <h1 className="font-display font-bold text-foreground text-lg">Central de Atendimento</h1>
-                  <p className="text-sm text-muted-foreground">{currentUserProfile?.full_name || user.email}</p>
-                </div>
+                <h1 className="font-display font-bold text-foreground">Central de Atendimento</h1>
               </div>
               
               {/* User Avatar Desktop */}
-              <Avatar 
-                className="h-10 w-10 border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors" 
-                onClick={() => navigate("/configuracoes")}
-              >
-                <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                  {getInitials(currentUserProfile?.full_name || user.email || "U")}
-                </AvatarFallback>
-              </Avatar>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground hidden lg:block">{currentUserProfile?.full_name || user.email}</span>
+                <Avatar 
+                  className="h-8 w-8 border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors" 
+                  onClick={() => navigate("/configuracoes")}
+                >
+                  <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                    {getInitials(currentUserProfile?.full_name || user.email || "U")}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col p-6">
+          <main className="flex-1 flex flex-col p-4">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col">
               <TabsList className="w-fit">
                 <TabsTrigger value="chat" className="flex items-center gap-2 relative">
@@ -597,11 +597,11 @@ export default function CentralAtendimento() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="chat" className="flex-1 mt-4">
+              <TabsContent value="chat" className="flex-1 mt-3">
                 <WhatsAppChat userId={user.id} allowedUnits={canViewAll ? ['all'] : allowedUnits} />
               </TabsContent>
 
-              <TabsContent value="leads" className="flex-1 mt-4">
+              <TabsContent value="leads" className="flex-1 mt-3">
                 {/* View mode toggle - positioned at top like mobile */}
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")}>
                   <div className="mb-4">
