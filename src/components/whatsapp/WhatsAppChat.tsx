@@ -1162,9 +1162,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   }
 
   return (
-    <div className="flex flex-col h-full min-h-[400px]">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header with Unit Tabs and Notifications Toggle */}
-      <div className="flex items-center justify-between gap-2 mt-3 mb-2">
+      <div className="flex items-center justify-between gap-2 mt-3 mb-2 px-1 shrink-0">
         {/* Unit Tabs - only show if multiple instances */}
         {instances.length > 1 ? (
           <Tabs 
@@ -1214,7 +1214,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
       {/* Disconnected warning */}
       {hasDisconnectedInstances && selectedInstance?.status !== 'connected' && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 mb-2 text-sm text-center">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 mb-2 text-sm text-center shrink-0">
           <WifiOff className="w-4 h-4 inline mr-2" />
           Esta unidade está desconectada. Selecione outra ou aguarde o administrador.
         </div>
@@ -1225,7 +1225,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         <div className="flex flex-1 border rounded-lg overflow-hidden bg-card min-h-0">
           {/* Mobile: Show full width list or chat */}
           <div className={cn(
-            "w-full flex flex-col min-h-0 md:hidden",
+            "w-full flex flex-col overflow-hidden md:hidden",
             selectedConversation && "hidden"
           )}>
             <div className="p-3 border-b space-y-2">
@@ -2201,7 +2201,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
           {/* Mobile: Show chat when conversation is selected */}
           <div className={cn(
-            "w-full flex flex-col min-h-0 md:hidden",
+            "w-full flex flex-col overflow-hidden md:hidden",
             !selectedConversation && "hidden"
           )}>
             {selectedConversation && (
