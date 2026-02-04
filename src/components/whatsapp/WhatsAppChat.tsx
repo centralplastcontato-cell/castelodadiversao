@@ -14,7 +14,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile, ExternalLink,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
-  Users, Calendar, MapPin, ArrowRightLeft, Info
+  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -86,6 +86,8 @@ interface Conversation {
   is_favorite: boolean;
   last_message_content: string | null;
   last_message_from_me: boolean;
+  bot_enabled: boolean | null;
+  bot_step: string | null;
 }
 
 interface Lead {
@@ -744,6 +746,28 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     toast({
       title: newValue ? "Adicionado aos favoritos" : "Removido dos favoritos",
       description: conv.contact_name || conv.contact_phone,
+    });
+  };
+
+  const toggleConversationBot = async (conv: Conversation) => {
+    const newValue = conv.bot_enabled === false ? true : false;
+    
+    await supabase
+      .from('wapi_conversations')
+      .update({ bot_enabled: newValue })
+      .eq('id', conv.id);
+
+    setConversations(prev => 
+      prev.map(c => c.id === conv.id ? { ...c, bot_enabled: newValue } : c)
+    );
+
+    if (selectedConversation?.id === conv.id) {
+      setSelectedConversation({ ...selectedConversation, bot_enabled: newValue });
+    }
+
+    toast({
+      title: newValue ? "Bot ativado" : "Bot desativado",
+      description: `Mensagens automáticas ${newValue ? 'ativadas' : 'desativadas'} para esta conversa.`,
     });
   };
 
@@ -1624,6 +1648,23 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           </PopoverContent>
                         </Popover>
                       )}
+                      {/* Bot Toggle Button - only show for individual chats without linked lead */}
+                      {!selectedConversation.remote_jid.includes('@g.us') && !linkedLead && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => toggleConversationBot(selectedConversation)}
+                          title={selectedConversation.bot_enabled !== false ? "Desativar bot" : "Ativar bot"}
+                        >
+                          <Bot className={cn(
+                            "w-4 h-4",
+                            selectedConversation.bot_enabled !== false 
+                              ? "text-primary" 
+                              : "text-muted-foreground"
+                          )} />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -2251,6 +2292,23 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                           </div>
                         </PopoverContent>
                       </Popover>
+                    )}
+                    {/* Bot Toggle Button - mobile */}
+                    {!selectedConversation.remote_jid.includes('@g.us') && !linkedLead && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => toggleConversationBot(selectedConversation)}
+                        title={selectedConversation.bot_enabled !== false ? "Desativar bot" : "Ativar bot"}
+                      >
+                        <Bot className={cn(
+                          "w-4 h-4",
+                          selectedConversation.bot_enabled !== false 
+                            ? "text-primary" 
+                            : "text-muted-foreground"
+                        )} />
+                      </Button>
                     )}
                     <Button
                       variant="ghost"
