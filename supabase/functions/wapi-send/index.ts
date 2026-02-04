@@ -858,17 +858,43 @@ Deno.serve(async (req) => {
         console.log(`Downloading media for message: ${downloadMsgId}`);
         
         try {
-          // First, get media_key, media_direct_path and message_type from database
-          const { data: msgData } = await supabase
+          // First, get message details AND the correct instance for this message
+          const { data: msgData, error: msgError } = await supabase
             .from('wapi_messages')
-            .select('media_key, media_direct_path, media_url, message_type')
+            .select(`
+              media_key, 
+              media_direct_path, 
+              media_url, 
+              message_type,
+              conversation:wapi_conversations!inner(
+                instance:wapi_instances!inner(
+                  instance_id,
+                  instance_token
+                )
+              )
+            `)
             .eq('message_id', downloadMsgId)
             .single();
+          
+          if (msgError || !msgData) {
+            console.error('Message not found:', msgError);
+            return new Response(JSON.stringify({ error: 'Mensagem não encontrada' }), {
+              status: 404,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          // Get the correct instance for this specific message
+          const msgInstance = (msgData.conversation as any)?.instance;
+          const msgInstanceId = msgInstance?.instance_id || instance_id;
+          const msgInstanceToken = msgInstance?.instance_token || instance_token;
           
           const mediaKey = msgData?.media_key;
           const directPath = msgData?.media_direct_path;
           const originalUrl = msgData?.media_url;
           const messageType = msgData?.message_type || 'image';
+          
+          console.log(`Message found - instance: ${msgInstanceId}, hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}`);
           
           console.log(`Message lookup - hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}, type: ${messageType}`);
           
@@ -906,12 +932,12 @@ Deno.serve(async (req) => {
           console.log('W-API download request:', JSON.stringify(requestBody));
           
           const downloadResponse = await fetch(
-            `${WAPI_BASE_URL}/message/download-media?instanceId=${instance_id}`,
+            `${WAPI_BASE_URL}/message/download-media?instanceId=${msgInstanceId}`,
             {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${instance_token}`,
+                'Authorization': `Bearer ${msgInstanceToken}`,
               },
               body: JSON.stringify(requestBody),
             }
