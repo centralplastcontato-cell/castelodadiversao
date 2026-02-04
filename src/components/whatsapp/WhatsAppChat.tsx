@@ -128,12 +128,14 @@ interface Message {
 interface WhatsAppChatProps {
   userId: string;
   allowedUnits: string[];
+  initialPhone?: string | null;
+  onPhoneHandled?: () => void;
 }
 
 // Component for displaying media with auto-download capability
 import { MediaMessage } from "@/components/whatsapp/MediaMessage";
 
-export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
+export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<WapiInstance | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -338,9 +340,18 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     }
   };
 
+  // Track if initialPhone has been processed
+  const [initialPhoneProcessed, setInitialPhoneProcessed] = useState(false);
+
   useEffect(() => {
     if (selectedInstance) {
-      fetchConversations();
+      // Pass initialPhone only on first load if not yet processed
+      if (initialPhone && !initialPhoneProcessed) {
+        fetchConversations(initialPhone);
+        setInitialPhoneProcessed(true);
+      } else {
+        fetchConversations();
+      }
 
       // Subscribe to realtime updates for conversations - with notifications
       const conversationsChannel = supabase
@@ -381,7 +392,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
         supabase.removeChannel(conversationsChannel);
       };
     }
-  }, [selectedInstance, selectedConversation?.id, notify]);
+  }, [selectedInstance, selectedConversation?.id, notify, initialPhone, initialPhoneProcessed]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -455,7 +466,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     setIsLoading(false);
   };
 
-  const fetchConversations = async () => {
+  const fetchConversations = async (selectPhone?: string) => {
     if (!selectedInstance) return;
 
     const { data } = await supabase
@@ -466,6 +477,33 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
     if (data) {
       setConversations(data as Conversation[]);
+      
+      // If initialPhone is provided, try to select that conversation
+      if (selectPhone) {
+        const cleanPhone = selectPhone.replace(/\D/g, '');
+        const phoneVariants = [
+          cleanPhone,
+          cleanPhone.replace(/^55/, ''),
+          `55${cleanPhone}`,
+        ];
+        
+        const matchingConv = data.find((conv: Conversation) => {
+          const convPhone = conv.contact_phone.replace(/\D/g, '');
+          return phoneVariants.some(p => convPhone.includes(p) || p.includes(convPhone));
+        });
+        
+        if (matchingConv) {
+          setSelectedConversation(matchingConv as Conversation);
+          onPhoneHandled?.();
+        } else {
+          toast({
+            title: "Conversa não encontrada",
+            description: "Não há histórico de conversa com este número na plataforma.",
+            variant: "destructive",
+          });
+          onPhoneHandled?.();
+        }
+      }
     }
   };
 
