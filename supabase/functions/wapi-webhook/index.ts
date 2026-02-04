@@ -242,8 +242,7 @@ Deno.serve(async (req) => {
           remoteJid = rawRemoteJid.replace('@c.us', '@s.whatsapp.net');
         }
 
-        // Check if this is a group conversation
-        const isGroup = remoteJid.includes('@g.us');
+        // isGroup already determined above from rawRemoteJid
         
         const fromMe = message.key?.fromMe || message.fromMe || false;
         const messageId = message.key?.id || message.id || message.messageId;
