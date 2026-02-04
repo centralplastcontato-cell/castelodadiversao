@@ -14,7 +14,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile, ExternalLink,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
-  Users, Calendar, MapPin
+  Users, Calendar, MapPin, ArrowRightLeft
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -40,6 +40,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -81,6 +99,7 @@ interface Lead {
   guests: string | null;
   observacoes: string | null;
   created_at: string;
+  responsavel_id: string | null;
 }
 
 interface MessageTemplate {
@@ -186,6 +205,11 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [isSearchingLeads, setIsSearchingLeads] = useState(false);
   const [linkedLead, setLinkedLead] = useState<Lead | null>(null);
   const [isCreatingLead, setIsCreatingLead] = useState(false);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [responsaveis, setResponsaveis] = useState<{user_id: string; full_name: string}[]>([]);
+  const [selectedTransferUserId, setSelectedTransferUserId] = useState<string>("");
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -251,7 +275,102 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   useEffect(() => {
     fetchInstances();
     fetchTemplates();
+    fetchResponsaveis();
+    fetchCurrentUserName();
   }, [userId, allowedUnits]);
+
+  const fetchCurrentUserName = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", userId)
+      .single();
+    if (data) {
+      setCurrentUserName(data.full_name);
+    }
+  };
+
+  const fetchResponsaveis = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .eq("is_active", true);
+    if (data) {
+      setResponsaveis(data);
+    }
+  };
+
+  const handleTransferLead = async () => {
+    if (!linkedLead || !selectedTransferUserId) return;
+
+    setIsTransferring(true);
+
+    try {
+      const targetUser = responsaveis.find((r) => r.user_id === selectedTransferUserId);
+      const previousResponsavel = responsaveis.find(
+        (r) => r.user_id === linkedLead.responsavel_id
+      );
+
+      // Update the lead's responsavel
+      const { error: updateError } = await supabase
+        .from("campaign_leads")
+        .update({ responsavel_id: selectedTransferUserId })
+        .eq("id", linkedLead.id);
+
+      if (updateError) throw updateError;
+
+      // Add history entry
+      await supabase.from("lead_history").insert({
+        lead_id: linkedLead.id,
+        user_id: userId,
+        user_name: currentUserName,
+        action: "Transferência de lead",
+        old_value: previousResponsavel?.full_name || "Não atribuído",
+        new_value: targetUser?.full_name || "Desconhecido",
+      });
+
+      // Create notification for the receiving user
+      const statusLabels: Record<string, string> = {
+        novo: 'Novo',
+        em_contato: 'Em Contato',
+        orcamento_enviado: 'Orçamento Enviado',
+        aguardando_resposta: 'Aguardando Resposta',
+        fechado: 'Fechado',
+        perdido: 'Perdido',
+      };
+
+      await supabase.from("notifications").insert({
+        user_id: selectedTransferUserId,
+        type: "lead_transfer",
+        title: "Novo lead transferido para você",
+        message: `${currentUserName} transferiu o lead "${linkedLead.name}" (${statusLabels[linkedLead.status] || linkedLead.status}) para você.`,
+        data: {
+          lead_id: linkedLead.id,
+          lead_name: linkedLead.name,
+          lead_status: linkedLead.status,
+          transferred_by: currentUserName,
+          transferred_by_id: userId,
+        },
+      });
+
+      toast({
+        title: "Lead transferido",
+        description: `O lead foi transferido para ${targetUser?.full_name}.`,
+      });
+
+      setSelectedTransferUserId("");
+      setShowTransferDialog(false);
+    } catch (error: unknown) {
+      console.error("Error transferring lead:", error);
+      toast({
+        title: "Erro ao transferir",
+        description: error instanceof Error ? error.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTransferring(false);
+    }
+  };
 
   const fetchTemplates = async () => {
     const { data } = await supabase
@@ -413,7 +532,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       // Lead already linked, just fetch it
       const { data } = await supabase
         .from("campaign_leads")
-        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at")
+        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id")
         .eq("id", leadId)
         .single();
 
@@ -437,7 +556,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       // Search for a lead matching this phone number in the same unit
       const { data: matchingLead } = await supabase
         .from("campaign_leads")
-        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at")
+        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id")
         .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
         .eq("unit", selectedInstance.unit)
         .limit(1)
@@ -480,7 +599,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
     const { data } = await supabase
       .from("campaign_leads")
-      .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at")
+      .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id")
       .or(`name.ilike.%${query}%,whatsapp.ilike.%${query}%`)
       .eq("unit", selectedInstance.unit)
       .limit(10);
@@ -2619,6 +2738,19 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   </div>
                 </div>
 
+                {/* Transfer Lead Section */}
+                <div className="pt-3 mt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => setShowTransferDialog(true)}
+                  >
+                    <ArrowRightLeft className="w-4 h-4" />
+                    Transferir Lead
+                  </Button>
+                </div>
+
               </div>
             ) : (
               <>
@@ -2690,6 +2822,71 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Transfer Lead Dialog */}
+      <AlertDialog open={showTransferDialog} onOpenChange={(open) => {
+        setShowTransferDialog(open);
+        if (!open) {
+          setSelectedTransferUserId("");
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5" />
+              Transferir Lead
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Selecione o usuário que receberá o lead "{linkedLead?.name}". O usuário será notificado sobre a transferência.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-4 space-y-3">
+            <Label>Transferir para:</Label>
+            <Select value={selectedTransferUserId} onValueChange={setSelectedTransferUserId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um usuário..." />
+              </SelectTrigger>
+              <SelectContent>
+                {responsaveis
+                  .filter(r => r.user_id !== userId && r.user_id !== linkedLead?.responsavel_id)
+                  .length === 0 ? (
+                  <SelectItem value="none" disabled>
+                    Nenhum usuário disponível
+                  </SelectItem>
+                ) : (
+                  responsaveis
+                    .filter(r => r.user_id !== userId && r.user_id !== linkedLead?.responsavel_id)
+                    .map((user) => (
+                      <SelectItem key={user.user_id} value={user.user_id}>
+                        {user.full_name}
+                      </SelectItem>
+                    ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isTransferring}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleTransferLead}
+              disabled={!selectedTransferUserId || isTransferring}
+            >
+              {isTransferring ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Transferindo...
+                </>
+              ) : (
+                "Transferir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
