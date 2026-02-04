@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { action, phone, message, conversationId, instanceId, instanceToken } = body;
+    const { action, phone, message, conversationId, instanceId, instanceToken, unit } = body;
 
     // Use provided instanceId/token or fallback to fetching from database
     let instance_id = instanceId;
@@ -27,9 +27,33 @@ Deno.serve(async (req) => {
 
     // If instance credentials are provided directly, allow public access (e.g., from landing page chatbot)
     const isPublicCall = !!(instanceId && instanceToken);
+    
+    // If unit is provided without credentials, fetch instance by unit (public chatbot flow)
+    const isPublicUnitCall = !!(unit && !instanceId && !instanceToken);
 
-    // If no instance credentials provided, require authentication
-    if (!isPublicCall) {
+    if (isPublicUnitCall) {
+      // Fetch instance by unit using service role (bypasses RLS)
+      console.log('Fetching instance for unit:', unit);
+      const { data: instance, error: instanceError } = await supabase
+        .from('wapi_instances')
+        .select('instance_id, instance_token')
+        .eq('unit', unit)
+        .eq('status', 'connected')
+        .single();
+
+      if (instanceError || !instance) {
+        console.error('No connected instance found for unit:', unit, instanceError);
+        return new Response(JSON.stringify({ error: `Instância não encontrada para unidade ${unit}` }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      instance_id = instance.instance_id;
+      instance_token = instance.instance_token;
+      console.log('Found instance for unit:', unit, 'instanceId:', instance_id);
+    } else if (!isPublicCall) {
+      // If no instance credentials provided and no unit, require authentication
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
         return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
@@ -67,7 +91,7 @@ Deno.serve(async (req) => {
       instance_token = instance.instance_token;
     }
 
-    console.log('wapi-send called with action:', action, 'phone:', phone, 'isPublicCall:', isPublicCall);
+    console.log('wapi-send called with action:', action, 'phone:', phone, 'isPublicCall:', isPublicCall, 'isPublicUnitCall:', isPublicUnitCall);
 
     switch (action) {
       case 'send-text': {
