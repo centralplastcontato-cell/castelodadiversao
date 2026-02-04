@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
+import { usePermissions } from "@/hooks/usePermissions";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -229,13 +230,17 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
     error: recordingError,
   } = useAudioRecorder({ maxDuration: 120 });
 
+  // Permissions hook - check if user can transfer leads
+  const { hasPermission: hasUserPermission } = usePermissions(userId);
+  const canTransferLeads = hasUserPermission('leads.transfer');
+
   // Notifications hook
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem('whatsapp-notifications-enabled');
     return saved !== null ? saved === 'true' : true;
   });
   
-  const { notify, requestPermission, hasPermission } = useNotifications({
+  const { notify, requestPermission, hasPermission: hasBrowserPermission } = useNotifications({
     soundEnabled: notificationsEnabled,
     browserNotificationsEnabled: notificationsEnabled,
   });
@@ -2738,18 +2743,20 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   </div>
                 </div>
 
-                {/* Transfer Lead Section */}
-                <div className="pt-3 mt-3 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full gap-2"
-                    onClick={() => setShowTransferDialog(true)}
-                  >
-                    <ArrowRightLeft className="w-4 h-4" />
-                    Transferir Lead
-                  </Button>
-                </div>
+                {/* Transfer Lead Section - only show if user has permission */}
+                {canTransferLeads && (
+                  <div className="pt-3 mt-3 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={() => setShowTransferDialog(true)}
+                    >
+                      <ArrowRightLeft className="w-4 h-4" />
+                      Transferir Lead
+                    </Button>
+                  </div>
+                )}
 
               </div>
             ) : (
