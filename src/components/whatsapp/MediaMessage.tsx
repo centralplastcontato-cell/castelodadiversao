@@ -56,9 +56,13 @@ export function MediaMessage({
   const [hasAttemptedDownload, setHasAttemptedDownload] = useState(false);
 
   const isPersisted = isPersistedMediaUrl(currentUrl);
+  
+  // Only attempt download if we have instance credentials AND the media is not already persisted
+  // The actual download will happen in the edge function which checks if directPath is available
   const canAttemptDownload = !isPersisted && messageId && instanceId && instanceToken;
 
   // Auto-download when media is not persisted (only once per mount)
+  // Note: This will fail gracefully if the media_direct_path is not available in the database
   useEffect(() => {
     if (canAttemptDownload && !isDownloading && !downloadError && !hasAttemptedDownload) {
       setHasAttemptedDownload(true);

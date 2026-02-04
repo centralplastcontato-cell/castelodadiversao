@@ -858,24 +858,39 @@ Deno.serve(async (req) => {
         console.log(`Downloading media for message: ${downloadMsgId}`);
         
         try {
-          // First, try to get media_key from database
+          // First, get media_key, media_direct_path and message_type from database
           const { data: msgData } = await supabase
             .from('wapi_messages')
-            .select('media_key, message_type')
+            .select('media_key, media_direct_path, media_url, message_type')
             .eq('message_id', downloadMsgId)
             .single();
           
           const mediaKey = msgData?.media_key;
-          console.log(`Message lookup - hasMediaKey: ${!!mediaKey}, type: ${msgData?.message_type}`);
+          const directPath = msgData?.media_direct_path;
+          const originalUrl = msgData?.media_url;
+          const messageType = msgData?.message_type || 'image';
           
-          // Build request body - include mediaKey if available
-          const requestBody: Record<string, string> = {
+          console.log(`Message lookup - hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}, type: ${messageType}`);
+          
+          // Build request body - W-API requires mediaKey AND directPath for download
+          const requestBody: Record<string, unknown> = {
             messageId: downloadMsgId,
           };
           
-          if (mediaKey) {
+          // W-API download-media requires content object with url, mediaKey, and directPath
+          if (mediaKey && directPath) {
+            requestBody.mediaKey = mediaKey;
+            requestBody.directPath = directPath;
+            if (originalUrl && !originalUrl.includes('supabase.co')) {
+              requestBody.url = originalUrl;
+            }
+          } else if (mediaKey) {
+            // Try with just messageId and mediaKey (may fail if W-API requires directPath)
             requestBody.mediaKey = mediaKey;
           }
+          // If neither mediaKey nor directPath, just use messageId (W-API may find it in recent cache)
+          
+          console.log('W-API download request:', JSON.stringify(requestBody));
           
           const downloadResponse = await fetch(
             `${WAPI_BASE_URL}/message/download-media?instanceId=${instance_id}`,
@@ -960,10 +975,14 @@ Deno.serve(async (req) => {
             .from('whatsapp-media')
             .getPublicUrl(storagePath);
           
-          // Clear media_key from database since we successfully downloaded
+          // Clear media_key and media_direct_path from database since we successfully downloaded
           await supabase
             .from('wapi_messages')
-            .update({ media_key: null, media_url: publicUrl.publicUrl })
+            .update({ 
+              media_key: null, 
+              media_direct_path: null,
+              media_url: publicUrl.publicUrl 
+            })
             .eq('message_id', downloadMsgId);
           
           return new Response(JSON.stringify({ 

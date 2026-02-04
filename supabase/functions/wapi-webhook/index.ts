@@ -272,19 +272,32 @@ async function downloadAndStoreMedia(
   messageId: string,
   mediaType: 'image' | 'audio' | 'video' | 'document',
   fileName?: string,
-  mediaKey?: string | null
+  mediaKey?: string | null,
+  directPath?: string | null,
+  mediaUrl?: string | null
 ): Promise<string | null> {
   try {
-    console.log(`Downloading media for message ${messageId}, type: ${mediaType}, hasMediaKey: ${!!mediaKey}`);
+    console.log(`Downloading media for message ${messageId}, type: ${mediaType}, hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}`);
     
-    // Build request body - include mediaKey if available
-    const requestBody: Record<string, string> = {
+    // Build request body - W-API requires mediaKey AND directPath for download
+    const requestBody: Record<string, unknown> = {
       messageId: messageId,
     };
     
-    if (mediaKey) {
+    // W-API download-media requires content object with url, mediaKey, and directPath
+    if (mediaKey && directPath) {
+      requestBody.mediaKey = mediaKey;
+      requestBody.directPath = directPath;
+      if (mediaUrl) {
+        requestBody.url = mediaUrl;
+      }
+    } else if (mediaKey) {
+      // Try with just messageId and mediaKey (may fail if W-API requires directPath)
       requestBody.mediaKey = mediaKey;
     }
+    // If neither mediaKey nor directPath, just use messageId (W-API may find it in recent cache)
+    
+    console.log('W-API download request body:', JSON.stringify(requestBody));
     
     // Call W-API download media endpoint
     const downloadResponse = await fetch(
@@ -717,8 +730,9 @@ Deno.serve(async (req) => {
         // Extract message content
         let content = '';
         let messageType = 'text';
-        let mediaUrl = null;
+        let mediaUrl: string | null = null;
         let mediaKey: string | null = null;
+        let mediaDirectPath: string | null = null;
         let shouldDownloadMedia = false;
         let mediaFileName: string | undefined;
 
@@ -762,27 +776,31 @@ Deno.serve(async (req) => {
         } else if (msgContent.imageMessage) {
           messageType = 'image';
           content = msgContent.imageMessage.caption || '[Imagem]';
-          mediaUrl = msgContent.imageMessage.url || msgContent.imageMessage.directPath || null;
+          mediaUrl = msgContent.imageMessage.url || null;
           mediaKey = msgContent.imageMessage.mediaKey || null;
+          mediaDirectPath = msgContent.imageMessage.directPath || null;
           shouldDownloadMedia = true;
         } else if (msgContent.videoMessage) {
           messageType = 'video';
           content = msgContent.videoMessage.caption || '[Vídeo]';
-          mediaUrl = msgContent.videoMessage.url || msgContent.videoMessage.directPath || null;
+          mediaUrl = msgContent.videoMessage.url || null;
           mediaKey = msgContent.videoMessage.mediaKey || null;
+          mediaDirectPath = msgContent.videoMessage.directPath || null;
           shouldDownloadMedia = true;
         } else if (msgContent.audioMessage) {
           messageType = 'audio';
           content = '[Áudio]';
-          mediaUrl = msgContent.audioMessage.url || msgContent.audioMessage.directPath || null;
+          mediaUrl = msgContent.audioMessage.url || null;
           mediaKey = msgContent.audioMessage.mediaKey || null;
+          mediaDirectPath = msgContent.audioMessage.directPath || null;
           shouldDownloadMedia = true;
         } else if (msgContent.documentMessage) {
           messageType = 'document';
           content = msgContent.documentMessage.fileName || '[Documento]';
           mediaFileName = msgContent.documentMessage.fileName;
-          mediaUrl = msgContent.documentMessage.url || msgContent.documentMessage.directPath || null;
+          mediaUrl = msgContent.documentMessage.url || null;
           mediaKey = msgContent.documentMessage.mediaKey || null;
+          mediaDirectPath = msgContent.documentMessage.directPath || null;
           shouldDownloadMedia = true;
         } else if (message.body || message.text) {
           content = message.body || message.text;
@@ -794,7 +812,7 @@ Deno.serve(async (req) => {
         
         // Log media key availability for debugging
         if (shouldDownloadMedia) {
-          console.log(`Media message received - type: ${messageType}, hasMediaKey: ${!!mediaKey}, hasUrl: ${!!mediaUrl}`);
+          console.log(`Media message received - type: ${messageType}, hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!mediaDirectPath}, hasUrl: ${!!mediaUrl}`);
         }
 
         // For incoming messages with media, try to download and store in our storage
@@ -808,20 +826,23 @@ Deno.serve(async (req) => {
             messageId,
             messageType as 'image' | 'audio' | 'video' | 'document',
             mediaFileName,
-            mediaKey
+            mediaKey,
+            mediaDirectPath,
+            mediaUrl
           );
           
           if (storedUrl) {
             mediaUrl = storedUrl;
-            // Clear media key since we successfully downloaded
+            // Clear media key and directPath since we successfully downloaded
             mediaKey = null;
+            mediaDirectPath = null;
             console.log(`Media stored successfully, new URL: ${storedUrl}`);
           } else {
-            console.log('Media download failed, keeping original URL (may expire) and mediaKey for later retry');
+            console.log('Media download failed, keeping original URL (may expire) and mediaKey/directPath for later retry');
           }
         }
 
-        // Insert message (include media_key for later retry if initial download failed)
+        // Insert message (include media_key and media_direct_path for later retry if initial download failed)
         const { error: msgError } = await supabase
           .from('wapi_messages')
           .insert({
@@ -832,6 +853,7 @@ Deno.serve(async (req) => {
             content: content,
             media_url: mediaUrl,
             media_key: mediaKey,
+            media_direct_path: mediaDirectPath,
             status: fromMe ? 'sent' : 'received',
             timestamp: message.messageTimestamp 
               ? new Date(message.messageTimestamp * 1000).toISOString() 
