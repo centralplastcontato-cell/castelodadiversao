@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { 
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
-  ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile, ExternalLink,
+  ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
   Users, Calendar, MapPin, ArrowRightLeft, Info, Bot
 } from "lucide-react";
@@ -129,57 +129,8 @@ interface WhatsAppChatProps {
   allowedUnits: string[];
 }
 
-// Component for downloading media that wasn't stored properly
-// Now uses the MediaProgressIndicator for visual progress
-import { MediaProgressIndicator } from "@/components/whatsapp/MediaProgressIndicator";
-
-/**
- * Check if a media URL is from our persistent storage (Supabase)
- * URLs from WhatsApp CDN (mmg.whatsapp.net) expire quickly and won't work
- */
-function isPersistedMediaUrl(url: string | null): boolean {
-  if (!url) return false;
-  
-  // Our Supabase storage URLs are permanent
-  if (url.includes('supabase.co/storage')) return true;
-  if (url.includes('knyzkwgdmclcwvzhdmyk')) return true; // Our project ID
-  
-  // WhatsApp CDN URLs expire quickly - treat as not persisted
-  if (url.includes('mmg.whatsapp.net')) return false;
-  if (url.includes('.whatsapp.net')) return false;
-  if (url.includes('whatsapp.com')) return false;
-  
-  // Other URLs (might be external) - assume they work
-  return true;
-}
-
-function MediaDownloadButton({
-  messageId,
-  content,
-  fromMe,
-  mediaType,
-  selectedInstance,
-  onDownloadSuccess,
-}: {
-  messageId: string | null;
-  content: string | null;
-  fromMe: boolean;
-  mediaType: 'document' | 'audio' | 'video' | 'image';
-  selectedInstance: WapiInstance | null;
-  onDownloadSuccess: (url: string) => void;
-}) {
-  return (
-    <MediaProgressIndicator
-      messageId={messageId}
-      mediaType={mediaType}
-      content={content}
-      fromMe={fromMe}
-      instanceId={selectedInstance?.instance_id}
-      instanceToken={selectedInstance?.instance_token}
-      onDownloadComplete={onDownloadSuccess}
-    />
-  );
-}
+// Component for displaying media with auto-download capability
+import { MediaMessage } from "@/components/whatsapp/MediaMessage";
 
 export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
@@ -1810,121 +1761,22 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                                   : "bg-card border"
                               )}
                             >
-                              {msg.message_type === 'image' && (
+{(msg.message_type === 'image' || msg.message_type === 'video' || msg.message_type === 'audio' || msg.message_type === 'document') && (
                                 <div className="mb-2">
-                                  {isPersistedMediaUrl(msg.media_url) ? (
-                                    <img 
-                                      src={msg.media_url!} 
-                                      alt="Imagem" 
-                                      className="rounded max-w-full max-h-64 object-contain cursor-pointer"
-                                      onClick={() => window.open(msg.media_url!, '_blank')}
-                                    />
-                                  ) : (
-                                    <MediaDownloadButton
-                                      messageId={msg.message_id}
-                                      content={msg.content || 'Imagem'}
-                                      fromMe={msg.from_me}
-                                      mediaType="image"
-                                      selectedInstance={selectedInstance}
-                                      onDownloadSuccess={(url) => {
-                                        setMessages(prev => prev.map(m => 
-                                          m.id === msg.id ? { ...m, media_url: url } : m
-                                        ));
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                              {msg.message_type === 'audio' && (
-                                <div className="mb-2">
-                                  {isPersistedMediaUrl(msg.media_url) ? (
-                                    <audio controls className="max-w-full">
-                                      <source src={msg.media_url!} />
-                                    </audio>
-                                  ) : (
-                                    <MediaDownloadButton
-                                      messageId={msg.message_id}
-                                      content={msg.content}
-                                      fromMe={msg.from_me}
-                                      mediaType="audio"
-                                      selectedInstance={selectedInstance}
-                                      onDownloadSuccess={(url) => {
-                                        setMessages(prev => prev.map(m => 
-                                          m.id === msg.id ? { ...m, media_url: url } : m
-                                        ));
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                              {msg.message_type === 'document' && (
-                                <div className="mb-2">
-                                  {isPersistedMediaUrl(msg.media_url) ? (
-                                    <a 
-                                      href={msg.media_url!} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      download
-                                      className={cn(
-                                        "flex items-center gap-2 p-2 rounded border transition-colors",
-                                        msg.from_me 
-                                          ? "border-primary-foreground/30 hover:bg-primary-foreground/10" 
-                                          : "border-border hover:bg-muted"
-                                      )}
-                                    >
-                                      <FileText className="w-5 h-5 shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{msg.content || 'Documento'}</p>
-                                        <p className={cn(
-                                          "text-xs",
-                                          msg.from_me ? "text-primary-foreground/60" : "text-muted-foreground"
-                                        )}>
-                                          Clique para baixar
-                                        </p>
-                                      </div>
-                                      <ExternalLink className="w-4 h-4 shrink-0" />
-                                    </a>
-                                  ) : (
-                                    <MediaDownloadButton
-                                      messageId={msg.message_id}
-                                      content={msg.content}
-                                      fromMe={msg.from_me}
-                                      mediaType="document"
-                                      selectedInstance={selectedInstance}
-                                      onDownloadSuccess={(url) => {
-                                        // Update message with new URL
-                                        setMessages(prev => prev.map(m => 
-                                          m.id === msg.id ? { ...m, media_url: url } : m
-                                        ));
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                              {msg.message_type === 'video' && (
-                                <div className="mb-2">
-                                  {isPersistedMediaUrl(msg.media_url) ? (
-                                    <video 
-                                      controls 
-                                      className="rounded max-w-full max-h-64"
-                                      preload="metadata"
-                                    >
-                                      <source src={msg.media_url!} />
-                                    </video>
-                                  ) : (
-                                    <MediaDownloadButton
-                                      messageId={msg.message_id}
-                                      content={msg.content || 'Vídeo'}
-                                      fromMe={msg.from_me}
-                                      mediaType="video"
-                                      selectedInstance={selectedInstance}
-                                      onDownloadSuccess={(url) => {
-                                        setMessages(prev => prev.map(m => 
-                                          m.id === msg.id ? { ...m, media_url: url } : m
-                                        ));
-                                      }}
-                                    />
-                                  )}
+                                  <MediaMessage
+                                    messageId={msg.message_id}
+                                    mediaType={msg.message_type as 'image' | 'video' | 'audio' | 'document'}
+                                    mediaUrl={msg.media_url}
+                                    content={msg.content}
+                                    fromMe={msg.from_me}
+                                    instanceId={selectedInstance?.instance_id}
+                                    instanceToken={selectedInstance?.instance_token}
+                                    onMediaUrlUpdate={(url) => {
+                                      setMessages(prev => prev.map(m => 
+                                        m.id === msg.id ? { ...m, media_url: url } : m
+                                      ));
+                                    }}
+                                  />
                                 </div>
                               )}
                               {msg.message_type === 'text' && (
@@ -2448,107 +2300,22 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               : "bg-card border"
                           )}
                         >
-                          {msg.message_type === 'image' && (
+{(msg.message_type === 'image' || msg.message_type === 'video' || msg.message_type === 'audio' || msg.message_type === 'document') && (
                             <div className="mb-2">
-                              {isPersistedMediaUrl(msg.media_url) ? (
-                                <img 
-                                  src={msg.media_url!} 
-                                  alt="Imagem" 
-                                  className="rounded max-w-full max-h-48 object-contain"
-                                />
-                              ) : (
-                                <MediaDownloadButton
-                                  messageId={msg.message_id}
-                                  content={msg.content || 'Imagem'}
-                                  fromMe={msg.from_me}
-                                  mediaType="image"
-                                  selectedInstance={selectedInstance}
-                                  onDownloadSuccess={(url) => {
-                                    setMessages(prev => prev.map(m => 
-                                      m.id === msg.id ? { ...m, media_url: url } : m
-                                    ));
-                                  }}
-                                />
-                              )}
-                            </div>
-                          )}
-                          {msg.message_type === 'audio' && (
-                            <div className="mb-2">
-                              {isPersistedMediaUrl(msg.media_url) ? (
-                                <audio controls className="max-w-full">
-                                  <source src={msg.media_url!} />
-                                </audio>
-                              ) : (
-                                <MediaDownloadButton
-                                  messageId={msg.message_id}
-                                  content={msg.content}
-                                  fromMe={msg.from_me}
-                                  mediaType="audio"
-                                  selectedInstance={selectedInstance}
-                                  onDownloadSuccess={(url) => {
-                                    setMessages(prev => prev.map(m => 
-                                      m.id === msg.id ? { ...m, media_url: url } : m
-                                    ));
-                                  }}
-                                />
-                              )}
-                            </div>
-                          )}
-                          {msg.message_type === 'document' && (
-                            <div className="mb-2">
-                              {isPersistedMediaUrl(msg.media_url) ? (
-                                <a 
-                                  href={msg.media_url!} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  download
-                                  className={cn(
-                                    "flex items-center gap-2 p-2 rounded border transition-colors",
-                                    msg.from_me 
-                                      ? "border-primary-foreground/30 hover:bg-primary-foreground/10" 
-                                      : "border-border hover:bg-muted"
-                                  )}
-                                >
-                                  <FileText className="w-4 h-4 shrink-0" />
-                                  <span className="text-sm truncate flex-1">{msg.content || 'Documento'}</span>
-                                  <ExternalLink className="w-3 h-3 shrink-0" />
-                                </a>
-                              ) : (
-                                <MediaDownloadButton
-                                  messageId={msg.message_id}
-                                  content={msg.content}
-                                  fromMe={msg.from_me}
-                                  mediaType="document"
-                                  selectedInstance={selectedInstance}
-                                  onDownloadSuccess={(url) => {
-                                    setMessages(prev => prev.map(m => 
-                                      m.id === msg.id ? { ...m, media_url: url } : m
-                                    ));
-                                  }}
-                                />
-                              )}
-                            </div>
-                          )}
-                          {msg.message_type === 'video' && (
-                            <div className="mb-2">
-                              {isPersistedMediaUrl(msg.media_url) ? (
-                                <video controls className="rounded max-w-full max-h-48" preload="metadata">
-                                  <source src={msg.media_url!} />
-                                </video>
-                              ) : (
-                                <MediaDownloadButton
-                                  messageId={msg.message_id}
-                                  content={msg.content || 'Vídeo'}
-                                  fromMe={msg.from_me}
-                                  mediaType="video"
-                                  selectedInstance={selectedInstance}
-                                  onDownloadSuccess={(url) => {
-                                    setMessages(prev => prev.map(m => 
-                                      m.id === msg.id ? { ...m, media_url: url } : m
-                                    ));
-                                  }}
-                                />
-                              )}
+                              <MediaMessage
+                                messageId={msg.message_id}
+                                mediaType={msg.message_type as 'image' | 'video' | 'audio' | 'document'}
+                                mediaUrl={msg.media_url}
+                                content={msg.content}
+                                fromMe={msg.from_me}
+                                instanceId={selectedInstance?.instance_id}
+                                instanceToken={selectedInstance?.instance_token}
+                                onMediaUrlUpdate={(url) => {
+                                  setMessages(prev => prev.map(m => 
+                                    m.id === msg.id ? { ...m, media_url: url } : m
+                                  ));
+                                }}
+                              />
                             </div>
                           )}
                           {msg.message_type === 'text' && (
