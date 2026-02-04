@@ -93,7 +93,7 @@ export function LeadsKanban({
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 h-full">
+    <div className="flex gap-4 overflow-x-auto pb-4 h-full scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
       {columns.map((status) => {
         const columnLeads = getLeadsByStatus(status);
         return (
