@@ -6,6 +6,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUnitPermissions } from "@/hooks/useUnitPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useLeadNotifications } from "@/hooks/useLeadNotifications";
+import { useChatNotificationToggle } from "@/hooks/useChatNotificationToggle";
 import { Lead, LeadStatus, UserWithRole, Profile } from "@/types/crm";
 import { LeadsTable } from "@/components/admin/LeadsTable";
 import { LeadsFilters } from "@/components/admin/LeadsFilters";
@@ -31,7 +32,7 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, RefreshCw, LayoutList, Columns, Menu, Users as UsersIcon, MessageSquare, Settings, Headset } from "lucide-react";
+import { LogOut, RefreshCw, LayoutList, Columns, Menu, Users as UsersIcon, MessageSquare, Settings, Headset, Bell, BellOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 
@@ -103,6 +104,9 @@ export default function CentralAtendimento() {
   
   // Sound notification for new leads
   useLeadNotifications();
+  
+  // Chat notifications toggle
+  const { notificationsEnabled, toggleNotifications } = useChatNotificationToggle();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -691,6 +695,22 @@ export default function CentralAtendimento() {
                         {newLeadsCount > 99 ? "99+" : newLeadsCount}
                       </Badge>
                     )}
+                  </Button>
+                  <Button
+                    variant={notificationsEnabled ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={toggleNotifications}
+                    className="relative h-8 px-3"
+                    title={notificationsEnabled ? "Notificações ativadas" : "Notificações desativadas"}
+                  >
+                    {notificationsEnabled ? (
+                      <Bell className="w-4 h-4 mr-1.5" />
+                    ) : (
+                      <BellOff className="w-4 h-4 mr-1.5" />
+                    )}
+                    <span className="hidden lg:inline">
+                      {notificationsEnabled ? "Som" : "Mudo"}
+                    </span>
                   </Button>
                 </div>
               </div>

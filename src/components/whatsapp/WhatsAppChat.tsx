@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +13,12 @@ import { toast } from "@/hooks/use-toast";
 import { 
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
-  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
+  Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
   Users, Calendar, MapPin, ArrowRightLeft, Info, Bot
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useChatNotificationToggle } from "@/hooks/useChatNotificationToggle";
 import { usePermissions } from "@/hooks/usePermissions";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -185,11 +186,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const { hasPermission: hasUserPermission } = usePermissions(userId);
   const canTransferLeads = hasUserPermission('leads.transfer');
 
-  // Notifications hook
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    const saved = localStorage.getItem('whatsapp-notifications-enabled');
-    return saved !== null ? saved === 'true' : true;
-  });
+  // Notifications hook - uses shared toggle state
+  const { notificationsEnabled } = useChatNotificationToggle();
   
   const { notify, requestPermission, hasPermission: hasBrowserPermission } = useNotifications({
     soundEnabled: notificationsEnabled,
@@ -201,24 +199,6 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     if (notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
       requestPermission();
     }
-  }, [notificationsEnabled, requestPermission]);
-
-  // Save notification preference to localStorage
-  const toggleNotifications = useCallback(async () => {
-    const newValue = !notificationsEnabled;
-    setNotificationsEnabled(newValue);
-    localStorage.setItem('whatsapp-notifications-enabled', String(newValue));
-    
-    if (newValue && 'Notification' in window && Notification.permission === 'default') {
-      await requestPermission();
-    }
-    
-    toast({
-      title: newValue ? "Notificações ativadas" : "Notificações desativadas",
-      description: newValue 
-        ? "Você receberá alertas sonoros e visuais para novas mensagens."
-        : "Você não receberá mais alertas de novas mensagens.",
-    });
   }, [notificationsEnabled, requestPermission]);
 
   // Format recording time as MM:SS
@@ -1258,24 +1238,6 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         ) : (
           <div className="flex-1" />
         )}
-        
-        {/* Notifications Toggle */}
-        <Button
-          variant={notificationsEnabled ? "secondary" : "ghost"}
-          size="sm"
-          onClick={toggleNotifications}
-          className="shrink-0"
-          title={notificationsEnabled ? "Notificações ativadas" : "Notificações desativadas"}
-        >
-          {notificationsEnabled ? (
-            <Bell className="w-4 h-4" />
-          ) : (
-            <BellOff className="w-4 h-4 text-muted-foreground" />
-          )}
-          <span className="hidden sm:inline ml-1">
-            {notificationsEnabled ? "Notificações" : "Silenciado"}
-          </span>
-        </Button>
       </div>
 
       {/* Disconnected warning */}
