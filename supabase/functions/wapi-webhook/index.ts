@@ -658,6 +658,13 @@ Deno.serve(async (req) => {
             last_message_from_me: fromMe,
           };
           
+          // If this is an incoming message (not from me) and the conversation is closed,
+          // automatically reopen it so the user sees it in the main list
+          if (!fromMe && existingConv.is_closed === true) {
+            updateData.is_closed = false;
+            console.log('Reopening closed conversation due to new incoming message:', existingConv.id);
+          }
+          
           // For groups: only update name if we have a valid group name (not sender name)
           // For individuals: update name if we have a new one
           if (isGroup) {
