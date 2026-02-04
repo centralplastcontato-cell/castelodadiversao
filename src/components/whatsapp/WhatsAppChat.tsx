@@ -139,6 +139,7 @@ interface WhatsAppChatProps {
 
 // Component for displaying media with auto-download capability
 import { MediaMessage } from "@/components/whatsapp/MediaMessage";
+import { ConversationStatusActions } from "@/components/whatsapp/ConversationStatusActions";
 
 export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
@@ -171,6 +172,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [isDeleting, setIsDeleting] = useState(false);
   const [closedLeadConversationIds, setClosedLeadConversationIds] = useState<Set<string>>(new Set());
   const [orcamentoEnviadoConversationIds, setOrcamentoEnviadoConversationIds] = useState<Set<string>>(new Set());
+  const [conversationLeadsMap, setConversationLeadsMap] = useState<Record<string, Lead | null>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -539,31 +541,42 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         .filter((id): id is string => id !== null);
       
       if (leadIds.length > 0) {
-        // Find leads with status 'fechado' and 'orcamento_enviado'
-        const { data: closedLeads } = await supabase
+        // Fetch all linked leads for the conversation cards
+        const { data: allLeads } = await supabase
           .from("campaign_leads")
-          .select("id")
-          .in("id", leadIds)
-          .eq("status", "fechado");
+          .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id")
+          .in("id", leadIds);
         
-        const { data: oeLeads } = await supabase
-          .from("campaign_leads")
-          .select("id")
-          .in("id", leadIds)
-          .eq("status", "orcamento_enviado");
-        
-        if (closedLeads) {
-          const closedLeadIds = new Set(closedLeads.map(l => l.id));
+        if (allLeads) {
+          // Create a map of conversation_id -> lead
+          const leadsMap: Record<string, Lead | null> = {};
+          const closedLeadIds = new Set<string>();
+          const oeLeadIds = new Set<string>();
+          
+          allLeads.forEach((lead) => {
+            if (lead.status === 'fechado') closedLeadIds.add(lead.id);
+            if (lead.status === 'orcamento_enviado') oeLeadIds.add(lead.id);
+          });
+          
+          // Map leads to conversations
+          data.forEach((conv: Conversation) => {
+            if (conv.lead_id) {
+              const lead = allLeads.find(l => l.id === conv.lead_id);
+              leadsMap[conv.id] = lead as Lead || null;
+            }
+          });
+          
+          setConversationLeadsMap(leadsMap);
+          
+          // Set closed lead conversation IDs
           const closedConvIds = new Set(
             data
               .filter((conv: Conversation) => conv.lead_id && closedLeadIds.has(conv.lead_id))
               .map((conv: Conversation) => conv.id)
           );
           setClosedLeadConversationIds(closedConvIds);
-        }
-        
-        if (oeLeads) {
-          const oeLeadIds = new Set(oeLeads.map(l => l.id));
+          
+          // Set O.E lead conversation IDs
           const oeConvIds = new Set(
             data
               .filter((conv: Conversation) => conv.lead_id && oeLeadIds.has(conv.lead_id))
@@ -1315,6 +1328,54 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     });
   };
 
+  // Handle status change from quick actions
+  const handleConversationLeadStatusChange = (leadId: string, newStatus: string) => {
+    // Update the conversationLeadsMap
+    setConversationLeadsMap(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(convId => {
+        const lead = updated[convId];
+        if (lead && lead.id === leadId) {
+          updated[convId] = { ...lead, status: newStatus };
+        }
+      });
+      return updated;
+    });
+
+    // Update the closedLeadConversationIds and orcamentoEnviadoConversationIds
+    setClosedLeadConversationIds(prev => {
+      const updated = new Set(prev);
+      // Find the conversation with this lead
+      const conv = conversations.find(c => c.lead_id === leadId);
+      if (conv) {
+        if (newStatus === 'fechado') {
+          updated.add(conv.id);
+        } else {
+          updated.delete(conv.id);
+        }
+      }
+      return updated;
+    });
+
+    setOrcamentoEnviadoConversationIds(prev => {
+      const updated = new Set(prev);
+      const conv = conversations.find(c => c.lead_id === leadId);
+      if (conv) {
+        if (newStatus === 'orcamento_enviado') {
+          updated.add(conv.id);
+        } else {
+          updated.delete(conv.id);
+        }
+      }
+      return updated;
+    });
+
+    // Update linkedLead if it's the same lead
+    if (linkedLead?.id === leadId) {
+      setLinkedLead({ ...linkedLead, status: newStatus });
+    }
+  };
+
   const handleInstanceChange = (instanceId: string) => {
     const instance = instances.find(i => i.id === instanceId);
     if (instance) {
@@ -1597,9 +1658,19 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             <Link2 className="w-3 h-3 text-primary shrink-0" />
                           )}
                         </div>
-                        <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
-                          {formatConversationDate(conv.last_message_at)}
-                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <ConversationStatusActions
+                            conversation={conv}
+                            linkedLead={conversationLeadsMap[conv.id] || null}
+                            userId={userId}
+                            currentUserName={currentUserName}
+                            onStatusChange={handleConversationLeadStatusChange}
+                            className="opacity-100"
+                          />
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            {formatConversationDate(conv.last_message_at)}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className={cn(
@@ -1862,6 +1933,13 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                   <Star className="w-3 h-3 text-muted-foreground" />
                                 )}
                               </button>
+                              <ConversationStatusActions
+                                conversation={conv}
+                                linkedLead={conversationLeadsMap[conv.id] || null}
+                                userId={userId}
+                                currentUserName={currentUserName}
+                                onStatusChange={handleConversationLeadStatusChange}
+                              />
                               <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                                 {formatConversationDate(conv.last_message_at)}
                               </span>
