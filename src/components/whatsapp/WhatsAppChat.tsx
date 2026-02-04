@@ -495,6 +495,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         if (matchingConv) {
           setSelectedConversation(matchingConv as Conversation);
           onPhoneHandled?.();
+        } else if (selectedInstance) {
+          // No existing conversation - create a new one for this phone number
+          await createNewConversation(selectPhone);
+          onPhoneHandled?.();
         } else {
           toast({
             title: "Conversa não encontrada",
@@ -504,6 +508,68 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
           onPhoneHandled?.();
         }
       }
+    }
+  };
+
+  // Create a new conversation for a phone number that has no history
+  const createNewConversation = async (phone: string) => {
+    if (!selectedInstance) return;
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    const remoteJid = `${phoneWithCountry}@s.whatsapp.net`;
+
+    // Try to find lead info for this phone
+    const phoneVariants = [
+      cleanPhone,
+      cleanPhone.replace(/^55/, ''),
+      `55${cleanPhone}`,
+    ];
+
+    const { data: leadData } = await supabase
+      .from("campaign_leads")
+      .select("id, name, whatsapp")
+      .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
+      .limit(1)
+      .single();
+
+    // Create the conversation
+    const { data: newConv, error } = await supabase
+      .from('wapi_conversations')
+      .insert({
+        instance_id: selectedInstance.id,
+        remote_jid: remoteJid,
+        contact_phone: phoneWithCountry,
+        contact_name: leadData?.name || null,
+        lead_id: leadData?.id || null,
+        bot_enabled: false, // Disable bot for manually initiated conversations
+        unread_count: 0,
+        is_favorite: false,
+        is_closed: false,
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error("Error creating conversation:", error);
+      toast({
+        title: "Erro ao criar conversa",
+        description: error.message || "Não foi possível iniciar a conversa.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newConv) {
+      // Add to conversations list
+      setConversations(prev => [newConv as Conversation, ...prev]);
+      // Select the new conversation
+      setSelectedConversation(newConv as Conversation);
+      
+      toast({
+        title: "Conversa iniciada",
+        description: `Agora você pode enviar mensagens para ${leadData?.name || phoneWithCountry}`,
+      });
     }
   };
 
