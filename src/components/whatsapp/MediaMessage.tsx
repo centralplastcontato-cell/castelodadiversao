@@ -87,13 +87,14 @@ export function MediaMessage({
       if (error || !data?.success) {
         // Check if the error indicates we can't retry
         const canRetry = data?.canRetry !== false;
-        const errorMessage = data?.hint || data?.error || error?.message || 'Falha ao baixar mídia';
         
         if (!canRetry) {
-          // Don't show retry button for permanent errors
+          // Silent fail for permanent errors (old messages without directPath)
           setDownloadError('Mídia expirada');
         } else {
-          throw new Error(errorMessage);
+          // Log only retryable errors
+          console.warn('Download falhou, pode tentar novamente:', data?.error || error?.message);
+          setDownloadError('Erro ao baixar');
         }
         return;
       }
@@ -111,20 +112,17 @@ export function MediaMessage({
       // Notify parent
       onMediaUrlUpdate?.(data.url);
     } catch (err) {
-      console.error('Download error:', err);
-      setDownloadError(err instanceof Error ? err.message : 'Erro ao baixar');
+      // Silent fail - don't spam console for expected failures
+      setDownloadError('Erro ao baixar');
     } finally {
       setIsDownloading(false);
     }
   }, [messageId, instanceId, instanceToken, onMediaUrlUpdate]);
 
-  // Handle image load error - means URL expired
+  // Handle image load error - just show placeholder, don't auto-download
   const handleImageError = () => {
     setImageLoadError(true);
-    // Auto-trigger download if possible
-    if (canAttemptDownload && !isDownloading) {
-      handleDownload();
-    }
+    // Don't auto-trigger download - let user click manually if they want
   };
 
   // Render based on media type
