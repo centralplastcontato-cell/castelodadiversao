@@ -219,15 +219,27 @@ Deno.serve(async (req) => {
         }
 
         // Extract remote JID from different possible locations
-        const remoteJid = message.key?.remoteJid || 
+        let rawRemoteJid = message.key?.remoteJid || 
                           message.from || 
                           message.remoteJid || 
                           (message.chat?.id ? `${message.chat.id}` : null) ||
                           (message.sender?.id ? `${message.sender.id}@s.whatsapp.net` : null);
         
-        if (!remoteJid) {
+        if (!rawRemoteJid) {
           console.log('No remoteJid found, skipping message');
           break;
+        }
+        
+        // Normalize remote_jid to always include the proper suffix
+        // This prevents duplicate conversations from being created
+        const isGroup = rawRemoteJid.includes('@g.us');
+        let remoteJid = rawRemoteJid;
+        if (!isGroup && !rawRemoteJid.includes('@')) {
+          // Individual chat without suffix - add @s.whatsapp.net
+          remoteJid = `${rawRemoteJid}@s.whatsapp.net`;
+        } else if (rawRemoteJid.includes('@c.us')) {
+          // Convert @c.us to @s.whatsapp.net for consistency
+          remoteJid = rawRemoteJid.replace('@c.us', '@s.whatsapp.net');
         }
 
         // Check if this is a group conversation
