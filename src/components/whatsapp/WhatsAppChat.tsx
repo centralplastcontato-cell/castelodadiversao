@@ -1514,7 +1514,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {linkedLead ? (
+                      {linkedLead && (
                         <Button
                           variant="secondary"
                           size="sm"
@@ -1524,16 +1524,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                         >
                           <Link2 className="w-3.5 h-3.5 text-primary" />
                           Ver lead
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setShowLinkLeadModal(true)}
-                          title="Vincular a um lead"
-                        >
-                          <Link2 className="w-4 h-4 text-muted-foreground" />
                         </Button>
                       )}
                       <Button
