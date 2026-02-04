@@ -1464,21 +1464,21 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <p className={cn(
-                              "text-xs flex items-center gap-1 flex-1 min-w-0",
+                            <div className={cn(
+                              "text-xs flex items-center gap-1 flex-1 min-w-0 overflow-hidden",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                             )}>
                               {conv.last_message_from_me && (
                                 <CheckCheck className="w-3 h-3 shrink-0 text-primary" />
                               )}
-                              <span className="truncate">
+                              <span className="truncate block">
                                 {conv.last_message_content || conv.contact_phone}
                               </span>
-                            </p>
+                            </div>
                             {conv.unread_count > 0 && (
                               <AnimatedBadge 
                                 value={conv.unread_count}
-                                className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0"
+                                className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0 ml-auto"
                               />
                             )}
                           </div>
