@@ -7,22 +7,22 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
-// Bot configuration
+// Bot configuration - Mensagens personalizadas Castelo da Diversão
 const BOT_QUESTIONS = {
   nome: {
-    message: 'Por favor, qual é o seu nome completo? 😊',
+    message: 'Para começar, me conta: qual é o seu nome? 👑',
     next: 'mes',
   },
   mes: {
-    message: 'Ótimo! Para qual mês você está pensando em fazer a festa? 🎂\n\nExemplo: Janeiro, Fevereiro, Março...',
+    message: 'Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Ex: Fevereiro, Março, Abril...',
     next: 'dia',
   },
   dia: {
-    message: 'E tem alguma preferência de dia da semana? 📅\n\nExemplo: Sábado, Domingo, ou "Qualquer dia"',
+    message: 'Maravilha! Tem preferência de dia da semana? 🗓️\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo',
     next: 'convidados',
   },
   convidados: {
-    message: 'Quantos convidados você está pensando em convidar? 👥\n\nExemplo: 30, 50, 80...',
+    message: 'E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Ex: 50, 70, 100 pessoas...',
     next: 'complete',
   },
 };
@@ -170,17 +170,17 @@ async function processBotQualification(
   } else if (currentStep === 'nome') {
     // Save name and ask for month
     updatedBotData.nome = messageContent.trim();
-    messageToSend = `Prazer, ${updatedBotData.nome}! 😊\n\n${BOT_QUESTIONS.mes.message}`;
+    messageToSend = `Muito prazer, ${updatedBotData.nome}! 👑✨\n\n${BOT_QUESTIONS.mes.message}`;
     nextStep = 'mes';
   } else if (currentStep === 'mes') {
     // Save month and ask for day preference
     updatedBotData.mes = messageContent.trim();
-    messageToSend = BOT_QUESTIONS.dia.message;
+    messageToSend = `${updatedBotData.mes}, ótima escolha! 🎊\n\n${BOT_QUESTIONS.dia.message}`;
     nextStep = 'dia';
   } else if (currentStep === 'dia') {
     // Save day preference and ask for guests
     updatedBotData.dia = messageContent.trim();
-    messageToSend = BOT_QUESTIONS.convidados.message;
+    messageToSend = `Anotado! ${BOT_QUESTIONS.convidados.message}`;
     nextStep = 'convidados';
   } else if (currentStep === 'convidados') {
     // Save guests and complete qualification
@@ -208,7 +208,7 @@ async function processBotQualification(
 
     if (leadError) {
       console.error('Error creating lead from bot:', leadError);
-      messageToSend = 'Obrigado pelas informações! Em breve um de nossos atendentes entrará em contato com você. 🎉';
+      messageToSend = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato pra fazer dessa festa um conto de fadas! ✨';
     } else {
       console.log('Lead created from bot:', newLead.id);
       
@@ -218,7 +218,7 @@ async function processBotQualification(
         .update({ lead_id: newLead.id })
         .eq('id', conversation.id);
       
-      messageToSend = `Perfeito, ${updatedBotData.nome}! 🎉\n\nRegistramos seu interesse:\n📅 Mês: ${updatedBotData.mes}\n📆 Preferência: ${updatedBotData.dia}\n👥 Convidados: ${updatedBotData.convidados}\n\nEm breve um de nossos atendentes entrará em contato para passar todas as informações sobre nossos pacotes de festa! 🏰✨`;
+      messageToSend = `Perfeito, ${updatedBotData.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updatedBotData.mes}\n🗓️ Dia: ${updatedBotData.dia}\n👥 Convidados: ${updatedBotData.convidados}\n\nAgora é só aguardar! Nossa equipe vai entrar em contato em breve pra transformar essa festa num verdadeiro conto de fadas! 👑🎉`;
     }
   } else {
     // Already completed or unknown step
