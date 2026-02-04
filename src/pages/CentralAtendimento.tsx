@@ -523,13 +523,17 @@ export default function CentralAtendimento() {
                   variant="ghost"
                   size="icon"
                   onClick={toggleNotifications}
-                  className="h-9 w-9"
+                  className={`h-9 w-9 transition-all duration-200 ${
+                    notificationsEnabled 
+                      ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                   title={notificationsEnabled ? "Desativar notificações" : "Ativar notificações"}
                 >
                   {notificationsEnabled ? (
                     <Bell className="w-5 h-5" />
                   ) : (
-                    <BellOff className="w-5 h-5 text-muted-foreground" />
+                    <BellOff className="w-5 h-5" />
                   )}
                 </Button>
                 <NotificationBell />
@@ -715,10 +719,14 @@ export default function CentralAtendimento() {
                     )}
                   </Button>
                   <Button
-                    variant={notificationsEnabled ? "secondary" : "ghost"}
+                    variant="ghost"
                     size="sm"
                     onClick={toggleNotifications}
-                    className="relative h-8 px-3"
+                    className={`relative h-8 px-3 transition-all duration-200 ${
+                      notificationsEnabled 
+                        ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50" 
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                     title={notificationsEnabled ? "Notificações ativadas" : "Notificações desativadas"}
                   >
                     {notificationsEnabled ? (
