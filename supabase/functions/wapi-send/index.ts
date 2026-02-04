@@ -872,10 +872,22 @@ Deno.serve(async (req) => {
           
           console.log(`Message lookup - hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}, type: ${messageType}`);
           
-          // Build request body - W-API requires type, mediaKey AND directPath for download
+          // Map message type to mimetype
+          const getMimetypeFromType = (type: string): string => {
+            switch (type) {
+              case 'image': return 'image/jpeg';
+              case 'video': return 'video/mp4';
+              case 'audio': return 'audio/ogg';
+              case 'document': return 'application/pdf';
+              default: return 'application/octet-stream';
+            }
+          };
+          
+          // Build request body - W-API requires type, mimetype, mediaKey AND directPath for download
           const requestBody: Record<string, unknown> = {
             messageId: downloadMsgId,
             type: messageType, // Required by W-API: image, audio, video, document
+            mimetype: getMimetypeFromType(messageType), // Required by W-API
           };
           
           // W-API download-media requires type, mediaKey, and directPath

@@ -279,10 +279,22 @@ async function downloadAndStoreMedia(
   try {
     console.log(`Downloading media for message ${messageId}, type: ${mediaType}, hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}`);
     
-    // Build request body - W-API requires type, mediaKey AND directPath for download
+    // Map media type to mimetype
+    const getMimetypeFromType = (type: string): string => {
+      switch (type) {
+        case 'image': return 'image/jpeg';
+        case 'video': return 'video/mp4';
+        case 'audio': return 'audio/ogg';
+        case 'document': return 'application/pdf';
+        default: return 'application/octet-stream';
+      }
+    };
+    
+    // Build request body - W-API requires type, mimetype, mediaKey AND directPath for download
     const requestBody: Record<string, unknown> = {
       messageId: messageId,
       type: mediaType, // Required by W-API: image, audio, video, document
+      mimetype: getMimetypeFromType(mediaType), // Required by W-API
     };
     
     // W-API download-media requires type, mediaKey, and directPath
