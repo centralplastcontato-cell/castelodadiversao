@@ -1627,17 +1627,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             {statusOption.label}
                           </Button>
                         ))}
-                        <div className="ml-auto flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-muted-foreground"
-                            onClick={() => setShowLinkLeadModal(true)}
-                          >
-                            <Link2 className="w-3 h-3 mr-1" />
-                            Trocar
-                          </Button>
-                        </div>
                       </div>
                     ) : (
                       // Show classification buttons directly - no lead linked yet
