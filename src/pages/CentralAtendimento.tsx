@@ -17,7 +17,6 @@ import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { MetricsCards } from "@/components/admin/MetricsCards";
 import { NotificationBell } from "@/components/admin/NotificationBell";
 import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
-import { EquipeTab } from "@/components/admin/EquipeTab";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -704,10 +703,11 @@ export default function CentralAtendimento() {
             </TabsContent>
 
             <TabsContent value="equipe" className="flex-1 overflow-auto min-h-0 mt-0 px-3 py-4">
-              <EquipeTab 
-                allowedUnits={canViewAll ? ['all'] : allowedUnits} 
-                canViewAll={canViewAll} 
-              />
+              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                <UsersIcon className="w-12 h-12 mb-4 opacity-50" />
+                <h2 className="text-lg font-semibold text-foreground mb-2">Equipe</h2>
+                <p className="text-sm max-w-xs">Gerencie sua equipe e acompanhe a performance dos colaboradores.</p>
+              </div>
             </TabsContent>
 
           </Tabs>
@@ -916,10 +916,11 @@ export default function CentralAtendimento() {
               </TabsContent>
 
               <TabsContent value="equipe" className="flex-1 overflow-auto min-h-0 mt-0">
-                <EquipeTab 
-                  allowedUnits={canViewAll ? ['all'] : allowedUnits} 
-                  canViewAll={canViewAll} 
-                />
+                <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
+                  <UsersIcon className="w-12 h-12 mb-4 opacity-50" />
+                  <h2 className="text-lg font-semibold text-foreground mb-2">Equipe</h2>
+                  <p className="text-sm max-w-xs">Gerencie sua equipe e acompanhe a performance dos colaboradores.</p>
+                </div>
               </TabsContent>
 
             </Tabs>
