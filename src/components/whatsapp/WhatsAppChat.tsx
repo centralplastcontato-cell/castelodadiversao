@@ -14,7 +14,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile, ExternalLink,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
-  AlertTriangle, Users, Calendar, MapPin
+  Users, Calendar, MapPin
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -169,7 +169,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all' | 'unread' | 'favorites' | 'unclassified'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'favorites'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -995,9 +995,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
   // Common emojis for quick access
   const commonEmojis = ['😊', '👍', '❤️', '🎉', '👋', '🙏', '😄', '🎂', '🎈', '⭐', '✨', '🔥'];
 
-  // Count unclassified conversations (no lead linked)
-  const unclassifiedCount = conversations.filter(c => !c.lead_id).length;
-
   const filteredConversations = conversations
     .filter((conv) => {
       // Apply text search
@@ -1008,7 +1005,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       // Apply filter
       if (filter === 'unread') return matchesSearch && conv.unread_count > 0;
       if (filter === 'favorites') return matchesSearch && conv.is_favorite;
-      if (filter === 'unclassified') return matchesSearch && !conv.lead_id;
       return matchesSearch;
     })
     .sort((a, b) => {
@@ -1164,25 +1160,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   Tudo
                 </Button>
                 <Button 
-                  variant={filter === 'unclassified' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className={cn(
-                    "h-7 text-xs",
-                    unclassifiedCount > 0 && filter !== 'unclassified' && "text-destructive"
-                  )}
-                  onClick={() => setFilter('unclassified')}
-                >
-                  Pendentes
-                  {unclassifiedCount > 0 && (
-                    <Badge 
-                      variant={filter === 'unclassified' ? 'secondary' : 'destructive'} 
-                      className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center"
-                    >
-                      {unclassifiedCount}
-                    </Badge>
-                  )}
-                </Button>
-                <Button 
                   variant={filter === 'unread' ? 'secondary' : 'ghost'} 
                   size="sm" 
                   className="h-7 text-xs"
@@ -1206,24 +1183,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                 </Button>
               </div>
             </div>
-            
-            {/* Alert Banner for Pending Conversations */}
-            {unclassifiedCount >= 3 && filter !== 'unclassified' && (
-              <button
-                onClick={() => setFilter('unclassified')}
-                className="mx-2 mb-2 p-2 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center gap-2 text-left hover:bg-destructive/20 transition-colors"
-              >
-                <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-destructive">
-                    {unclassifiedCount} conversas pendentes
-                  </p>
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    Clique para ver e classificar
-                  </p>
-                </div>
-              </button>
-            )}
             
             <ScrollArea className="flex-1">
               {filteredConversations.length === 0 ? (
@@ -1354,25 +1313,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       Tudo
                     </Button>
                     <Button 
-                      variant={filter === 'unclassified' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className={cn(
-                        "h-7 text-xs",
-                        unclassifiedCount > 0 && filter !== 'unclassified' && "text-destructive"
-                      )}
-                      onClick={() => setFilter('unclassified')}
-                    >
-                      Pendentes
-                      {unclassifiedCount > 0 && (
-                        <Badge 
-                          variant={filter === 'unclassified' ? 'secondary' : 'destructive'} 
-                          className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center"
-                        >
-                          {unclassifiedCount}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button 
                       variant={filter === 'unread' ? 'secondary' : 'ghost'} 
                       size="sm" 
                       className="h-7 text-xs"
@@ -1396,24 +1336,6 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     </Button>
                   </div>
                 </div>
-                
-                {/* Alert Banner for Pending Conversations - Desktop */}
-                {unclassifiedCount >= 3 && filter !== 'unclassified' && (
-                  <button
-                    onClick={() => setFilter('unclassified')}
-                    className="mx-2 mb-2 p-2 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center gap-2 text-left hover:bg-destructive/20 transition-colors"
-                  >
-                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-destructive">
-                        {unclassifiedCount} conversas pendentes de classificação
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        Clique para ver e classificar rapidamente
-                      </p>
-                    </div>
-                  </button>
-                )}
                 
                 <ScrollArea className="flex-1">
                   {filteredConversations.length === 0 ? (

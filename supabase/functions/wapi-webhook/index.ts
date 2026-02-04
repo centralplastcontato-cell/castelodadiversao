@@ -377,9 +377,32 @@ Deno.serve(async (req) => {
           if (matchingLead) {
             matchedLeadId = matchingLead.id;
             console.log('Auto-linked conversation to lead:', matchingLead.id);
+          } else if (!isGroup) {
+            // No matching lead found - CREATE ONE AUTOMATICALLY (only for individual chats, not groups)
+            const finalContactName = contactName || contactPhone;
+            
+            const { data: newLead, error: leadError } = await supabase
+              .from('campaign_leads')
+              .insert({
+                name: finalContactName,
+                whatsapp: normalizedPhone,
+                unit: instance.unit,
+                campaign_id: 'whatsapp-incoming',
+                campaign_name: 'WhatsApp (entrada)',
+                status: 'novo',
+              })
+              .select('id')
+              .single();
+            
+            if (!leadError && newLead) {
+              matchedLeadId = newLead.id;
+              console.log('Auto-created lead for new conversation:', newLead.id);
+            } else {
+              console.error('Error auto-creating lead:', leadError);
+            }
           }
           
-          // Create new conversation with optional lead link
+          // Create new conversation with lead link (now always has a lead for individual chats)
           // For groups without a name, use a generic fallback
           const finalContactName = contactName || (isGroup ? `Grupo ${contactPhone}` : contactPhone);
           
