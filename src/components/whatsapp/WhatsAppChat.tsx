@@ -15,7 +15,7 @@ import {
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
   Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2,
-  CheckCircle, CalendarCheck, Briefcase, FileCheck
+  CheckCircle, CalendarCheck, Briefcase, FileCheck, ArrowDown
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -2526,7 +2526,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   </div>
 
                   {/* Messages */}
-                  <ScrollArea className="flex-1 p-3 sm:p-4 bg-muted/30">
+                  <ScrollArea className="flex-1 p-3 sm:p-4 bg-muted/30 relative">
                     <div className="space-y-2 sm:space-y-3">
                       {messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -2594,6 +2594,16 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       )}
                       <div ref={messagesEndRef} />
                     </div>
+                    {/* Scroll to bottom button */}
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg opacity-90 hover:opacity-100"
+                      onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                      title="Ir para última mensagem"
+                    >
+                      <ArrowDown className="w-5 h-5" />
+                    </Button>
                   </ScrollArea>
 
                   {/* Message Input */}
@@ -3243,7 +3253,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   )}
                 </div>
 
-                <ScrollArea className="flex-1 p-3 bg-muted/30">
+                <ScrollArea className="flex-1 p-3 bg-muted/30 relative">
                   <div className="space-y-2">
                     {messages.map((msg) => (
                       <div
@@ -3299,6 +3309,16 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     ))}
                     <div ref={messagesEndRef} />
                   </div>
+                  {/* Scroll to bottom button */}
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg opacity-90 hover:opacity-100"
+                    onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                    title="Ir para última mensagem"
+                  >
+                    <ArrowDown className="w-5 h-5" />
+                  </Button>
                 </ScrollArea>
                 <div className="p-3 border-t shrink-0">
                   <form
