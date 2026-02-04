@@ -15,7 +15,7 @@ import {
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
   Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2,
-  CheckCircle, CalendarCheck
+  CheckCircle, CalendarCheck, Briefcase
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -89,6 +89,7 @@ interface Conversation {
   is_favorite: boolean;
   is_closed: boolean;
   has_scheduled_visit: boolean;
+  is_freelancer: boolean;
   last_message_content: string | null;
   last_message_from_me: boolean;
   bot_enabled: boolean | null;
@@ -149,7 +150,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'favorites'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'favorites'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -1212,6 +1213,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       if (filter === 'closed') return matchesSearch && conv.is_closed;
       if (filter === 'fechados') return matchesSearch && closedLeadConversationIds.has(conv.id);
       if (filter === 'visitas') return matchesSearch && conv.has_scheduled_visit;
+      if (filter === 'freelancer') return matchesSearch && conv.is_freelancer;
       if (filter === 'favorites') return matchesSearch && conv.is_favorite;
       // 'all' filter - show non-closed conversations only
       return matchesSearch && !conv.is_closed;
@@ -1268,6 +1270,30 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       description: newValue 
         ? "A conversa foi marcada como tendo visita agendada." 
         : "A marcação de visita foi removida.",
+    });
+  };
+
+  const toggleFreelancer = async (conv: Conversation) => {
+    const newValue = !conv.is_freelancer;
+    
+    await supabase
+      .from('wapi_conversations')
+      .update({ is_freelancer: newValue })
+      .eq('id', conv.id);
+
+    setConversations(prev => 
+      prev.map(c => c.id === conv.id ? { ...c, is_freelancer: newValue } : c)
+    );
+
+    if (selectedConversation?.id === conv.id) {
+      setSelectedConversation({ ...selectedConversation, is_freelancer: newValue });
+    }
+
+    toast({
+      title: newValue ? "Marcado como Freelancer" : "Desmarcado como Freelancer",
+      description: newValue 
+        ? "O contato foi classificado como freelancer." 
+        : "A classificação de freelancer foi removida.",
     });
   };
 
@@ -1454,6 +1480,20 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   )}
                 </Button>
                 <Button 
+                  variant={filter === 'freelancer' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('freelancer')}
+                >
+                  <Briefcase className="w-3 h-3 mr-1" />
+                  Freelancer
+                  {conversations.filter(c => c.is_freelancer).length > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-orange-500/20 text-orange-700">
+                      {conversations.filter(c => c.is_freelancer).length}
+                    </Badge>
+                  )}
+                </Button>
+                <Button
                   variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
                   size="sm" 
                   className="h-7 text-xs"
@@ -1504,6 +1544,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       )}
                       {conv.has_scheduled_visit && (
                         <CalendarCheck className="absolute -top-1 -left-1 w-3 h-3 text-blue-600 bg-background rounded-full" />
+                      )}
+                      {conv.is_freelancer && (
+                        <Briefcase className="absolute -bottom-1 -left-1 w-3 h-3 text-orange-600 bg-background rounded-full" />
                       )}
                       {conv.is_closed && (
                         <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
@@ -1635,6 +1678,20 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       )}
                     </Button>
                     <Button 
+                      variant={filter === 'freelancer' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('freelancer')}
+                    >
+                      <Briefcase className="w-3 h-3 mr-1" />
+                      Freelancer
+                      {conversations.filter(c => c.is_freelancer).length > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-orange-500/20 text-orange-700">
+                          {conversations.filter(c => c.is_freelancer).length}
+                        </Badge>
+                      )}
+                    </Button>
+                    <Button
                       variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
                       size="sm" 
                       className="h-7 text-xs"
@@ -1686,6 +1743,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           {conv.has_scheduled_visit && (
                             <CalendarCheck className="absolute -top-1 -left-1 w-3 h-3 text-blue-600 bg-background rounded-full" />
                           )}
+                          {conv.is_freelancer && (
+                            <Briefcase className="absolute -bottom-1 -left-1 w-3 h-3 text-orange-600 bg-background rounded-full" />
+                          )}
                           {conv.is_closed && (
                             <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
                           )}
@@ -1728,6 +1788,19 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                 <CalendarCheck className={cn(
                                   "w-3 h-3",
                                   conv.has_scheduled_visit ? "text-blue-600" : "text-muted-foreground"
+                                )} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFreelancer(conv);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
+                                title={conv.is_freelancer ? "Desmarcar como Freelancer" : "Marcar como Freelancer"}
+                              >
+                                <Briefcase className={cn(
+                                  "w-3 h-3",
+                                  conv.is_freelancer ? "text-orange-600" : "text-muted-foreground"
                                 )} />
                               </button>
                               <button
