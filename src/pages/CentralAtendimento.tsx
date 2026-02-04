@@ -323,7 +323,7 @@ export default function CentralAtendimento() {
     };
   }, []);
 
-  // Fetch new leads count with realtime updates
+  // Fetch new leads count with realtime updates AND refresh leads list on new lead
   useEffect(() => {
     const fetchNewLeadsCount = async () => {
       const { count } = await supabase
@@ -336,18 +336,60 @@ export default function CentralAtendimento() {
 
     fetchNewLeadsCount();
 
-    // Subscribe to realtime changes
+    // Subscribe to realtime changes - also refresh leads list when new leads arrive
     const leadsChannel = supabase
       .channel('new-leads-count-changes')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'campaign_leads',
         },
-        () => {
+        (payload) => {
+          console.log('Novo lead recebido em tempo real:', payload.new);
           fetchNewLeadsCount();
+          // Add the new lead to the list immediately (at the beginning since ordered by created_at desc)
+          setLeads((prev) => {
+            const newLead = payload.new as Lead;
+            // Check if lead already exists to avoid duplicates
+            if (prev.some(l => l.id === newLead.id)) {
+              return prev;
+            }
+            return [newLead, ...prev];
+          });
+          setTotalCount((prev) => prev + 1);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'campaign_leads',
+        },
+        (payload) => {
+          fetchNewLeadsCount();
+          // Update the lead in the list
+          setLeads((prev) =>
+            prev.map((lead) =>
+              lead.id === payload.new.id ? (payload.new as Lead) : lead
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'campaign_leads',
+        },
+        (payload) => {
+          fetchNewLeadsCount();
+          // Remove the lead from the list
+          setLeads((prev) => prev.filter((lead) => lead.id !== payload.old.id));
+          setTotalCount((prev) => Math.max(0, prev - 1));
         }
       )
       .subscribe();
