@@ -1372,22 +1372,22 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           {formatConversationDate(conv.last_message_at)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5">
                         <div className={cn(
-                          "text-xs flex items-center gap-1 min-w-0 flex-1 overflow-hidden",
+                          "text-xs flex items-center gap-1 flex-1 min-w-0",
                           conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>
                           {conv.last_message_from_me && (
                             <CheckCheck className="w-3 h-3 shrink-0 text-primary" />
                           )}
-                          <span className="truncate block">
+                          <span className="truncate">
                             {conv.last_message_content || conv.contact_phone}
                           </span>
                         </div>
                         {conv.unread_count > 0 && (
                           <AnimatedBadge 
                             value={conv.unread_count > 99 ? "99+" : conv.unread_count}
-                            className="h-5 min-w-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full"
+                            className="h-[20px] min-w-[24px] px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full"
                           />
                         )}
                       </div>
@@ -1552,22 +1552,22 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5">
                             <div className={cn(
-                              "text-xs flex items-center gap-1 min-w-0 flex-1 overflow-hidden",
+                              "text-xs flex items-center gap-1 flex-1 min-w-0",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                             )}>
                               {conv.last_message_from_me && (
                                 <CheckCheck className="w-3 h-3 shrink-0 text-primary" />
                               )}
-                              <span className="truncate block">
+                              <span className="truncate">
                                 {conv.last_message_content || conv.contact_phone}
                               </span>
                             </div>
                             {conv.unread_count > 0 && (
                               <AnimatedBadge 
                                 value={conv.unread_count > 99 ? "99+" : conv.unread_count}
-                                className="h-5 min-w-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full"
+                                className="h-[20px] min-w-[24px] px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full"
                               />
                             )}
                           </div>
