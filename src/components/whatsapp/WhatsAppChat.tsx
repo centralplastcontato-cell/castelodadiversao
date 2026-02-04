@@ -1514,16 +1514,16 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {linkedLead && (
+                      {!selectedConversation.remote_jid.includes('@g.us') && (
                         <Button
                           variant="secondary"
                           size="sm"
                           className="h-8 text-xs gap-1.5"
                           onClick={() => setShowLinkLeadModal(true)}
-                          title="Ver informações do lead"
+                          title="Ver informações"
                         >
                           <Link2 className="w-3.5 h-3.5 text-primary" />
-                          Ver lead
+                          Informações
                         </Button>
                       )}
                       <Button
