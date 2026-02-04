@@ -190,22 +190,11 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
     }, 500);
   };
 
-  // Função para enviar mensagem via W-API (sem autenticação - endpoint público)
+  // Função para enviar mensagem via W-API (sem autenticação - endpoint público via unit)
   const sendWelcomeMessage = async (phone: string, unit: string, leadInfo: LeadData) => {
     try {
-      // Buscar instância da unidade
+      // Normalizar unidade
       const normalizedUnit = unit === "Trujilo" ? "Trujillo" : unit;
-      const { data: instance } = await supabase
-        .from('wapi_instances')
-        .select('instance_id, instance_token')
-        .eq('unit', normalizedUnit)
-        .eq('status', 'connected')
-        .single();
-
-      if (!instance) {
-        console.log(`Instância não encontrada para unidade ${normalizedUnit}`);
-        return;
-      }
 
       // Formatar número do lead
       const cleanPhone = phone.replace(/\D/g, '');
@@ -214,14 +203,13 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
       // Montar mensagem com os dados do lead
       const message = `Olá!\n\nVim pelo site do Castelo da Diversão e gostaria de saber mais sobre a promoção!\n\n*Meus dados:*\nNome: ${leadInfo.name || ''}\nUnidade: ${unit}\nData: ${leadInfo.dayOfMonth || ''}/${leadInfo.month || ''}\nConvidados: ${leadInfo.guests || ''}\n\nAguardo retorno!`;
 
-      // Enviar mensagem via edge function
+      // Enviar mensagem via edge function passando apenas a unit (a edge function busca a instância)
       const { error } = await supabase.functions.invoke('wapi-send', {
         body: {
           action: 'send-text',
           phone: phoneWithCountry,
           message,
-          instanceId: instance.instance_id,
-          instanceToken: instance.instance_token,
+          unit: normalizedUnit, // A edge function vai buscar a instância pela unidade
         },
       });
 
