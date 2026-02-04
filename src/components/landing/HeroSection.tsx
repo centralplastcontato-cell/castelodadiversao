@@ -81,7 +81,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.6 }}
-            className="text-5xl md:text-7xl lg:text-8xl font-display font-bold text-primary-foreground drop-shadow-lg"
+            className="text-5xl md:text-7xl lg:text-8xl font-display font-bold bg-gradient-to-r from-yellow-300 via-orange-400 to-pink-400 bg-clip-text text-transparent drop-shadow-lg [text-shadow:_2px_2px_20px_rgba(255,200,100,0.4)]"
           >
             {campaignConfig.title}
           </motion.h1>
