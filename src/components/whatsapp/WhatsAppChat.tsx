@@ -2155,6 +2155,116 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       {selectedConversation.contact_phone}
                     </p>
                   </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {!selectedConversation.remote_jid.includes('@g.us') && linkedLead && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Ver informações do lead"
+                          >
+                            <Info className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-72 p-3">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-semibold text-sm">{linkedLead.name}</h4>
+                              <Badge 
+                                className={cn(
+                                  "text-[10px] h-5",
+                                  linkedLead.status === 'novo' && "bg-blue-500",
+                                  linkedLead.status === 'em_contato' && "bg-yellow-500 text-yellow-950",
+                                  linkedLead.status === 'orcamento_enviado' && "bg-purple-500",
+                                  linkedLead.status === 'aguardando_resposta' && "bg-orange-500",
+                                  linkedLead.status === 'fechado' && "bg-green-500",
+                                  linkedLead.status === 'perdido' && "bg-red-500"
+                                )}
+                              >
+                                {linkedLead.status === 'novo' && 'Novo'}
+                                {linkedLead.status === 'em_contato' && 'Em Contato'}
+                                {linkedLead.status === 'orcamento_enviado' && 'Orçamento Enviado'}
+                                {linkedLead.status === 'aguardando_resposta' && 'Aguardando'}
+                                {linkedLead.status === 'fechado' && 'Fechado'}
+                                {linkedLead.status === 'perdido' && 'Perdido'}
+                              </Badge>
+                            </div>
+                            
+                            <div className="grid gap-2 text-xs">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">{linkedLead.whatsapp}</span>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Clock className="w-3.5 h-3.5 shrink-0" />
+                                <span>Chegou em {format(new Date(linkedLead.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                              </div>
+                              
+                              {linkedLead.unit && (
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{linkedLead.unit}</span>
+                                </div>
+                              )}
+                              
+                              {(linkedLead.month || linkedLead.day_preference) && (
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <Calendar className="w-3.5 h-3.5 shrink-0" />
+                                  <span>
+                                    {[
+                                      linkedLead.month,
+                                      linkedLead.day_of_month && `dia ${linkedLead.day_of_month}`,
+                                      linkedLead.day_preference
+                                    ].filter(Boolean).join(' • ')}
+                                  </span>
+                                </div>
+                              )}
+                              
+                              {linkedLead.guests && (
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <Users className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{linkedLead.guests} convidados</span>
+                                </div>
+                              )}
+                              
+                              {linkedLead.observacoes && (
+                                <div className="pt-2 border-t">
+                                  <p className="text-muted-foreground italic line-clamp-3">{linkedLead.observacoes}</p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {canTransferLeads && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full text-xs h-7 gap-2"
+                                onClick={() => setShowTransferDialog(true)}
+                              >
+                                <ArrowRightLeft className="w-3 h-3" />
+                                Transferir Lead
+                              </Button>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => toggleFavorite(selectedConversation)}
+                    >
+                      {selectedConversation.is_favorite ? (
+                        <Star className="w-4 h-4 text-secondary fill-secondary" />
+                      ) : (
+                        <Star className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Mobile Lead Classification Panel */}
