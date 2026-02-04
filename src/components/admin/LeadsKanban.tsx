@@ -12,9 +12,11 @@ interface LeadsKanbanProps {
   onNameUpdate?: (leadId: string, newName: string) => Promise<void>;
   onDescriptionUpdate?: (leadId: string, newDescription: string) => Promise<void>;
   onTransfer?: (lead: Lead) => void;
+  onDelete?: (leadId: string) => Promise<void>;
   canEdit: boolean;
   canEditName?: boolean;
   canEditDescription?: boolean;
+  canDelete?: boolean;
 }
 
 export function LeadsKanban({
@@ -25,9 +27,11 @@ export function LeadsKanban({
   onNameUpdate,
   onDescriptionUpdate,
   onTransfer,
+  onDelete,
   canEdit,
   canEditName = false,
   canEditDescription = false,
+  canDelete = false,
 }: LeadsKanbanProps) {
   const columns: LeadStatus[] = [
     "novo",
@@ -137,6 +141,8 @@ export function LeadsKanban({
                         onNameUpdate={handleNameUpdate}
                         onDescriptionUpdate={handleDescriptionUpdate}
                         onTransfer={onTransfer}
+                        onDelete={onDelete}
+                        canDelete={canDelete}
                         getPreviousStatus={getPreviousStatus}
                         getNextStatus={getNextStatus}
                       />

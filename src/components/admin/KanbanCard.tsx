@@ -24,6 +24,7 @@ import {
   Phone,
   AlertCircle,
   ArrowRightLeft,
+  Trash2,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
@@ -40,6 +41,8 @@ interface KanbanCardProps {
   onNameUpdate: (leadId: string, newName: string) => Promise<void>;
   onDescriptionUpdate: (leadId: string, newDescription: string) => Promise<void>;
   onTransfer?: (lead: Lead) => void;
+  onDelete?: (leadId: string) => Promise<void>;
+  canDelete?: boolean;
   getPreviousStatus: (status: LeadStatus) => LeadStatus | null;
   getNextStatus: (status: LeadStatus) => LeadStatus | null;
 }
@@ -55,6 +58,8 @@ export function KanbanCard({
   onNameUpdate,
   onDescriptionUpdate,
   onTransfer,
+  onDelete,
+  canDelete,
   getPreviousStatus,
   getNextStatus,
 }: KanbanCardProps) {
@@ -431,6 +436,24 @@ export function KanbanCard({
                 >
                   <ArrowRightLeft className="w-4 h-4 mr-2" />
                   Transferir lead
+                </DropdownMenuItem>
+              </>
+            )}
+            
+            {canDelete && onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(`Tem certeza que deseja excluir o lead "${lead.name}"? Esta ação não pode ser desfeita.`)) {
+                      onDelete(lead.id);
+                    }
+                  }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir lead
                 </DropdownMenuItem>
               </>
             )}

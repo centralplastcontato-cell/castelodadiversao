@@ -386,6 +386,32 @@ export default function CentralAtendimento() {
     });
   };
 
+  const handleDeleteLead = async (leadId: string) => {
+    try {
+      // First delete related history records
+      await supabase.from("lead_history").delete().eq("lead_id", leadId);
+      
+      // Then delete the lead
+      const { error } = await supabase.from("campaign_leads").delete().eq("id", leadId);
+      if (error) throw error;
+      
+      // Update local state
+      setLeads((prev) => prev.filter((l) => l.id !== leadId));
+      
+      toast({
+        title: "Lead excluído",
+        description: "O lead foi removido permanentemente.",
+      });
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      toast({
+        title: "Erro ao excluir lead",
+        description: "Não foi possível excluir o lead. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading || isLoadingRole || isLoadingUnitPerms) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -597,6 +623,8 @@ export default function CentralAtendimento() {
                   canEdit={canEdit}
                   canEditName={canEditName}
                   canEditDescription={canEditDescription}
+                  canDelete={isAdmin}
+                  onDelete={handleDeleteLead}
                 />
               )}
             </TabsContent>
@@ -604,7 +632,7 @@ export default function CentralAtendimento() {
           </Tabs>
         </main>
 
-        <LeadDetailSheet lead={selectedLead} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} onUpdate={handleRefresh} responsaveis={responsaveis} currentUserId={user.id} currentUserName={currentUserProfile?.full_name || user.email || ""} canEdit={canEdit} />
+        <LeadDetailSheet lead={selectedLead} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} onUpdate={handleRefresh} responsaveis={responsaveis} currentUserId={user.id} currentUserName={currentUserProfile?.full_name || user.email || ""} canEdit={canEdit} canDelete={isAdmin} onDelete={handleDeleteLead} />
       </div>
     );
   }
@@ -756,6 +784,8 @@ export default function CentralAtendimento() {
                       canEdit={canEdit}
                       canEditName={canEditName}
                       canEditDescription={canEditDescription}
+                      canDelete={isAdmin}
+                      onDelete={handleDeleteLead}
                     />
                   </TabsContent>
                 </Tabs>
@@ -764,7 +794,7 @@ export default function CentralAtendimento() {
             </Tabs>
           </main>
 
-          <LeadDetailSheet lead={selectedLead} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} onUpdate={handleRefresh} responsaveis={responsaveis} currentUserId={user.id} currentUserName={currentUserProfile?.full_name || user.email || ""} canEdit={canEdit} />
+          <LeadDetailSheet lead={selectedLead} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} onUpdate={handleRefresh} responsaveis={responsaveis} currentUserId={user.id} currentUserName={currentUserProfile?.full_name || user.email || ""} canEdit={canEdit} canDelete={isAdmin} onDelete={handleDeleteLead} />
         </SidebarInset>
       </div>
     </SidebarProvider>

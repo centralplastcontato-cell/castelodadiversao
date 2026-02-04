@@ -45,6 +45,7 @@ import {
   Send,
   CheckCircle,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -57,6 +58,8 @@ interface LeadDetailSheetProps {
   currentUserId: string;
   currentUserName: string;
   canEdit: boolean;
+  canDelete?: boolean;
+  onDelete?: (leadId: string) => Promise<void>;
 }
 
 export function LeadDetailSheet({
@@ -68,6 +71,8 @@ export function LeadDetailSheet({
   currentUserId,
   currentUserName,
   canEdit,
+  canDelete,
+  onDelete,
 }: LeadDetailSheetProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -514,14 +519,32 @@ export function LeadDetailSheet({
           </div>
 
           {canEdit && (
-            <Button onClick={handleSave} disabled={isSaving} className="w-full">
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
+            <div className="flex gap-2">
+              <Button onClick={handleSave} disabled={isSaving} className="flex-1">
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Salvar Alterações
+              </Button>
+              
+              {canDelete && onDelete && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => {
+                    if (confirm(`Tem certeza que deseja excluir o lead "${lead.name}"? Esta ação não pode ser desfeita.`)) {
+                      onDelete(lead.id);
+                      onClose();
+                    }
+                  }}
+                  title="Excluir lead"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               )}
-              Salvar Alterações
-            </Button>
+            </div>
           )}
 
           <Separator />
