@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Users, LogOut, RefreshCw, Headset, Settings, MessageSquare, Pin, PinOff } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -39,27 +39,27 @@ export function AdminSidebar({
   onRefresh, 
   onLogout 
 }: AdminSidebarProps) {
-  const { state, setOpen } = useSidebar();
+  const { state, setOpen, open } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   const allItems = canManageUsers 
     ? [...menuItems, { title: "Gerenciar Usuários", url: "/users", icon: Users }]
     : menuItems;
 
-  // Expand on hover, collapse on mouse leave (only if not pinned)
+  // Handle hover expand/collapse only when not pinned
   const handleMouseEnter = () => {
-    if (collapsed && !isPinned) {
-      setIsHovered(true);
+    if (!isPinned) {
+      setIsHovering(true);
       setOpen(true);
     }
   };
 
   const handleMouseLeave = () => {
-    if (isHovered && !isPinned) {
-      setIsHovered(false);
+    if (!isPinned && isHovering) {
+      setIsHovering(false);
       setOpen(false);
     }
   };
@@ -67,13 +67,21 @@ export function AdminSidebar({
   const handlePinToggle = () => {
     const newPinned = !isPinned;
     setIsPinned(newPinned);
+    setIsHovering(false);
     if (newPinned) {
       setOpen(true);
-      setIsHovered(false);
     } else {
       setOpen(false);
     }
   };
+
+  // Ensure sidebar collapses when navigating (unless pinned)
+  useEffect(() => {
+    if (!isPinned) {
+      setOpen(false);
+      setIsHovering(false);
+    }
+  }, [location.pathname, isPinned, setOpen]);
 
   return (
     <Sidebar 
