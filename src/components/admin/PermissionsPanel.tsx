@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { ClipboardList, Users, Shield, Loader2, Crown, Building2, MapPin } from "lucide-react";
+import { ClipboardList, Users, Shield, Loader2, Crown, Building2, MapPin, UsersRound, Settings } from "lucide-react";
 
 interface PermissionsPanelProps {
   targetUserId: string;
@@ -21,6 +21,8 @@ const categoryIcons: Record<string, React.ElementType> = {
   Leads: ClipboardList,
   Usuários: Users,
   Sistema: Shield,
+  "Configurações WhatsApp": Settings,
+  WhatsApp: UsersRound,
 };
 
 // Permission presets
@@ -43,6 +45,7 @@ const PERMISSION_PRESETS = {
       'users.view': true,
       'users.manage': true,
       'permissions.manage': true,
+      'equipe.view': true,
     },
   },
   comercialManchester: {

@@ -76,6 +76,7 @@ export default function Admin() {
   const { hasPermission } = usePermissions(user?.id);
   const canEditName = isAdmin || hasPermission('leads.edit.name');
   const canEditDescription = isAdmin || hasPermission('leads.edit.description');
+  const canViewTeam = isAdmin || hasPermission('equipe.view');
   
   // Sound notification for new leads
   useLeadNotifications();
@@ -482,7 +483,8 @@ export default function Admin() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AdminSidebar 
-          canManageUsers={canManageUsers} 
+          canManageUsers={canManageUsers}
+          canViewTeam={canViewTeam}
           currentUserName={currentUserProfile?.full_name || user.email || ""} 
           onRefresh={handleRefresh} 
           onLogout={handleLogout} 

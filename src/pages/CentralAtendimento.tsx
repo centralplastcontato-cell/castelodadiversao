@@ -101,6 +101,7 @@ export default function CentralAtendimento() {
   const { hasPermission } = usePermissions(user?.id);
   const canEditName = isAdmin || hasPermission('leads.edit.name');
   const canEditDescription = isAdmin || hasPermission('leads.edit.description');
+  const canViewTeam = isAdmin || hasPermission('equipe.view');
   
   // Sound notification for new leads
   useLeadNotifications();
@@ -723,7 +724,8 @@ export default function CentralAtendimento() {
     <SidebarProvider>
       <div className="h-dvh flex w-full overflow-hidden">
         <AdminSidebar 
-          canManageUsers={canManageUsers} 
+          canManageUsers={canManageUsers}
+          canViewTeam={canViewTeam}
           currentUserName={currentUserProfile?.full_name || user.email || ""} 
           onRefresh={handleRefresh} 
           onLogout={handleLogout} 

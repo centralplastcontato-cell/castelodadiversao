@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Users, LogOut, RefreshCw, Headset, Settings, MessageSquare, Pin, PinOff } from "lucide-react";
+import { Users, LogOut, RefreshCw, Headset, Settings, Pin, PinOff, UsersRound } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -23,6 +23,7 @@ import logoCastelo from "@/assets/logo-castelo.png";
 
 interface AdminSidebarProps {
   canManageUsers: boolean;
+  canViewTeam: boolean;
   currentUserName: string;
   onRefresh: () => void;
   onLogout: () => void;
@@ -30,12 +31,12 @@ interface AdminSidebarProps {
 
 const menuItems = [
   { title: "Central de Atendimento", url: "/atendimento", icon: Headset },
-  { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
 export function AdminSidebar({ 
   canManageUsers, 
+  canViewTeam,
   currentUserName, 
   onRefresh, 
   onLogout 
@@ -45,9 +46,12 @@ export function AdminSidebar({
   const location = useLocation();
   const [isPinned, setIsPinned] = useState(false);
 
-  const allItems = canManageUsers 
-    ? [...menuItems, { title: "Gerenciar Usuários", url: "/users", icon: Users }]
-    : menuItems;
+  // Build menu items based on permissions
+  const allItems = [
+    ...menuItems,
+    ...(canViewTeam ? [{ title: "Equipe", url: "/equipe", icon: UsersRound }] : []),
+    ...(canManageUsers ? [{ title: "Gerenciar Usuários", url: "/users", icon: Users }] : []),
+  ];
 
   // Handle hover expand/collapse only when not pinned
   const handleMouseEnter = () => {
