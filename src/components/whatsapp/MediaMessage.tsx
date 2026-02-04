@@ -58,17 +58,15 @@ export function MediaMessage({
   const isPersisted = isPersistedMediaUrl(currentUrl);
   
   // Only attempt download if we have instance credentials AND the media is not already persisted
-  // The actual download will happen in the edge function which checks if directPath is available
-  const canAttemptDownload = !isPersisted && messageId && instanceId && instanceToken;
-
-  // Auto-download when media is not persisted (only once per mount)
-  // Note: This will fail gracefully if the media_direct_path is not available in the database
-  useEffect(() => {
-    if (canAttemptDownload && !isDownloading && !downloadError && !hasAttemptedDownload) {
-      setHasAttemptedDownload(true);
-      handleDownload();
-    }
-  }, [messageId, canAttemptDownload, hasAttemptedDownload]);
+  // AND we have a valid mediaUrl from WhatsApp (indicates the message has media data)
+  const hasWhatsAppMediaUrl = mediaUrl && (
+    mediaUrl.includes('mmg.whatsapp.net') || 
+    mediaUrl.includes('.whatsapp.net') ||
+    mediaUrl.includes('whatsapp.com')
+  );
+  
+  // Don't auto-download - only manual download to avoid flooding errors for old messages
+  const canAttemptDownload = !isPersisted && messageId && instanceId && instanceToken && hasWhatsAppMediaUrl;
 
   const handleDownload = useCallback(async () => {
     if (!messageId || !instanceId || !instanceToken) return;
@@ -309,7 +307,7 @@ export function MediaMessage({
           </div>
         </div>
 
-        {/* Download button - only show if we can retry */}
+        {/* Download button - only show if we have a WhatsApp CDN URL (indicates downloadable media) */}
         {!isDownloading && canAttemptDownload && downloadError !== 'Mídia expirada' && (
           <Button
             size="sm"
