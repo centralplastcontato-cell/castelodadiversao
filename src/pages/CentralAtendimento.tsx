@@ -655,6 +655,43 @@ export default function CentralAtendimento() {
               <div className="flex items-center gap-3">
                 <SidebarTrigger />
                 <h1 className="font-display font-bold text-foreground">Central de Atendimento</h1>
+                
+                {/* Quick Tab Buttons */}
+                <div className="flex items-center gap-1 ml-2">
+                  <Button
+                    variant={activeTab === "chat" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveTab("chat")}
+                    className="relative h-8 px-3"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-1.5" />
+                    Chat
+                    {unreadCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="ml-1.5 h-4 min-w-4 px-1 text-[9px] flex items-center justify-center"
+                      >
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                  <Button
+                    variant={activeTab === "leads" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveTab("leads")}
+                    className="relative h-8 px-3"
+                  >
+                    <LayoutList className="w-4 h-4 mr-1.5" />
+                    Leads
+                    {newLeadsCount > 0 && (
+                      <Badge 
+                        className="ml-1.5 h-4 min-w-4 px-1 text-[9px] flex items-center justify-center bg-blue-500 text-white"
+                      >
+                        {newLeadsCount > 99 ? "99+" : newLeadsCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </div>
               </div>
               
               {/* User Avatar Desktop */}
