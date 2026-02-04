@@ -14,7 +14,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile, ExternalLink,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
-  AlertTriangle
+  AlertTriangle, Users, Calendar, MapPin
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -75,6 +75,12 @@ interface Lead {
   whatsapp: string;
   unit: string | null;
   status: string;
+  month: string | null;
+  day_of_month: number | null;
+  day_preference: string | null;
+  guests: string | null;
+  observacoes: string | null;
+  created_at: string;
 }
 
 interface MessageTemplate {
@@ -407,7 +413,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       // Lead already linked, just fetch it
       const { data } = await supabase
         .from("campaign_leads")
-        .select("id, name, whatsapp, unit, status")
+        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at")
         .eq("id", leadId)
         .single();
 
@@ -431,7 +437,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
       // Search for a lead matching this phone number in the same unit
       const { data: matchingLead } = await supabase
         .from("campaign_leads")
-        .select("id, name, whatsapp, unit, status")
+        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at")
         .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
         .eq("unit", selectedInstance.unit)
         .limit(1)
@@ -474,7 +480,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
 
     const { data } = await supabase
       .from("campaign_leads")
-      .select("id, name, whatsapp, unit, status")
+      .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at")
       .or(`name.ilike.%${query}%,whatsapp.ilike.%${query}%`)
       .eq("unit", selectedInstance.unit)
       .limit(10);
@@ -2586,7 +2592,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
               <div className="space-y-4">
                 {/* Lead Info Card - Enhanced visual */}
                 <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 mb-3">
                     <Avatar className="h-12 w-12 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
                       <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
                         {linkedLead.name.charAt(0).toUpperCase()}
@@ -2595,14 +2601,46 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-foreground">{linkedLead.name}</p>
                       <p className="text-sm text-muted-foreground">{linkedLead.whatsapp}</p>
-                      {linkedLead.unit && (
-                        <Badge variant="secondary" className="mt-1 text-xs">
-                          <Building2 className="w-3 h-3 mr-1" />
-                          {linkedLead.unit}
-                        </Badge>
-                      )}
                     </div>
                   </div>
+
+                  {/* Lead Details Grid */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {linkedLead.unit && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <MapPin className="w-3.5 h-3.5 text-primary" />
+                        <span>{linkedLead.unit}</span>
+                      </div>
+                    )}
+                    {linkedLead.month && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Calendar className="w-3.5 h-3.5 text-primary" />
+                        <span>{linkedLead.day_of_month || linkedLead.day_preference || "-"}/{linkedLead.month}</span>
+                      </div>
+                    )}
+                    {linkedLead.guests && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Users className="w-3.5 h-3.5 text-primary" />
+                        <span>{linkedLead.guests} convidados</span>
+                      </div>
+                    )}
+                    {linkedLead.created_at && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{format(new Date(linkedLead.created_at), "dd/MM/yy", { locale: ptBR })}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Observações */}
+                  {linkedLead.observacoes && (
+                    <div className="mt-3 pt-3 border-t border-primary/10">
+                      <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-3">{linkedLead.observacoes}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Lead Status Classification */}
