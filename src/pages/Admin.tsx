@@ -8,7 +8,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { Lead, LeadStatus, UserWithRole, Profile } from "@/types/crm";
 import { LeadsTable } from "@/components/admin/LeadsTable";
 import { LeadsFilters } from "@/components/admin/LeadsFilters";
-import { LeadsKanban } from "@/components/admin/LeadsKanban";
+import { UnitKanbanTabs } from "@/components/admin/UnitKanbanTabs";
 import { LeadDetailSheet } from "@/components/admin/LeadDetailSheet";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { TransferLeadDialog } from "@/components/admin/TransferLeadDialog";
@@ -412,7 +412,7 @@ export default function Admin() {
             </TabsContent>
 
             <TabsContent value="kanban" className="mt-4">
-              <LeadsKanban
+              <UnitKanbanTabs
                 leads={leads}
                 responsaveis={responsaveis}
                 onLeadClick={handleLeadClick}
@@ -451,6 +451,8 @@ export default function Admin() {
                 canEditName={canEditName}
                 canEditDescription={canEditDescription}
                 onTransfer={canEdit ? handleTransferClick : undefined}
+                allowedUnits={allowedUnits}
+                canViewAll={canViewAll}
               />
             </TabsContent>
           </Tabs>
@@ -527,7 +529,7 @@ export default function Admin() {
               </TabsContent>
 
               <TabsContent value="kanban" className="mt-4">
-                <LeadsKanban
+                <UnitKanbanTabs
                   leads={leads}
                   responsaveis={responsaveis}
                   onLeadClick={handleLeadClick}
@@ -566,6 +568,8 @@ export default function Admin() {
                   canEditName={canEditName}
                   canEditDescription={canEditDescription}
                   onTransfer={canEdit ? handleTransferClick : undefined}
+                  allowedUnits={allowedUnits}
+                  canViewAll={canViewAll}
                 />
               </TabsContent>
             </Tabs>
