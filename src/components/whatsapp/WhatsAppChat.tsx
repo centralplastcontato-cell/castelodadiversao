@@ -1373,17 +1373,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <div className={cn(
-                          "text-xs flex items-center gap-1 flex-1 min-w-0 overflow-hidden",
+                        <p className={cn(
+                          "text-xs flex-1 min-w-0 truncate",
                           conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>
                           {conv.last_message_from_me && (
-                            <CheckCheck className="w-3 h-3 shrink-0 text-primary" />
+                            <CheckCheck className="w-3 h-3 shrink-0 text-primary inline mr-1 align-text-bottom" />
                           )}
-                          <span className="truncate block w-full">
-                            {conv.last_message_content || conv.contact_phone}
-                          </span>
-                        </div>
+                          {conv.last_message_content || conv.contact_phone}
+                        </p>
                         {conv.unread_count > 0 && (
                           <AnimatedBadge 
                             value={conv.unread_count > 99 ? "99+" : conv.unread_count}
@@ -1553,17 +1551,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <div className={cn(
-                              "text-xs flex items-center gap-1 flex-1 min-w-0 overflow-hidden",
+                            <p className={cn(
+                              "text-xs flex-1 min-w-0 truncate",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                             )}>
                               {conv.last_message_from_me && (
-                                <CheckCheck className="w-3 h-3 shrink-0 text-primary" />
+                                <CheckCheck className="w-3 h-3 shrink-0 text-primary inline mr-1 align-text-bottom" />
                               )}
-                              <span className="truncate block w-full">
-                                {conv.last_message_content || conv.contact_phone}
-                              </span>
-                            </div>
+                              {conv.last_message_content || conv.contact_phone}
+                            </p>
                             {conv.unread_count > 0 && (
                               <AnimatedBadge 
                                 value={conv.unread_count > 99 ? "99+" : conv.unread_count}
