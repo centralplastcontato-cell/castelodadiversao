@@ -92,13 +92,13 @@ export function LeadDetailSheet({
     const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     
     // If we're already on the Central de Atendimento page, just use URL params
-    if (location.pathname === '/central-atendimento') {
+    if (location.pathname === '/atendimento') {
       // Close the sheet first and let the parent handle the navigation
       onClose();
-      navigate(`/central-atendimento?phone=${phoneWithCountry}`, { replace: true });
+      navigate(`/atendimento?phone=${phoneWithCountry}`, { replace: true });
     } else {
       // Navigate to Central de Atendimento with phone parameter
-      navigate(`/central-atendimento?phone=${phoneWithCountry}`);
+      navigate(`/atendimento?phone=${phoneWithCountry}`);
     }
   };
 
