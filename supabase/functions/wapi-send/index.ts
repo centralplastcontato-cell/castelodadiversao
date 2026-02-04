@@ -18,25 +18,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user from auth header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const body = await req.json();
     const { action, phone, message, conversationId, instanceId, instanceToken } = body;
 
@@ -44,8 +25,30 @@ Deno.serve(async (req) => {
     let instance_id = instanceId;
     let instance_token = instanceToken;
 
-    // If no instance credentials provided, try to get from database (legacy behavior)
-    if (!instance_id || !instance_token) {
+    // If instance credentials are provided directly, allow public access (e.g., from landing page chatbot)
+    const isPublicCall = !!(instanceId && instanceToken);
+
+    // If no instance credentials provided, require authentication
+    if (!isPublicCall) {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Fetch instance from database for authenticated user
       const { data: instance } = await supabase
         .from('wapi_instances')
         .select('*')
@@ -63,6 +66,8 @@ Deno.serve(async (req) => {
       instance_id = instance.instance_id;
       instance_token = instance.instance_token;
     }
+
+    console.log('wapi-send called with action:', action, 'phone:', phone, 'isPublicCall:', isPublicCall);
 
     switch (action) {
       case 'send-text': {
