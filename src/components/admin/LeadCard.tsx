@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Lead,
   LEAD_STATUS_LABELS,
@@ -29,7 +30,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  ExternalLink,
   Phone,
   Users,
   Calendar,
@@ -66,6 +66,22 @@ export function LeadCard({
   formatWhatsAppLink,
   getResponsavelName,
 }: LeadCardProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Navigate to WhatsApp chat with this lead's phone
+  const openWhatsAppChat = () => {
+    const cleanPhone = lead.whatsapp.replace(/\D/g, '');
+    const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    
+    // If we're already on the Central de Atendimento page, just use URL params
+    if (location.pathname === '/central-atendimento' || location.pathname === '/atendimento') {
+      navigate(`/atendimento?phone=${phoneWithCountry}`, { replace: true });
+    } else {
+      // Navigate to Central de Atendimento with phone parameter
+      navigate(`/atendimento?phone=${phoneWithCountry}`);
+    }
+  };
   return (
     <div
       className={`bg-card rounded-xl border border-border p-4 space-y-3 transition-colors ${
@@ -179,15 +195,14 @@ export function LeadCard({
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1 border-t border-border">
-        <Button variant="outline" size="sm" className="flex-1 h-9" asChild>
-          <a
-            href={formatWhatsAppLink(lead.whatsapp)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            WhatsApp
-          </a>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex-1 h-9"
+          onClick={openWhatsAppChat}
+        >
+          <MessageSquare className="w-4 h-4 mr-2" />
+          WhatsApp
         </Button>
 
         {isAdmin && (
