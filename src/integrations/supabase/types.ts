@@ -344,6 +344,7 @@ export type Database = {
           contact_phone: string
           contact_picture: string | null
           created_at: string
+          has_scheduled_visit: boolean
           id: string
           instance_id: string
           is_closed: boolean | null
@@ -364,6 +365,7 @@ export type Database = {
           contact_phone: string
           contact_picture?: string | null
           created_at?: string
+          has_scheduled_visit?: boolean
           id?: string
           instance_id: string
           is_closed?: boolean | null
@@ -384,6 +386,7 @@ export type Database = {
           contact_phone?: string
           contact_picture?: string | null
           created_at?: string
+          has_scheduled_visit?: boolean
           id?: string
           instance_id?: string
           is_closed?: boolean | null
