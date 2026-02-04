@@ -130,21 +130,18 @@ interface Message {
   timestamp: string;
 }
 
-type ChatFilter = 'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'oe' | 'favorites';
-
 interface WhatsAppChatProps {
   userId: string;
   allowedUnits: string[];
   initialPhone?: string | null;
   onPhoneHandled?: () => void;
-  defaultFilter?: ChatFilter;
 }
 
 // Component for displaying media with auto-download capability
 import { MediaMessage } from "@/components/whatsapp/MediaMessage";
 import { ConversationStatusActions } from "@/components/whatsapp/ConversationStatusActions";
 
-export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled, defaultFilter = 'all' }: WhatsAppChatProps) {
+export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<WapiInstance | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -154,7 +151,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<ChatFilter>(defaultFilter);
+  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'oe' | 'favorites'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
