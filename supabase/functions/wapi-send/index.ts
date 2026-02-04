@@ -898,6 +898,47 @@ Deno.serve(async (req) => {
           
           console.log(`Message lookup - hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}, type: ${messageType}`);
           
+          // Check if we have the required data for W-API download
+          // W-API requires BOTH mediaKey AND directPath for the download-media endpoint
+          if (!mediaKey && !directPath) {
+            console.log('Missing both mediaKey and directPath - media cannot be downloaded');
+            return new Response(JSON.stringify({ 
+              error: 'Mídia não disponível para download',
+              details: 'Os dados necessários (mediaKey e directPath) não foram salvos no momento do recebimento.',
+              hint: 'Esta mídia pode ter expirado ou foi recebida antes da implementação do salvamento de metadados.',
+              canRetry: false,
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          if (!mediaKey) {
+            console.log('Missing mediaKey - cannot download');
+            return new Response(JSON.stringify({ 
+              error: 'Chave de mídia não disponível',
+              details: 'O mediaKey não foi salvo para esta mensagem.',
+              hint: 'A mídia pode ter expirado ou foi recebida antes da implementação do salvamento.',
+              canRetry: false,
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          if (!directPath) {
+            console.log('Missing directPath - cannot download');
+            return new Response(JSON.stringify({ 
+              error: 'Caminho de mídia não disponível',
+              details: 'O directPath não foi salvo para esta mensagem.',
+              hint: 'A mídia pode ter sido recebida antes da implementação do salvamento de directPath.',
+              canRetry: false,
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
           // Map message type to mimetype
           const getMimetypeFromType = (type: string): string => {
             switch (type) {
@@ -912,22 +953,16 @@ Deno.serve(async (req) => {
           // Build request body - W-API requires type, mimetype, mediaKey AND directPath for download
           const requestBody: Record<string, unknown> = {
             messageId: downloadMsgId,
-            type: messageType, // Required by W-API: image, audio, video, document
-            mimetype: getMimetypeFromType(messageType), // Required by W-API
+            type: messageType,
+            mimetype: getMimetypeFromType(messageType),
+            mediaKey: mediaKey,
+            directPath: directPath,
           };
           
-          // W-API download-media requires type, mediaKey, and directPath
-          if (mediaKey && directPath) {
-            requestBody.mediaKey = mediaKey;
-            requestBody.directPath = directPath;
-            if (originalUrl && !originalUrl.includes('supabase.co')) {
-              requestBody.url = originalUrl;
-            }
-          } else if (mediaKey) {
-            // Try with just messageId, type and mediaKey (may fail if W-API requires directPath)
-            requestBody.mediaKey = mediaKey;
+          // Include original URL if available and not already a Supabase URL
+          if (originalUrl && !originalUrl.includes('supabase.co')) {
+            requestBody.url = originalUrl;
           }
-          // If neither mediaKey nor directPath, just use messageId and type (W-API may find it in recent cache)
           
           console.log('W-API download request:', JSON.stringify(requestBody));
           
@@ -946,10 +981,27 @@ Deno.serve(async (req) => {
           if (!downloadResponse.ok) {
             const errorText = await downloadResponse.text();
             console.error(`W-API download failed: ${downloadResponse.status} - ${errorText}`);
+            
+            // Parse the error to give better feedback
+            let errorDetail = errorText.substring(0, 200);
+            let hint = 'Tente novamente mais tarde';
+            let canRetry = true;
+            
+            try {
+              const parsedError = JSON.parse(errorText);
+              if (parsedError.message?.includes('expirado') || parsedError.message?.includes('expired')) {
+                hint = 'A mídia expirou no servidor do WhatsApp';
+                canRetry = false;
+              }
+            } catch (_) {
+              // Not JSON, use raw text
+            }
+            
             return new Response(JSON.stringify({ 
               error: 'Falha ao baixar mídia da W-API',
-              details: errorText.substring(0, 200),
-              hint: mediaKey ? 'Tente novamente mais tarde' : 'MediaKey não disponível - mídia pode ter expirado',
+              details: errorDetail,
+              hint,
+              canRetry,
             }), {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
