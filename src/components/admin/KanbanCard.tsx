@@ -214,25 +214,25 @@ export function KanbanCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
             {canEdit && !isEditing && (
               <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
             )}
             
             {isEditingName ? (
-              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                 <Input
                   ref={inputRef}
                   value={editedName}
                   onChange={(e) => setEditedName(e.target.value)}
                   onKeyDown={handleKeyDownName}
-                  className="h-7 text-sm py-0 px-2"
+                  className="h-7 text-sm py-0 px-2 flex-1 min-w-0"
                   disabled={isSaving}
                 />
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-primary hover:text-primary/80"
+                  className="h-6 w-6 text-primary hover:text-primary/80 flex-shrink-0"
                   onClick={handleSaveName}
                   disabled={isSaving}
                 >
@@ -241,7 +241,7 @@ export function KanbanCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-destructive hover:text-destructive/80"
+                  className="h-6 w-6 text-destructive hover:text-destructive/80 flex-shrink-0"
                   onClick={handleCancelEditName}
                   disabled={isSaving}
                 >
@@ -249,8 +249,8 @@ export function KanbanCard({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
-                <p className="font-medium text-sm truncate max-w-[160px]" title={lead.name}>{lead.name}</p>
+              <div className="flex items-center gap-1 flex-1 min-w-0">
+                <p className="font-medium text-sm truncate flex-1 min-w-0" title={lead.name}>{lead.name}</p>
                 {isIncomplete && (
                   <Tooltip>
                     <TooltipTrigger asChild>
