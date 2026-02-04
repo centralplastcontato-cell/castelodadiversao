@@ -2555,15 +2555,16 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     )}
                   </div>
 
-                  {/* Observações */}
-                  {linkedLead.observacoes && (
-                    <div className="mt-3 pt-3 border-t border-primary/10">
-                      <p className="text-xs text-muted-foreground flex items-start gap-1.5">
-                        <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                        <span className="line-clamp-3">{linkedLead.observacoes}</span>
-                      </p>
-                    </div>
-                  )}
+                  {/* Descrição/Observações */}
+                  <div className="mt-3 pt-3 border-t border-primary/10">
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      Descrição
+                    </p>
+                    <p className="text-sm text-foreground">
+                      {linkedLead.observacoes || <span className="text-muted-foreground italic">Sem descrição</span>}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Lead Status Classification */}
