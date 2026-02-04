@@ -872,12 +872,13 @@ Deno.serve(async (req) => {
           
           console.log(`Message lookup - hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}, type: ${messageType}`);
           
-          // Build request body - W-API requires mediaKey AND directPath for download
+          // Build request body - W-API requires type, mediaKey AND directPath for download
           const requestBody: Record<string, unknown> = {
             messageId: downloadMsgId,
+            type: messageType, // Required by W-API: image, audio, video, document
           };
           
-          // W-API download-media requires content object with url, mediaKey, and directPath
+          // W-API download-media requires type, mediaKey, and directPath
           if (mediaKey && directPath) {
             requestBody.mediaKey = mediaKey;
             requestBody.directPath = directPath;
@@ -885,10 +886,10 @@ Deno.serve(async (req) => {
               requestBody.url = originalUrl;
             }
           } else if (mediaKey) {
-            // Try with just messageId and mediaKey (may fail if W-API requires directPath)
+            // Try with just messageId, type and mediaKey (may fail if W-API requires directPath)
             requestBody.mediaKey = mediaKey;
           }
-          // If neither mediaKey nor directPath, just use messageId (W-API may find it in recent cache)
+          // If neither mediaKey nor directPath, just use messageId and type (W-API may find it in recent cache)
           
           console.log('W-API download request:', JSON.stringify(requestBody));
           
