@@ -2299,64 +2299,64 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           </PopoverContent>
                         </Popover>
                       )}
-                      {/* O.E. (Orçamento Enviado) button - only show if lead is linked */}
-                      {linkedLead && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={async () => {
-                            const isCurrentlyOE = linkedLead.status === 'orcamento_enviado';
-                            const newStatus = isCurrentlyOE ? 'em_contato' : 'orcamento_enviado';
-                            const statusLabels: Record<string, string> = {
-                              novo: 'Novo',
-                              em_contato: 'Em Contato',
-                              orcamento_enviado: 'Orçamento Enviado',
-                              aguardando_resposta: 'Aguardando Resposta',
-                              fechado: 'Fechado',
-                              perdido: 'Perdido',
-                            };
-                            
-                            const { error } = await supabase
-                              .from('campaign_leads')
-                              .update({ status: newStatus })
-                              .eq('id', linkedLead.id);
-                            
-                            if (error) {
-                              toast({
-                                title: "Erro ao atualizar status",
-                                description: error.message,
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            
-                            // Add history entry
-                            await supabase.from('lead_history').insert({
-                              lead_id: linkedLead.id,
-                              user_id: userId,
-                              user_name: currentUserName || 'Usuário',
-                              action: 'Alteração de status',
-                              old_value: statusLabels[linkedLead.status] || linkedLead.status,
-                              new_value: statusLabels[newStatus],
-                            });
-                            
-                            // Update local state
-                            setLinkedLead(prev => prev ? { ...prev, status: newStatus as any } : null);
-                            
+                      {/* O.E. (Orçamento Enviado) button - always visible, disabled without lead */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={!linkedLead}
+                        onClick={async () => {
+                          if (!linkedLead) return;
+                          const isCurrentlyOE = linkedLead.status === 'orcamento_enviado';
+                          const newStatus = isCurrentlyOE ? 'em_contato' : 'orcamento_enviado';
+                          const statusLabels: Record<string, string> = {
+                            novo: 'Novo',
+                            em_contato: 'Em Contato',
+                            orcamento_enviado: 'Orçamento Enviado',
+                            aguardando_resposta: 'Aguardando Resposta',
+                            fechado: 'Fechado',
+                            perdido: 'Perdido',
+                          };
+                          
+                          const { error } = await supabase
+                            .from('campaign_leads')
+                            .update({ status: newStatus })
+                            .eq('id', linkedLead.id);
+                          
+                          if (error) {
                             toast({
-                              title: isCurrentlyOE ? "Orçamento desmarcado" : "Orçamento marcado",
-                              description: isCurrentlyOE ? "Status alterado para 'Em Contato'" : "Status alterado para 'Orçamento Enviado'",
+                              title: "Erro ao atualizar status",
+                              description: error.message,
+                              variant: "destructive",
                             });
-                          }}
-                          title={linkedLead.status === 'orcamento_enviado' ? "Desmarcar Orçamento Enviado" : "Marcar como Orçamento Enviado"}
-                        >
-                          <FileCheck className={cn(
-                            "w-4 h-4",
-                            linkedLead.status === 'orcamento_enviado' ? "text-purple-600" : "text-muted-foreground"
-                          )} />
-                        </Button>
-                      )}
+                            return;
+                          }
+                          
+                          // Add history entry
+                          await supabase.from('lead_history').insert({
+                            lead_id: linkedLead.id,
+                            user_id: userId,
+                            user_name: currentUserName || 'Usuário',
+                            action: 'Alteração de status',
+                            old_value: statusLabels[linkedLead.status] || linkedLead.status,
+                            new_value: statusLabels[newStatus],
+                          });
+                          
+                          // Update local state
+                          setLinkedLead(prev => prev ? { ...prev, status: newStatus as any } : null);
+                          
+                          toast({
+                            title: isCurrentlyOE ? "Orçamento desmarcado" : "Orçamento marcado",
+                            description: isCurrentlyOE ? "Status alterado para 'Em Contato'" : "Status alterado para 'Orçamento Enviado'",
+                          });
+                        }}
+                        title={!linkedLead ? "Vincule um lead primeiro" : (linkedLead.status === 'orcamento_enviado' ? "Desmarcar Orçamento Enviado" : "Marcar como Orçamento Enviado")}
+                      >
+                        <FileCheck className={cn(
+                          "w-4 h-4",
+                          !linkedLead ? "text-muted-foreground/50" : (linkedLead.status === 'orcamento_enviado' ? "text-purple-600" : "text-muted-foreground")
+                        )} />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -3015,64 +3015,64 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         </PopoverContent>
                       </Popover>
                     )}
-                    {/* O.E. (Orçamento Enviado) button - only show if lead is linked */}
-                    {linkedLead && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={async () => {
-                          const isCurrentlyOE = linkedLead.status === 'orcamento_enviado';
-                          const newStatus = isCurrentlyOE ? 'em_contato' : 'orcamento_enviado';
-                          const statusLabels: Record<string, string> = {
-                            novo: 'Novo',
-                            em_contato: 'Em Contato',
-                            orcamento_enviado: 'Orçamento Enviado',
-                            aguardando_resposta: 'Aguardando Resposta',
-                            fechado: 'Fechado',
-                            perdido: 'Perdido',
-                          };
-                          
-                          const { error } = await supabase
-                            .from('campaign_leads')
-                            .update({ status: newStatus })
-                            .eq('id', linkedLead.id);
-                          
-                          if (error) {
-                            toast({
-                              title: "Erro ao atualizar status",
-                              description: error.message,
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          
-                          // Add history entry
-                          await supabase.from('lead_history').insert({
-                            lead_id: linkedLead.id,
-                            user_id: userId,
-                            user_name: currentUserName || 'Usuário',
-                            action: 'Alteração de status',
-                            old_value: statusLabels[linkedLead.status] || linkedLead.status,
-                            new_value: statusLabels[newStatus],
-                          });
-                          
-                          // Update local state
-                          setLinkedLead(prev => prev ? { ...prev, status: newStatus as any } : null);
-                          
+                    {/* O.E. (Orçamento Enviado) button - always visible, disabled without lead */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      disabled={!linkedLead}
+                      onClick={async () => {
+                        if (!linkedLead) return;
+                        const isCurrentlyOE = linkedLead.status === 'orcamento_enviado';
+                        const newStatus = isCurrentlyOE ? 'em_contato' : 'orcamento_enviado';
+                        const statusLabels: Record<string, string> = {
+                          novo: 'Novo',
+                          em_contato: 'Em Contato',
+                          orcamento_enviado: 'Orçamento Enviado',
+                          aguardando_resposta: 'Aguardando Resposta',
+                          fechado: 'Fechado',
+                          perdido: 'Perdido',
+                        };
+                        
+                        const { error } = await supabase
+                          .from('campaign_leads')
+                          .update({ status: newStatus })
+                          .eq('id', linkedLead.id);
+                        
+                        if (error) {
                           toast({
-                            title: isCurrentlyOE ? "Orçamento desmarcado" : "Orçamento marcado",
-                            description: isCurrentlyOE ? "Status alterado para 'Em Contato'" : "Status alterado para 'Orçamento Enviado'",
+                            title: "Erro ao atualizar status",
+                            description: error.message,
+                            variant: "destructive",
                           });
-                        }}
-                        title={linkedLead.status === 'orcamento_enviado' ? "Desmarcar Orçamento Enviado" : "Marcar como Orçamento Enviado"}
-                      >
-                        <FileCheck className={cn(
-                          "w-4 h-4",
-                          linkedLead.status === 'orcamento_enviado' ? "text-purple-600" : "text-muted-foreground"
-                        )} />
-                      </Button>
-                    )}
+                          return;
+                        }
+                        
+                        // Add history entry
+                        await supabase.from('lead_history').insert({
+                          lead_id: linkedLead.id,
+                          user_id: userId,
+                          user_name: currentUserName || 'Usuário',
+                          action: 'Alteração de status',
+                          old_value: statusLabels[linkedLead.status] || linkedLead.status,
+                          new_value: statusLabels[newStatus],
+                        });
+                        
+                        // Update local state
+                        setLinkedLead(prev => prev ? { ...prev, status: newStatus as any } : null);
+                        
+                        toast({
+                          title: isCurrentlyOE ? "Orçamento desmarcado" : "Orçamento marcado",
+                          description: isCurrentlyOE ? "Status alterado para 'Em Contato'" : "Status alterado para 'Orçamento Enviado'",
+                        });
+                      }}
+                      title={!linkedLead ? "Vincule um lead primeiro" : (linkedLead.status === 'orcamento_enviado' ? "Desmarcar Orçamento Enviado" : "Marcar como Orçamento Enviado")}
+                    >
+                      <FileCheck className={cn(
+                        "w-4 h-4",
+                        !linkedLead ? "text-muted-foreground/50" : (linkedLead.status === 'orcamento_enviado' ? "text-purple-600" : "text-muted-foreground")
+                      )} />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
