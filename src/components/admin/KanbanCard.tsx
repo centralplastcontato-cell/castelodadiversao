@@ -257,24 +257,26 @@ export function KanbanCard({
             )}
           </div>
 
-          <div className="mt-2 space-y-1">
-            {lead.unit && (
-              <p className="text-xs text-muted-foreground">
-                📍 {lead.unit}
-              </p>
-            )}
-            {lead.month && (
-              <p className="text-xs text-muted-foreground">
-                📅 {lead.day_of_month || lead.day_preference || "-"}/
-                {lead.month}
-              </p>
-            )}
-            {lead.guests && (
-              <p className="text-xs text-muted-foreground">
-                👥 {lead.guests} convidados
-              </p>
-            )}
-          </div>
+          {(lead.unit || lead.month || lead.guests) && (
+            <div className="mt-2 space-y-1">
+              {lead.unit && (
+                <p className="text-xs text-muted-foreground">
+                  📍 {lead.unit}
+                </p>
+              )}
+              {lead.month && (
+                <p className="text-xs text-muted-foreground">
+                  📅 {lead.day_of_month || lead.day_preference || "-"}/
+                  {lead.month}
+                </p>
+              )}
+              {lead.guests && (
+                <p className="text-xs text-muted-foreground">
+                  👥 {lead.guests} convidados
+                </p>
+              )}
+            </div>
+          )}
 
           {responsavelName && (
             <div className="mt-2 flex items-center gap-1">
