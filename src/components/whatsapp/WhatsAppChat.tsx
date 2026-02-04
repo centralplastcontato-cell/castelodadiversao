@@ -2611,38 +2611,32 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
           </DialogHeader>
           <div className="space-y-4">
             {/* Show linked lead if exists and not linking from list */}
-            {linkedLead && !linkingConversationId && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+            {linkedLead && !linkingConversationId ? (
+              <div className="space-y-4">
+                {/* Lead Info Card - Enhanced visual */}
+                <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/10 text-primary">
+                    <Avatar className="h-12 w-12 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
+                      <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
                         {linkedLead.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium">{linkedLead.name}</p>
-                      <p className="text-xs text-muted-foreground">{linkedLead.whatsapp}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground">{linkedLead.name}</p>
+                      <p className="text-sm text-muted-foreground">{linkedLead.whatsapp}</p>
+                      {linkedLead.unit && (
+                        <Badge variant="secondary" className="mt-1 text-xs">
+                          <Building2 className="w-3 h-3 mr-1" />
+                          {linkedLead.unit}
+                        </Badge>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => window.open(`/admin?lead=${linkedLead.id}`, '_blank')}
-                    >
-                      <ExternalLink className="w-3 h-3 mr-1" />
-                      Ver no CRM
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={unlinkLead}>
-                      Desvincular
-                    </Button>
                   </div>
                 </div>
 
                 {/* Lead Status Classification */}
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Classificar lead:</p>
+                  <p className="text-sm font-medium text-muted-foreground">Classificar lead:</p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
@@ -2712,71 +2706,83 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Search leads */}
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                {linkedLead ? "Ou vincular a outro lead:" : "Buscar lead por nome ou telefone:"}
-              </p>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Digite para buscar..."
-                  value={leadSearchQuery}
-                  onChange={(e) => {
-                    setLeadSearchQuery(e.target.value);
-                    searchLeads(e.target.value);
-                  }}
-                  className="pl-9"
-                />
+                {/* Unlink Action */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={unlinkLead}
+                  className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                >
+                  Desvincular lead
+                </Button>
               </div>
-            </div>
-
-            {/* Search results */}
-            {isSearchingLeads && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
-
-            {!isSearchingLeads && searchedLeads.length > 0 && (
-              <ScrollArea className="max-h-48">
-                <div className="space-y-1">
-                  {searchedLeads.map((lead) => (
-                    <button
-                      key={lead.id}
-                      onClick={() => {
-                        const targetConv = linkingConversationId 
-                          ? conversations.find(c => c.id === linkingConversationId) 
-                          : selectedConversation;
-                        linkLeadToConversation(lead, targetConv || undefined);
+            ) : (
+              <>
+                {/* Search leads - only show when no lead linked */}
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Buscar lead por nome ou telefone:
+                  </p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Digite para buscar..."
+                      value={leadSearchQuery}
+                      onChange={(e) => {
+                        setLeadSearchQuery(e.target.value);
+                        searchLeads(e.target.value);
                       }}
-                      className="w-full flex items-center gap-3 p-2 hover:bg-accent rounded-lg transition-colors text-left"
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                          {lead.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{lead.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{lead.whatsapp}</p>
-                      </div>
-                      <Badge variant="outline" className="text-[10px]">
-                        {lead.status}
-                      </Badge>
-                    </button>
-                  ))}
+                      className="pl-9"
+                    />
+                  </div>
                 </div>
-              </ScrollArea>
-            )}
 
-            {!isSearchingLeads && leadSearchQuery && searchedLeads.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum lead encontrado para "{leadSearchQuery}"
-              </p>
+                {/* Search results */}
+                {isSearchingLeads && (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+
+                {!isSearchingLeads && searchedLeads.length > 0 && (
+                  <ScrollArea className="max-h-48">
+                    <div className="space-y-1">
+                      {searchedLeads.map((lead) => (
+                        <button
+                          key={lead.id}
+                          onClick={() => {
+                            const targetConv = linkingConversationId 
+                              ? conversations.find(c => c.id === linkingConversationId) 
+                              : selectedConversation;
+                            linkLeadToConversation(lead, targetConv || undefined);
+                          }}
+                          className="w-full flex items-center gap-3 p-2 hover:bg-accent rounded-lg transition-colors text-left"
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                              {lead.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{lead.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{lead.whatsapp}</p>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">
+                            {lead.status}
+                          </Badge>
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+
+                {!isSearchingLeads && leadSearchQuery && searchedLeads.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum lead encontrado para "{leadSearchQuery}"
+                  </p>
+                )}
+              </>
             )}
           </div>
         </DialogContent>
