@@ -321,7 +321,7 @@ export function LeadsTable({
               <TableHead>Responsável</TableHead>
               <TableHead>Mês/Dia</TableHead>
               <TableHead>Convidados</TableHead>
-              <TableHead>Data</TableHead>
+              <TableHead>Chegou em</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -428,11 +428,13 @@ export function LeadsTable({
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    {format(new Date(lead.created_at), "dd/MM/yyyy", {
-                      locale: ptBR,
-                    })}
+                  <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                    <Calendar className="w-4 h-4 shrink-0" />
+                    <span className="whitespace-nowrap">
+                      {format(new Date(lead.created_at), "dd/MM/yy 'às' HH:mm", {
+                        locale: ptBR,
+                      })}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>
