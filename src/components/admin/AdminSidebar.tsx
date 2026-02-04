@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Users, LogOut, RefreshCw, Headset, Settings, MessageSquare, Pin, PinOff } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -18,6 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/admin/NotificationBell";
 import logoCastelo from "@/assets/logo-castelo.png";
 
 interface AdminSidebarProps {
@@ -91,6 +92,9 @@ export function AdminSidebar({
                   {currentUserName}
                 </p>
               </div>
+              
+              {/* Notification Bell */}
+              <NotificationBell />
               
               {/* Pin toggle button */}
               <Tooltip>
