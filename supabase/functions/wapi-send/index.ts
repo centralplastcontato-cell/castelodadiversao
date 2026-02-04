@@ -1009,13 +1009,65 @@ Deno.serve(async (req) => {
           }
 
           const result = await downloadResponse.json();
-          const base64Data = result.base64 || result.data || result.media;
-          const mimeType = result.mimetype || result.mimeType || 'application/octet-stream';
+          console.log('W-API download response keys:', Object.keys(result));
+          
+          let base64Data = result.base64 || result.data || result.media;
+          let mimeType = result.mimetype || result.mimeType || getMimetypeFromType(messageType);
+          
+          // W-API may return a fileLink URL instead of base64 - we need to fetch it
+          const fileLink = result.fileLink || result.file_link || result.url || result.link;
+          
+          if (!base64Data && fileLink) {
+            console.log('W-API returned fileLink, fetching:', fileLink);
+            try {
+              const fileResponse = await fetch(fileLink);
+              if (!fileResponse.ok) {
+                console.error('Failed to fetch fileLink:', fileResponse.status);
+                return new Response(JSON.stringify({ 
+                  error: 'Falha ao baixar mídia do fileLink',
+                  details: `HTTP ${fileResponse.status}`,
+                  canRetry: true,
+                }), {
+                  status: 400,
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
+              }
+              
+              // Get content type from response
+              const contentType = fileResponse.headers.get('content-type');
+              if (contentType) {
+                mimeType = contentType.split(';')[0].trim();
+              }
+              
+              // Convert to base64
+              const arrayBuffer = await fileResponse.arrayBuffer();
+              const bytes = new Uint8Array(arrayBuffer);
+              let binary = '';
+              for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+              }
+              base64Data = btoa(binary);
+              console.log('FileLink fetched successfully, size:', bytes.length);
+            } catch (fetchErr) {
+              console.error('Error fetching fileLink:', fetchErr);
+              return new Response(JSON.stringify({ 
+                error: 'Erro ao baixar mídia do link temporário',
+                details: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+                canRetry: true,
+              }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+          }
           
           if (!base64Data) {
+            console.error('No media data found in response:', JSON.stringify(result).substring(0, 500));
             return new Response(JSON.stringify({ 
               error: 'Nenhum dado de mídia recebido',
               responseKeys: Object.keys(result),
+              hint: 'A W-API não retornou dados válidos',
+              canRetry: false,
             }), {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
