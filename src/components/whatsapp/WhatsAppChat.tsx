@@ -1328,13 +1328,13 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     key={conv.id}
                     onClick={() => setSelectedConversation(conv)}
                     className={cn(
-                      "w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors text-left border-b group",
+                      "w-full p-2.5 flex items-center gap-2.5 hover:bg-accent transition-colors text-left border-b group",
                       selectedConversation?.id === conv.id && "bg-accent",
                       conv.unread_count > 0 && "bg-primary/5"
                     )}
                   >
-                    <div className="relative">
-                      <Avatar className="shrink-0">
+                    <div className="relative shrink-0">
+                      <Avatar className="h-10 w-10">
                         {conv.contact_picture && (
                           <AvatarImage 
                             src={conv.contact_picture} 
@@ -1342,7 +1342,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           />
                         )}
                         <AvatarFallback className={cn(
-                          "text-primary",
+                          "text-primary text-sm",
                           conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
                         )}>
                           {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
@@ -1355,11 +1355,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
                           <p className={cn(
-                            "truncate",
+                            "truncate text-sm",
                             conv.unread_count > 0 ? "font-bold" : "font-medium"
                           )}>
                             {conv.contact_name || conv.contact_phone}
@@ -1368,28 +1368,26 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             <Link2 className="w-3 h-3 text-primary shrink-0" />
                           )}
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {formatConversationDate(conv.last_message_at)}
-                          </span>
-                        </div>
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+                          {formatConversationDate(conv.last_message_at)}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className={cn(
-                          "text-xs flex items-center gap-1 flex-1 min-w-0",
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <div className={cn(
+                          "text-xs flex items-center gap-1 min-w-0 flex-1 overflow-hidden",
                           conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>
                           {conv.last_message_from_me && (
                             <CheckCheck className="w-3 h-3 shrink-0 text-primary" />
                           )}
-                          <span className="truncate">
+                          <span className="truncate block">
                             {conv.last_message_content || conv.contact_phone}
                           </span>
-                        </p>
+                        </div>
                         {conv.unread_count > 0 && (
                           <AnimatedBadge 
-                            value={conv.unread_count}
-                            className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0"
+                            value={conv.unread_count > 99 ? "99+" : conv.unread_count}
+                            className="h-5 min-w-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full"
                           />
                         )}
                       </div>
@@ -1482,13 +1480,13 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         key={conv.id}
                         onClick={() => setSelectedConversation(conv)}
                         className={cn(
-                          "w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors text-left border-b group",
+                          "w-full p-2.5 flex items-center gap-2.5 hover:bg-accent transition-colors text-left border-b group",
                           selectedConversation?.id === conv.id && "bg-accent",
                           conv.unread_count > 0 && "bg-primary/5"
                         )}
                       >
-                        <div className="relative">
-                          <Avatar className="shrink-0">
+                        <div className="relative shrink-0">
+                          <Avatar className="h-10 w-10">
                             {conv.contact_picture && (
                               <AvatarImage 
                                 src={conv.contact_picture} 
@@ -1496,7 +1494,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                               />
                             )}
                             <AvatarFallback className={cn(
-                              "text-primary",
+                              "text-primary text-sm",
                               conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
                             )}>
                               {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
@@ -1509,11 +1507,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 overflow-hidden">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
                               <p className={cn(
-                                "truncate",
+                                "truncate text-sm",
                                 conv.unread_count > 0 ? "font-bold" : "font-medium"
                               )}>
                                 {conv.contact_name || conv.contact_phone}
@@ -1522,7 +1520,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                 <Link2 className="w-3 h-3 text-primary shrink-0" />
                               )}
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1549,14 +1547,14 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                   <Star className="w-3 h-3 text-muted-foreground" />
                                 )}
                               </button>
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                                 {formatConversationDate(conv.last_message_at)}
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
                             <div className={cn(
-                              "text-xs flex items-center gap-1 flex-1 min-w-0 overflow-hidden",
+                              "text-xs flex items-center gap-1 min-w-0 flex-1 overflow-hidden",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                             )}>
                               {conv.last_message_from_me && (
@@ -1568,8 +1566,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             </div>
                             {conv.unread_count > 0 && (
                               <AnimatedBadge 
-                                value={conv.unread_count}
-                                className="h-5 min-w-5 flex items-center justify-center p-0 text-xs shrink-0 ml-auto"
+                                value={conv.unread_count > 99 ? "99+" : conv.unread_count}
+                                className="h-5 min-w-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full"
                               />
                             )}
                           </div>
