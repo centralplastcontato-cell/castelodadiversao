@@ -190,6 +190,51 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
     }, 500);
   };
 
+  // Função para enviar mensagem via W-API (sem autenticação - endpoint público)
+  const sendWelcomeMessage = async (phone: string, unit: string, leadInfo: LeadData) => {
+    try {
+      // Buscar instância da unidade
+      const normalizedUnit = unit === "Trujilo" ? "Trujillo" : unit;
+      const { data: instance } = await supabase
+        .from('wapi_instances')
+        .select('instance_id, instance_token')
+        .eq('unit', normalizedUnit)
+        .eq('status', 'connected')
+        .single();
+
+      if (!instance) {
+        console.log(`Instância não encontrada para unidade ${normalizedUnit}`);
+        return;
+      }
+
+      // Formatar número do lead
+      const cleanPhone = phone.replace(/\D/g, '');
+      const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+
+      // Montar mensagem com os dados do lead
+      const message = `Olá!\n\nVim pelo site do Castelo da Diversão e gostaria de saber mais sobre a promoção!\n\n*Meus dados:*\nNome: ${leadInfo.name || ''}\nUnidade: ${unit}\nData: ${leadInfo.dayOfMonth || ''}/${leadInfo.month || ''}\nConvidados: ${leadInfo.guests || ''}\n\nAguardo retorno!`;
+
+      // Enviar mensagem via edge function
+      const { error } = await supabase.functions.invoke('wapi-send', {
+        body: {
+          action: 'send-text',
+          phone: phoneWithCountry,
+          message,
+          instanceId: instance.instance_id,
+          instanceToken: instance.instance_token,
+        },
+      });
+
+      if (error) {
+        console.error('Erro ao enviar mensagem automática:', error);
+      } else {
+        console.log(`Mensagem automática enviada para ${phoneWithCountry} via ${normalizedUnit}`);
+      }
+    } catch (err) {
+      console.error('Erro ao enviar mensagem via W-API:', err);
+    }
+  };
+
   const handleInputSubmit = async () => {
     if (!inputValue.trim() || isSaving) return;
 
@@ -211,6 +256,8 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
       setIsSaving(true);
 
       try {
+        const finalLeadData = { ...leadData, name: leadData.name, whatsapp: whatsappValue };
+        
         // Se a unidade for "As duas", criar dois leads separados
         if (leadData.unit === "As duas") {
           const baseLeadData = {
@@ -236,6 +283,12 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
             unit: "Trujillo",
           });
           if (trujilloError) throw trujilloError;
+
+          // Enviar mensagem para ambas as unidades
+          await Promise.all([
+            sendWelcomeMessage(whatsappValue, "Manchester", finalLeadData),
+            sendWelcomeMessage(whatsappValue, "Trujillo", finalLeadData),
+          ]);
         } else {
           // Comportamento padrão: criar um único lead
           const { error } = await supabase.from("campaign_leads").insert({
@@ -249,6 +302,11 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
             campaign_name: campaignConfig.campaignName,
           });
           if (error) throw error;
+
+          // Enviar mensagem automática para a unidade selecionada
+          if (leadData.unit) {
+            await sendWelcomeMessage(whatsappValue, leadData.unit, finalLeadData);
+          }
         }
 
         setMessages((prev) => [
