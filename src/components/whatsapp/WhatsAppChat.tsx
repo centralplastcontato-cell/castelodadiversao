@@ -20,6 +20,7 @@ import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useChatNotificationToggle } from "@/hooks/useChatNotificationToggle";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useUserRole } from "@/hooks/useUserRole";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -186,8 +187,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
   // Permissions hook - check if user can transfer leads and delete from chat
   const { hasPermission: hasUserPermission } = usePermissions(userId);
-  const canTransferLeads = hasUserPermission('leads.transfer');
-  const canDeleteFromChat = hasUserPermission('leads.delete.from_chat');
+  const { isAdmin } = useUserRole(userId);
+  const canTransferLeads = isAdmin || hasUserPermission('leads.transfer');
+  const canDeleteFromChat = isAdmin || hasUserPermission('leads.delete.from_chat');
 
   // Notifications hook - uses shared toggle state
   const { notificationsEnabled } = useChatNotificationToggle();
