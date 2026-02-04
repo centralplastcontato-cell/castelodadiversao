@@ -14,7 +14,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play, Bell, BellOff,
-  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, CheckCircle2
+  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -1228,7 +1228,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                   className="h-7 text-xs"
                   onClick={() => setFilter('closed')}
                 >
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  <X className="w-3 h-3 mr-1" />
                   Encerradas
                   {conversations.filter(c => c.is_closed).length > 0 && (
                     <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
@@ -1286,7 +1286,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                         <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
                       )}
                       {conv.is_closed && (
-                        <CheckCircle2 className="absolute -bottom-1 -right-1 w-3 h-3 text-green-500 fill-green-500/20" />
+                        <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1382,7 +1382,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       className="h-7 text-xs"
                       onClick={() => setFilter('closed')}
                     >
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      <X className="w-3 h-3 mr-1" />
                       Encerradas
                       {conversations.filter(c => c.is_closed).length > 0 && (
                         <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
@@ -1440,7 +1440,7 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                             <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
                           )}
                           {conv.is_closed && (
-                            <CheckCircle2 className="absolute -bottom-1 -right-1 w-3 h-3 text-green-500 fill-green-500/20" />
+                            <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1457,6 +1457,19 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                               )}
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleConversationClosed(conv);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
+                                title={conv.is_closed ? "Reabrir conversa" : "Encerrar conversa"}
+                              >
+                                <X className={cn(
+                                  "w-3 h-3",
+                                  conv.is_closed ? "text-destructive" : "text-muted-foreground"
+                                )} />
+                              </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1758,10 +1771,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                         onClick={() => toggleConversationClosed(selectedConversation)}
                         title={selectedConversation.is_closed ? "Reabrir conversa" : "Encerrar conversa"}
                       >
-                        <CheckCircle2 className={cn(
+                        <X className={cn(
                           "w-4 h-4",
                           selectedConversation.is_closed 
-                            ? "text-green-500 fill-green-500/20" 
+                            ? "text-destructive" 
                             : "text-muted-foreground"
                         )} />
                       </Button>
@@ -2380,10 +2393,10 @@ export function WhatsAppChat({ userId, allowedUnits }: WhatsAppChatProps) {
                       onClick={() => toggleConversationClosed(selectedConversation)}
                       title={selectedConversation.is_closed ? "Reabrir conversa" : "Encerrar conversa"}
                     >
-                      <CheckCircle2 className={cn(
+                      <X className={cn(
                         "w-4 h-4",
                         selectedConversation.is_closed 
-                          ? "text-green-500 fill-green-500/20" 
+                          ? "text-destructive" 
                           : "text-muted-foreground"
                       )} />
                     </Button>
