@@ -14,7 +14,8 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
-  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2
+  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2,
+  CheckCircle, CalendarCheck
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -87,6 +88,7 @@ interface Conversation {
   unread_count: number;
   is_favorite: boolean;
   is_closed: boolean;
+  has_scheduled_visit: boolean;
   last_message_content: string | null;
   last_message_from_me: boolean;
   bot_enabled: boolean | null;
@@ -147,7 +149,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'favorites'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'favorites'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -166,6 +168,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [closedLeadConversationIds, setClosedLeadConversationIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -527,6 +530,30 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
     if (data) {
       setConversations(data as Conversation[]);
+      
+      // Fetch lead IDs that are linked to conversations
+      const leadIds = data
+        .map((conv: Conversation) => conv.lead_id)
+        .filter((id): id is string => id !== null);
+      
+      if (leadIds.length > 0) {
+        // Find leads with status 'fechado'
+        const { data: closedLeads } = await supabase
+          .from("campaign_leads")
+          .select("id")
+          .in("id", leadIds)
+          .eq("status", "fechado");
+        
+        if (closedLeads) {
+          const closedLeadIds = new Set(closedLeads.map(l => l.id));
+          const closedConvIds = new Set(
+            data
+              .filter((conv: Conversation) => conv.lead_id && closedLeadIds.has(conv.lead_id))
+              .map((conv: Conversation) => conv.id)
+          );
+          setClosedLeadConversationIds(closedConvIds);
+        }
+      }
       
       // If initialPhone is provided, try to select that conversation
       if (selectPhone) {
@@ -1183,6 +1210,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       // Apply filter
       if (filter === 'unread') return matchesSearch && conv.unread_count > 0;
       if (filter === 'closed') return matchesSearch && conv.is_closed;
+      if (filter === 'fechados') return matchesSearch && closedLeadConversationIds.has(conv.id);
+      if (filter === 'visitas') return matchesSearch && conv.has_scheduled_visit;
       if (filter === 'favorites') return matchesSearch && conv.is_favorite;
       // 'all' filter - show non-closed conversations only
       return matchesSearch && !conv.is_closed;
@@ -1215,6 +1244,30 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       description: newValue 
         ? "A conversa foi movida para Encerradas." 
         : "A conversa foi movida de volta para a lista principal.",
+    });
+  };
+
+  const toggleScheduledVisit = async (conv: Conversation) => {
+    const newValue = !conv.has_scheduled_visit;
+    
+    await supabase
+      .from('wapi_conversations')
+      .update({ has_scheduled_visit: newValue })
+      .eq('id', conv.id);
+
+    setConversations(prev => 
+      prev.map(c => c.id === conv.id ? { ...c, has_scheduled_visit: newValue } : c)
+    );
+
+    if (selectedConversation?.id === conv.id) {
+      setSelectedConversation({ ...selectedConversation, has_scheduled_visit: newValue });
+    }
+
+    toast({
+      title: newValue ? "Visita agendada" : "Visita desmarcada",
+      description: newValue 
+        ? "A conversa foi marcada como tendo visita agendada." 
+        : "A marcação de visita foi removida.",
     });
   };
 
@@ -1373,6 +1426,34 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   )}
                 </Button>
                 <Button 
+                  variant={filter === 'fechados' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('fechados')}
+                >
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Fechados
+                  {closedLeadConversationIds.size > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-green-500/20 text-green-700">
+                      {closedLeadConversationIds.size}
+                    </Badge>
+                  )}
+                </Button>
+                <Button 
+                  variant={filter === 'visitas' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => setFilter('visitas')}
+                >
+                  <CalendarCheck className="w-3 h-3 mr-1" />
+                  Visitas
+                  {conversations.filter(c => c.has_scheduled_visit).length > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-blue-500/20 text-blue-700">
+                      {conversations.filter(c => c.has_scheduled_visit).length}
+                    </Badge>
+                  )}
+                </Button>
+                <Button 
                   variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
                   size="sm" 
                   className="h-7 text-xs"
@@ -1420,6 +1501,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       </Avatar>
                       {conv.is_favorite && (
                         <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
+                      )}
+                      {conv.has_scheduled_visit && (
+                        <CalendarCheck className="absolute -top-1 -left-1 w-3 h-3 text-blue-600 bg-background rounded-full" />
                       )}
                       {conv.is_closed && (
                         <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
@@ -1523,6 +1607,34 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       )}
                     </Button>
                     <Button 
+                      variant={filter === 'fechados' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('fechados')}
+                    >
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Fechados
+                      {closedLeadConversationIds.size > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-green-500/20 text-green-700">
+                          {closedLeadConversationIds.size}
+                        </Badge>
+                      )}
+                    </Button>
+                    <Button 
+                      variant={filter === 'visitas' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setFilter('visitas')}
+                    >
+                      <CalendarCheck className="w-3 h-3 mr-1" />
+                      Visitas
+                      {conversations.filter(c => c.has_scheduled_visit).length > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-blue-500/20 text-blue-700">
+                          {conversations.filter(c => c.has_scheduled_visit).length}
+                        </Badge>
+                      )}
+                    </Button>
+                    <Button 
                       variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
                       size="sm" 
                       className="h-7 text-xs"
@@ -1571,6 +1683,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           {conv.is_favorite && (
                             <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
                           )}
+                          {conv.has_scheduled_visit && (
+                            <CalendarCheck className="absolute -top-1 -left-1 w-3 h-3 text-blue-600 bg-background rounded-full" />
+                          )}
                           {conv.is_closed && (
                             <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
                           )}
@@ -1600,6 +1715,19 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                 <X className={cn(
                                   "w-3 h-3",
                                   conv.is_closed ? "text-destructive" : "text-muted-foreground"
+                                )} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleScheduledVisit(conv);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
+                                title={conv.has_scheduled_visit ? "Desmarcar visita" : "Marcar visita agendada"}
+                              >
+                                <CalendarCheck className={cn(
+                                  "w-3 h-3",
+                                  conv.has_scheduled_visit ? "text-blue-600" : "text-muted-foreground"
                                 )} />
                               </button>
                               <button
