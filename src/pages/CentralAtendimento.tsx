@@ -17,7 +17,6 @@ import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { MetricsCards } from "@/components/admin/MetricsCards";
 import { NotificationBell } from "@/components/admin/NotificationBell";
 import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
-import { EquipeTab } from "@/components/admin/EquipeTab";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -703,10 +702,11 @@ export default function CentralAtendimento() {
               )}
             </TabsContent>
 
-            <TabsContent value="equipe" className="flex-1 overflow-auto min-h-0 mt-0 px-3 py-4">
-              <EquipeTab 
+            <TabsContent value="equipe" className="flex-1 overflow-hidden min-h-0 mt-0 p-0">
+              <WhatsAppChat 
+                userId={user.id} 
                 allowedUnits={canViewAll ? ['all'] : allowedUnits} 
-                canViewAll={canViewAll} 
+                defaultFilter="freelancer"
               />
             </TabsContent>
 
@@ -915,10 +915,11 @@ export default function CentralAtendimento() {
                 </Tabs>
               </TabsContent>
 
-              <TabsContent value="equipe" className="flex-1 overflow-auto min-h-0 mt-0">
-                <EquipeTab 
+              <TabsContent value="equipe" className="flex-1 overflow-hidden min-h-0 mt-0">
+                <WhatsAppChat 
+                  userId={user.id} 
                   allowedUnits={canViewAll ? ['all'] : allowedUnits} 
-                  canViewAll={canViewAll} 
+                  defaultFilter="freelancer"
                 />
               </TabsContent>
 
