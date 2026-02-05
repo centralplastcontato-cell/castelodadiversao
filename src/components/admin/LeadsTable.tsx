@@ -377,33 +377,44 @@ function DesktopTableWithDualScroll({
   useEffect(() => {
     const updateScrollWidth = () => {
       if (tableScrollRef.current) {
-        setScrollWidth(tableScrollRef.current.scrollWidth);
+        const newScrollWidth = tableScrollRef.current.scrollWidth;
+        setScrollWidth(newScrollWidth);
       }
     };
-    updateScrollWidth();
+    // Initial update with a small delay to ensure content is rendered
+    const timeout = setTimeout(updateScrollWidth, 100);
     const resizeObserver = new ResizeObserver(updateScrollWidth);
     if (tableScrollRef.current) {
       resizeObserver.observe(tableScrollRef.current);
     }
-    return () => resizeObserver.disconnect();
+    return () => {
+      clearTimeout(timeout);
+      resizeObserver.disconnect();
+    };
   }, [leads]);
+
+  // Only show top scrollbar if content is wider than container
+  const showTopScrollbar = scrollWidth > 0 && tableScrollRef.current && scrollWidth > tableScrollRef.current.clientWidth;
 
   return (
     <div className="hidden sm:flex flex-col flex-1 min-h-0">
       {/* Top scrollbar */}
-      <div
-        ref={topScrollRef}
-        onScroll={handleTopScroll}
-        className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent shrink-0"
-      >
-        <div style={{ width: scrollWidth, height: 1 }} />
-      </div>
+      {showTopScrollbar && (
+        <div
+          ref={topScrollRef}
+          onScroll={handleTopScroll}
+          className="overflow-x-scroll shrink-0 border-b border-border"
+          style={{ overflowY: 'hidden', height: 12 }}
+        >
+          <div style={{ width: scrollWidth, height: 1 }} />
+        </div>
+      )}
       
       {/* Table container */}
       <div
         ref={tableScrollRef}
         onScroll={handleTableScroll}
-        className="overflow-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent flex-1 min-h-0"
+        className="overflow-auto flex-1 min-h-0"
       >
         <Table>
           <TableHeader>
