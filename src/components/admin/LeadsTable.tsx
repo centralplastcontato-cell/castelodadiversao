@@ -301,7 +301,7 @@ export function LeadsTable({
       </div>
 
       {/* Desktop: Table View */}
-      <div className="hidden sm:block overflow-x-auto">
+     <div className="hidden sm:block overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
         <Table>
           <TableHeader>
             <TableRow>
