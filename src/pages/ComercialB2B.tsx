@@ -26,6 +26,7 @@
  } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { toast } from "sonner";
+ import { ProposalGenerator } from "@/components/admin/ProposalGenerator";
  
  const ComercialB2B = () => {
    const navigate = useNavigate();
@@ -139,7 +140,7 @@
  
              {/* Tabs */}
              <Tabs defaultValue="pitch" className="space-y-6">
-               <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+               <TabsList className="grid w-full grid-cols-6 h-auto p-1">
                  <TabsTrigger value="pitch" className="flex items-center gap-2 py-3">
                    <Target className="h-4 w-4" />
                    <span className="hidden sm:inline">Pitch de Vendas</span>
@@ -159,6 +160,11 @@
                    <Phone className="h-4 w-4" />
                    <span className="hidden sm:inline">Scripts</span>
                    <span className="sm:hidden">Scripts</span>
+                 </TabsTrigger>
+                 <TabsTrigger value="proposals" className="flex items-center gap-2 py-3">
+                   <FileText className="h-4 w-4" />
+                   <span className="hidden sm:inline">Propostas</span>
+                   <span className="sm:hidden">PDF</span>
                  </TabsTrigger>
                  <TabsTrigger value="objections" className="flex items-center gap-2 py-3">
                    <MessageSquare className="h-4 w-4" />
@@ -791,6 +797,12 @@ Deixe o prospect falar. Anote objeções.
                </TabsContent>
 
                <TabsContent value="objections" className="space-y-6">
+               {/* Proposals Tab */}
+               <TabsContent value="proposals">
+                 <ProposalGenerator />
+               </TabsContent>
+
+               {/* Objections Tab */}
                  <Card>
                    <CardHeader>
                      <CardTitle>🛡️ Quebrando Objeções</CardTitle>
