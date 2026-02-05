@@ -358,22 +358,22 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FolderOpen className="w-5 h-5" />
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FolderOpen className="w-5 h-5 shrink-0" />
               Materiais de Vendas
             </CardTitle>
-            <CardDescription>
-              Gerencie PDFs de pacotes, fotos e vídeos por unidade para envio rápido
+            <CardDescription className="text-sm leading-relaxed">
+              Gerencie PDFs de pacotes, fotos e vídeos por unidade para envio rápido no chat.
             </CardDescription>
+            {isAdmin && (
+              <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto mt-1">
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Material
+              </Button>
+            )}
           </div>
-          {isAdmin && (
-            <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Material
-            </Button>
-          )}
         </CardHeader>
         <CardContent>
           {/* Unit selector */}
