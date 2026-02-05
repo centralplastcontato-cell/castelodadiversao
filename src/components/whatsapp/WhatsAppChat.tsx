@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
-  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2,
+  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2, ChevronDown,
   CheckCircle, CalendarCheck, Briefcase, FileCheck, ArrowDown
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
@@ -2526,34 +2527,47 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         ))}
                       </div>
                     ) : (
-                      // Show classification buttons directly - no lead linked yet
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-medium text-destructive shrink-0">⚠ Não classificado:</span>
-                        {[
-                          { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
-                          { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
-                          { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
-                          { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
-                          { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
-                          { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
-                        ].map((statusOption) => (
+                      // Show collapsible classification panel - no lead linked yet
+                      <Collapsible>
+                        <CollapsibleTrigger asChild>
                           <Button
-                            key={statusOption.value}
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="h-7 text-xs gap-1.5"
-                            disabled={isCreatingLead}
-                            onClick={() => createAndClassifyLead(statusOption.value)}
+                            className="h-7 gap-1.5 text-destructive hover:text-destructive"
                           >
-                            {isCreatingLead ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
-                            )}
-                            {statusOption.label}
+                            <span className="text-xs font-medium">⚠ Não classificado</span>
+                            <ChevronDown className="w-3.5 h-3.5 transition-transform duration-200 [[data-state=open]>span>&]:rotate-180" />
                           </Button>
-                        ))}
-                      </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-2">
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                              { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
+                              { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
+                              { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+                              { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                              { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                            ].map((statusOption) => (
+                              <Button
+                                key={statusOption.value}
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1.5"
+                                disabled={isCreatingLead}
+                                onClick={() => createAndClassifyLead(statusOption.value)}
+                              >
+                                {isCreatingLead ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
+                                )}
+                                {statusOption.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     )}
                   </div>
 
@@ -3256,34 +3270,47 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       </div>
                     </div>
                   ) : (
-                    // Show classification buttons directly - no lead linked yet
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] font-medium text-destructive shrink-0">⚠ Não classificado:</span>
-                      {[
-                        { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
-                        { value: 'em_contato', label: 'Contato', color: 'bg-yellow-500' },
-                        { value: 'orcamento_enviado', label: 'Orçam.', color: 'bg-purple-500' },
-                        { value: 'aguardando_resposta', label: 'Aguard.', color: 'bg-orange-500' },
-                        { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
-                        { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
-                      ].map((statusOption) => (
+                    // Show collapsible classification panel - no lead linked yet (mobile)
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
                         <Button
-                          key={statusOption.value}
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="h-6 text-[10px] gap-1 px-1.5"
-                          disabled={isCreatingLead}
-                          onClick={() => createAndClassifyLead(statusOption.value)}
+                          className="h-6 gap-1 text-destructive hover:text-destructive px-2"
                         >
-                          {isCreatingLead ? (
-                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                          ) : (
-                            <div className={cn("w-1.5 h-1.5 rounded-full", statusOption.color)} />
-                          )}
-                          {statusOption.label}
+                          <span className="text-[10px] font-medium">⚠ Não classificado</span>
+                          <ChevronDown className="w-3 h-3 transition-transform duration-200 [[data-state=open]>span>&]:rotate-180" />
                         </Button>
-                      ))}
-                    </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-1.5">
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
+                            { value: 'em_contato', label: 'Contato', color: 'bg-yellow-500' },
+                            { value: 'orcamento_enviado', label: 'Orçam.', color: 'bg-purple-500' },
+                            { value: 'aguardando_resposta', label: 'Aguard.', color: 'bg-orange-500' },
+                            { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
+                            { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+                          ].map((statusOption) => (
+                            <Button
+                              key={statusOption.value}
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] gap-1 px-1.5"
+                              disabled={isCreatingLead}
+                              onClick={() => createAndClassifyLead(statusOption.value)}
+                            >
+                              {isCreatingLead ? (
+                                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                              ) : (
+                                <div className={cn("w-1.5 h-1.5 rounded-full", statusOption.color)} />
+                              )}
+                              {statusOption.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
                 </div>
 
