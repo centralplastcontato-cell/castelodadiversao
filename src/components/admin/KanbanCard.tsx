@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Lead, LEAD_STATUS_LABELS, LeadStatus } from "@/types/crm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  ExternalLink,
   MessageSquare,
   User,
   GripVertical,
@@ -63,6 +63,7 @@ export function KanbanCard({
   getPreviousStatus,
   getNextStatus,
 }: KanbanCardProps) {
+  const navigate = useNavigate();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(lead.name);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -95,12 +96,12 @@ export function KanbanCard({
     }
   }, [isEditingDescription]);
 
-  const formatWhatsAppLink = (phone: string) => {
+  const handleOpenInternalChat = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, "");
     const phoneWithCountry = cleanPhone.startsWith("55")
       ? cleanPhone
       : `55${cleanPhone}`;
-    return `https://wa.me/${phoneWithCountry}`;
+    navigate(`/atendimento?phone=${phoneWithCountry}`);
   };
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -387,10 +388,10 @@ export function KanbanCard({
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                window.open(formatWhatsAppLink(lead.whatsapp), "_blank");
+                handleOpenInternalChat(lead.whatsapp);
               }}
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
+              <MessageSquare className="w-4 h-4 mr-2" />
               Abrir WhatsApp
             </DropdownMenuItem>
             
