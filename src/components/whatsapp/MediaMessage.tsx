@@ -108,16 +108,33 @@ export function MediaMessage({
         },
       });
 
+      // Parse error response - when edge function returns 400, response is in error.context
+      let errorData = null;
+      if (error) {
+        try {
+          // Try to parse error context for the response body
+          if (typeof error.context === 'object') {
+            errorData = error.context;
+          } else if (error.message) {
+            errorData = JSON.parse(error.message);
+          }
+        } catch {
+          // If parsing fails, use data or default
+          errorData = data;
+        }
+      }
+
       if (error || !data?.success) {
-        // Check if the error indicates we can't retry
-        const canRetry = data?.canRetry !== false;
+        // Check if the error indicates we can't retry (from error response or data)
+        const responseData = errorData || data;
+        const canRetry = responseData?.canRetry !== false;
         
         if (!canRetry) {
           // Silent fail for permanent errors (old messages without directPath)
           setDownloadError('Mídia expirada');
         } else {
           // Log only retryable errors
-          console.warn('Download falhou, pode tentar novamente:', data?.error || error?.message);
+          console.warn('Download falhou, pode tentar novamente:', responseData?.error || error?.message);
           setDownloadError('Erro ao baixar');
         }
         return;
@@ -137,7 +154,7 @@ export function MediaMessage({
       onMediaUrlUpdate?.(data.url);
     } catch (err) {
       // Silent fail - don't spam console for expected failures
-      setDownloadError('Erro ao baixar');
+      setDownloadError('Mídia expirada');
     } finally {
       setIsDownloading(false);
     }
