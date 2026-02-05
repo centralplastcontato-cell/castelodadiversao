@@ -108,52 +108,38 @@ export function MediaMessage({
         },
       });
 
-      // Parse error response - when edge function returns 400, response is in error.context
-      let errorData = null;
-      if (error) {
-        try {
-          // Try to parse error context for the response body
-          if (typeof error.context === 'object') {
-            errorData = error.context;
-          } else if (error.message) {
-            errorData = JSON.parse(error.message);
-          }
-        } catch {
-          // If parsing fails, use data or default
-          errorData = data;
-        }
-      }
-
-      if (error || !data?.success) {
-        // Check if the error indicates we can't retry (from error response or data)
-        const responseData = errorData || data;
-        const canRetry = responseData?.canRetry !== false;
+      // Success case
+      if (data?.success && data?.url) {
+        setCurrentUrl(data.url);
+        setImageLoadError(false);
         
-        if (!canRetry) {
-          // Silent fail for permanent errors (old messages without directPath)
-          setDownloadError('Mídia expirada');
-        } else {
-          // Log only retryable errors
-          console.warn('Download falhou, pode tentar novamente:', responseData?.error || error?.message);
-          setDownloadError('Erro ao baixar');
-        }
+        // Update message in database
+        await supabase
+          .from('wapi_messages')
+          .update({ media_url: data.url, media_key: null })
+          .eq('message_id', messageId);
+
+        onMediaUrlUpdate?.(data.url);
         return;
       }
 
-      // Update the URL to the persisted one
-      setCurrentUrl(data.url);
-      setImageLoadError(false);
+      // Error case - check if we can retry
+      // Try to get canRetry from data (edge function returns it in the response body)
+      const canRetry = data?.canRetry !== false;
       
-      // Update message in database
-      await supabase
-        .from('wapi_messages')
-        .update({ media_url: data.url, media_key: null })
-        .eq('message_id', messageId);
-
-      // Notify parent
-      onMediaUrlUpdate?.(data.url);
+      if (!canRetry) {
+        // Permanent error - media expired or missing metadata
+        setDownloadError('Mídia expirada');
+      } else if (error) {
+        // Transient error - can retry
+        console.warn('Download failed, can retry:', error.message);
+        setDownloadError('Erro ao baixar');
+      } else {
+        // Unknown error
+        setDownloadError('Mídia expirada');
+      }
     } catch (err) {
-      // Silent fail - don't spam console for expected failures
+      // Network or unexpected error - assume expired
       setDownloadError('Mídia expirada');
     } finally {
       setIsDownloading(false);
