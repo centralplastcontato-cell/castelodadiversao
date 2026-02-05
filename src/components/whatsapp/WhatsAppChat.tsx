@@ -1652,15 +1652,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         </div>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <p className={cn(
-                          "text-xs flex-1 min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap",
+                        <span className={cn(
+                          "text-xs block truncate min-w-0 flex-1",
                           conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>
                           {conv.last_message_from_me && (
                             <CheckCheck className="w-3 h-3 shrink-0 text-primary inline mr-1 align-text-bottom" />
                           )}
                           {conv.last_message_content || conv.contact_phone}
-                        </p>
+                        </span>
                         {conv.unread_count > 0 && (
                           <AnimatedBadge 
                             value={conv.unread_count > 99 ? "99+" : conv.unread_count}
@@ -1845,15 +1845,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <p className={cn(
-                              "text-xs flex-1 min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap",
+                            <span className={cn(
+                              "text-xs block truncate min-w-0 flex-1",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                             )}>
                               {conv.last_message_from_me && (
                                 <CheckCheck className="w-3 h-3 shrink-0 text-primary inline mr-1 align-text-bottom" />
                               )}
                               {conv.last_message_content || conv.contact_phone}
-                            </p>
+                            </span>
                             {conv.unread_count > 0 && (
                               <AnimatedBadge 
                                 value={conv.unread_count > 99 ? "99+" : conv.unread_count}
