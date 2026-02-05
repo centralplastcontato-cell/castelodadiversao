@@ -141,6 +141,7 @@ interface WhatsAppChatProps {
 // Component for displaying media with auto-download capability
 import { MediaMessage } from "@/components/whatsapp/MediaMessage";
 import { ConversationStatusActions } from "@/components/whatsapp/ConversationStatusActions";
+import { ConversationFilters } from "@/components/whatsapp/ConversationFilters";
 
 export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
@@ -1552,122 +1553,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   className="pl-9"
                 />
               </div>
-              <div className="flex gap-1 flex-wrap">
-                <Button 
-                  variant={filter === 'all' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('all')}
-                >
-                  Tudo
-                </Button>
-                <Button 
-                  variant={filter === 'unread' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('unread')}
-                >
-                  Não lidas
-                  {conversations.filter(c => c.unread_count > 0).length > 0 && (
-                    <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
-                      {conversations.filter(c => c.unread_count > 0).length}
-                    </Badge>
-                  )}
-                </Button>
-                <Button 
-                  variant={filter === 'closed' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('closed')}
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Encerradas
-                  {conversations.filter(c => c.is_closed).length > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
-                      {conversations.filter(c => c.is_closed).length}
-                    </Badge>
-                  )}
-                </Button>
-                <Button 
-                  variant={filter === 'fechados' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('fechados')}
-                >
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Fechados
-                  {closedLeadConversationIds.size > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-green-500/20 text-green-700">
-                      {closedLeadConversationIds.size}
-                    </Badge>
-                  )}
-                </Button>
-                <Button 
-                  variant={filter === 'oe' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('oe')}
-                >
-                  <FileCheck className="w-3 h-3 mr-1" />
-                  O.E
-                  {orcamentoEnviadoConversationIds.size > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-purple-500/20 text-purple-700">
-                      {orcamentoEnviadoConversationIds.size}
-                    </Badge>
-                  )}
-                </Button>
-                <Button
-                  variant={filter === 'visitas' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('visitas')}
-                >
-                  <CalendarCheck className="w-3 h-3 mr-1" />
-                  Visitas
-                  {conversations.filter(c => c.has_scheduled_visit).length > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-blue-500/20 text-blue-700">
-                      {conversations.filter(c => c.has_scheduled_visit).length}
-                    </Badge>
-                  )}
-                </Button>
-                <Button 
-                  variant={filter === 'freelancer' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('freelancer')}
-                >
-                  <Briefcase className="w-3 h-3 mr-1" />
-                  Freelancer
-                  {conversations.filter(c => c.is_freelancer).length > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-orange-500/20 text-orange-700">
-                      {conversations.filter(c => c.is_freelancer).length}
-                    </Badge>
-                  )}
-                </Button>
-                <Button 
-                  variant={filter === 'equipe' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('equipe')}
-                >
-                  <Users className="w-3 h-3 mr-1" />
-                  Equipe
-                  {conversations.filter(c => c.is_equipe).length > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-cyan-500/20 text-cyan-700">
-                      {conversations.filter(c => c.is_equipe).length}
-                    </Badge>
-                  )}
-                </Button>
-                <Button
-                  variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => setFilter('favorites')}
-                >
-                  <Star className="w-3 h-3 mr-1" />
-                  Favoritos
-                </Button>
-              </div>
+              <ConversationFilters
+                filter={filter}
+                onFilterChange={setFilter}
+                conversations={conversations}
+                closedLeadCount={closedLeadConversationIds.size}
+                orcamentoEnviadoCount={orcamentoEnviadoConversationIds.size}
+                collapsible={true}
+                defaultOpen={false}
+              />
             </div>
             
             <ScrollArea className="flex-1">
@@ -1788,122 +1682,14 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       className="pl-9"
                     />
                   </div>
-                  <div className="flex gap-1 flex-wrap">
-                    <Button 
-                      variant={filter === 'all' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('all')}
-                    >
-                      Tudo
-                    </Button>
-                    <Button 
-                      variant={filter === 'unread' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('unread')}
-                    >
-                      Não lidas
-                      {conversations.filter(c => c.unread_count > 0).length > 0 && (
-                        <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
-                          {conversations.filter(c => c.unread_count > 0).length}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button 
-                      variant={filter === 'closed' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('closed')}
-                    >
-                      <X className="w-3 h-3 mr-1" />
-                      Encerradas
-                      {conversations.filter(c => c.is_closed).length > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
-                          {conversations.filter(c => c.is_closed).length}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button 
-                      variant={filter === 'fechados' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('fechados')}
-                    >
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Fechados
-                      {closedLeadConversationIds.size > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-green-500/20 text-green-700">
-                          {closedLeadConversationIds.size}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button 
-                      variant={filter === 'oe' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('oe')}
-                    >
-                      <FileCheck className="w-3 h-3 mr-1" />
-                      O.E
-                      {orcamentoEnviadoConversationIds.size > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-purple-500/20 text-purple-700">
-                          {orcamentoEnviadoConversationIds.size}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button
-                      variant={filter === 'visitas' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('visitas')}
-                    >
-                      <CalendarCheck className="w-3 h-3 mr-1" />
-                      Visitas
-                      {conversations.filter(c => c.has_scheduled_visit).length > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-blue-500/20 text-blue-700">
-                          {conversations.filter(c => c.has_scheduled_visit).length}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button 
-                      variant={filter === 'freelancer' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('freelancer')}
-                    >
-                      <Briefcase className="w-3 h-3 mr-1" />
-                      Freelancer
-                      {conversations.filter(c => c.is_freelancer).length > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-orange-500/20 text-orange-700">
-                          {conversations.filter(c => c.is_freelancer).length}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button 
-                      variant={filter === 'equipe' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('equipe')}
-                    >
-                      <Users className="w-3 h-3 mr-1" />
-                      Equipe
-                      {conversations.filter(c => c.is_equipe).length > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-cyan-500/20 text-cyan-700">
-                          {conversations.filter(c => c.is_equipe).length}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button
-                      variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => setFilter('favorites')}
-                    >
-                      <Star className="w-3 h-3 mr-1" />
-                      Favoritos
-                    </Button>
-                  </div>
+                  <ConversationFilters
+                    filter={filter}
+                    onFilterChange={setFilter}
+                    conversations={conversations}
+                    closedLeadCount={closedLeadConversationIds.size}
+                    orcamentoEnviadoCount={orcamentoEnviadoConversationIds.size}
+                    collapsible={false}
+                  />
                 </div>
                 
                 <ScrollArea className="flex-1">
