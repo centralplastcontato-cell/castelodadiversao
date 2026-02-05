@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      b2b_leads: {
+        Row: {
+          city: string | null
+          company_name: string
+          contact_name: string
+          created_at: string
+          current_tools: string | null
+          email: string
+          how_found_us: string | null
+          id: string
+          main_challenges: string | null
+          monthly_parties: number | null
+          notes: string | null
+          phone: string | null
+          state: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          company_name: string
+          contact_name: string
+          created_at?: string
+          current_tools?: string | null
+          email: string
+          how_found_us?: string | null
+          id?: string
+          main_challenges?: string | null
+          monthly_parties?: number | null
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          company_name?: string
+          contact_name?: string
+          created_at?: string
+          current_tools?: string | null
+          email?: string
+          how_found_us?: string | null
+          id?: string
+          main_challenges?: string | null
+          monthly_parties?: number | null
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campaign_leads: {
         Row: {
           campaign_id: string
