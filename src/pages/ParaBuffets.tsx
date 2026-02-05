@@ -63,7 +63,7 @@
    const [isChatOpen, setIsChatOpen] = useState(false);
  
    return (
-     <div className="min-h-screen bg-background">
+     <div className="min-h-screen bg-slate-900">
        <Helmet>
          <title>Plataforma de Gestão para Buffets | CRM + WhatsApp + Landing Pages</title>
          <meta name="description" content="Plataforma completa de gestão comercial para buffets infantis. WhatsApp integrado, CRM visual Kanban e landing pages que convertem. Agende uma demonstração gratuita!" />
@@ -91,15 +91,15 @@
        </Helmet>
  
        {/* Header */}
-       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+       <header className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-lg border-b border-slate-700">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex items-center justify-between h-16">
              <Link to="/" className="flex items-center gap-3">
              <img src={logoPlataforma} alt="Logo" className="h-10 w-10 object-contain" />
-               <span className="font-display font-bold text-lg">Plataforma para Buffets</span>
+               <span className="font-display font-bold text-lg text-white">Plataforma para Buffets</span>
              </Link>
              <a href="#form" className="hidden sm:inline-flex">
-               <Button>Solicitar Demo</Button>
+               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0">Solicitar Demo</Button>
              </a>
            </div>
          </div>
@@ -292,7 +292,7 @@
        </section>
  
        {/* Product Screenshots Section */}
-       <section className="py-20 bg-muted/30">
+       <section className="py-20 bg-slate-800">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <motion.div
              initial={{ opacity: 0, y: 20 }}
@@ -300,11 +300,11 @@
              viewport={{ once: true }}
              className="text-center mb-16"
            >
-             <Badge className="mb-4" variant="outline">Screenshots</Badge>
-             <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+             <Badge className="mb-4 bg-slate-700 text-slate-300 border-slate-600">Screenshots</Badge>
+             <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
                Interface pensada para produtividade
              </h2>
-             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
                Design moderno que sua equipe vai adorar usar
              </p>
            </motion.div>
@@ -318,7 +318,7 @@
                <img
                  src={mockupDashboard}
                  alt="Dashboard completo"
-                 className="rounded-xl shadow-2xl border border-border"
+                 className="rounded-xl shadow-2xl border border-slate-700"
                />
              </motion.div>
              
@@ -328,7 +328,7 @@
                viewport={{ once: true }}
                className="space-y-6"
              >
-               <h3 className="text-2xl font-bold text-foreground">Dashboard completo</h3>
+               <h3 className="text-2xl font-bold text-white">Dashboard completo</h3>
                <ul className="space-y-4">
                  {[
                    "CRM Kanban com drag-and-drop",
@@ -338,14 +338,14 @@
                  ].map((item, i) => (
                    <li key={i} className="flex items-center gap-3">
                      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-                     <span className="text-muted-foreground">{item}</span>
+                     <span className="text-slate-300">{item}</span>
                    </li>
                  ))}
                </ul>
                
                <div className="pt-4">
                  <a href="#form">
-                   <Button size="lg">
+                   <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0">
                      Ver demonstração completa
                      <ArrowRight className="ml-2 h-4 w-4" />
                    </Button>
@@ -357,7 +357,7 @@
        </section>
  
        {/* Problem Section */}
-       <section className="py-20 bg-muted/50">
+       <section className="py-20 bg-slate-900">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <motion.div
              initial={{ opacity: 0, y: 20 }}
@@ -365,7 +365,7 @@
              viewport={{ once: true }}
              className="text-center mb-12"
            >
-             <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+             <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
                Você se identifica com isso?
              </h2>
            </motion.div>
@@ -385,10 +385,10 @@
                  whileInView={{ opacity: 1, y: 0 }}
                  viewport={{ once: true }}
                  transition={{ delay: index * 0.1 }}
-                 className="flex items-start gap-3 p-4 rounded-lg bg-destructive/5 border border-destructive/20"
+                 className="flex items-start gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/30"
                >
-                 <span className="text-destructive font-bold text-lg">✗</span>
-                 <span className="text-foreground">{problem}</span>
+                 <span className="text-red-500 font-bold text-lg">✗</span>
+                 <span className="text-slate-300">{problem}</span>
                </motion.div>
              ))}
            </div>
@@ -396,7 +396,7 @@
        </section>
  
        {/* Features */}
-       <section id="features" className="py-20">
+       <section id="features" className="py-20 bg-slate-800">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <motion.div
              initial={{ opacity: 0, y: 20 }}
@@ -404,11 +404,11 @@
              viewport={{ once: true }}
              className="text-center mb-16"
            >
-             <Badge className="mb-4" variant="outline">Funcionalidades</Badge>
-             <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+             <Badge className="mb-4 bg-slate-700 text-slate-300 border-slate-600">Funcionalidades</Badge>
+             <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
                Tudo que você precisa em um só lugar
              </h2>
-             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
                Desenvolvido por quem entende as dores de um buffet
              </p>
            </motion.div>
@@ -422,15 +422,15 @@
                  viewport={{ once: true }}
                  transition={{ delay: index * 0.1 }}
                >
-                 <Card className="h-full hover:border-primary/30 transition-colors">
+                 <Card className="h-full bg-slate-900 border-slate-700 hover:border-blue-500/50 transition-colors">
                    <CardHeader>
-                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                       <feature.icon className="h-6 w-6 text-primary" />
+                     <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4">
+                       <feature.icon className="h-6 w-6 text-blue-400" />
                      </div>
-                     <CardTitle className="text-lg">{feature.title}</CardTitle>
+                     <CardTitle className="text-lg text-white">{feature.title}</CardTitle>
                    </CardHeader>
                    <CardContent>
-                     <p className="text-sm text-muted-foreground">{feature.desc}</p>
+                     <p className="text-sm text-slate-400">{feature.desc}</p>
                    </CardContent>
                  </Card>
                </motion.div>
@@ -497,7 +497,7 @@
        </section>
  
        {/* Testimonials */}
-       <section className="py-20">
+       <section className="py-20 bg-slate-900">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <motion.div
              initial={{ opacity: 0, y: 20 }}
@@ -505,8 +505,8 @@
              viewport={{ once: true }}
              className="text-center mb-12"
            >
-             <Badge className="mb-4" variant="outline">Depoimentos</Badge>
-             <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground">
+             <Badge className="mb-4 bg-slate-800 text-slate-300 border-slate-700">Depoimentos</Badge>
+             <h2 className="text-3xl md:text-4xl font-display font-bold text-white">
                O que nossos clientes dizem
              </h2>
            </motion.div>
@@ -520,17 +520,17 @@
                  viewport={{ once: true }}
                  transition={{ delay: index * 0.1 }}
                >
-                 <Card className="h-full">
+                 <Card className="h-full bg-slate-800 border-slate-700">
                    <CardContent className="pt-6">
                      <div className="flex gap-1 mb-4">
                        {[...Array(testimonial.rating)].map((_, i) => (
-                         <Star key={i} className="h-5 w-5 fill-secondary text-secondary" />
+                         <Star key={i} className="h-5 w-5 fill-yellow-500 text-yellow-500" />
                        ))}
                      </div>
-                     <p className="text-muted-foreground mb-4">"{testimonial.text}"</p>
+                     <p className="text-slate-400 mb-4">"{testimonial.text}"</p>
                      <div>
-                       <p className="font-semibold">{testimonial.name}</p>
-                       <p className="text-sm text-muted-foreground">{testimonial.company}</p>
+                       <p className="font-semibold text-white">{testimonial.name}</p>
+                       <p className="text-sm text-slate-500">{testimonial.company}</p>
                      </div>
                    </CardContent>
                  </Card>
@@ -604,17 +604,17 @@
        </section>
  
        {/* Footer */}
-       <footer className="py-12 bg-foreground text-background">
+       <footer className="py-12 bg-slate-950 text-white border-t border-slate-800">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
              <div className="flex items-center gap-3">
              <img src={logoPlataforma} alt="Logo" className="h-10 w-10 object-contain" />
                <span className="font-display font-bold">Plataforma para Buffets</span>
              </div>
-             <p className="text-sm opacity-70">
+             <p className="text-sm text-slate-500">
                © {new Date().getFullYear()} Todos os direitos reservados.
              </p>
-             <Link to="/" className="text-sm opacity-70 hover:opacity-100 transition-opacity">
+             <Link to="/" className="text-sm text-slate-500 hover:text-white transition-colors">
                Voltar ao site principal
              </Link>
            </div>
