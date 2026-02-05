@@ -1328,21 +1328,41 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     if (type === 'image') action = 'send-image';
     if (type === 'video') action = 'send-video';
 
-    const response = await supabase.functions.invoke("wapi-send", {
-      body: {
-        action,
-        phone: selectedConversation.contact_phone,
-        conversationId: selectedConversation.id,
-        instanceId: selectedInstance.instance_id,
-        instanceToken: selectedInstance.instance_token,
-        mediaUrl: url,
-        caption: caption || undefined,
-        fileName: type === 'document' ? url.split('/').pop() : undefined,
-      },
-    });
+    try {
+      const response = await supabase.functions.invoke("wapi-send", {
+        body: {
+          action,
+          phone: selectedConversation.contact_phone,
+          conversationId: selectedConversation.id,
+          instanceId: selectedInstance.instance_id,
+          instanceToken: selectedInstance.instance_token,
+          mediaUrl: url,
+          caption: caption || undefined,
+          fileName: type === 'document' ? url.split('/').pop() : undefined,
+        },
+      });
 
-    if (response.error) {
-      throw new Error(response.error.message);
+      if (response.error) {
+        console.error("[sendMaterialByUrl] Error:", response.error);
+        const errorMessage = response.error.message || 
+          (type === 'video' ? 'Erro ao enviar vídeo. Tente novamente.' : 'Erro ao enviar material.');
+        throw new Error(errorMessage);
+      }
+
+      // Check if the response data indicates an error
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+    } catch (error: any) {
+      console.error("[sendMaterialByUrl] Catch error:", error);
+      // Handle network errors and timeouts
+      if (error.message?.includes('Load failed') || error.message?.includes('Failed to fetch')) {
+        throw new Error('Erro de conexão. Verifique sua internet e tente novamente.');
+      }
+      if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+        throw new Error('Tempo esgotado. Tente novamente ou envie um arquivo menor.');
+      }
+      throw error;
     }
   };
 
