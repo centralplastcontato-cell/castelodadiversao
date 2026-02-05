@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Users, LogOut, RefreshCw, Headset, Settings, MessageSquare, Pin, PinOff } from "lucide-react";
+ import { Users, LogOut, RefreshCw, Headset, Settings, MessageSquare, Pin, PinOff, Presentation } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -32,6 +32,7 @@ const menuItems = [
   { title: "Central de Atendimento", url: "/atendimento", icon: Headset },
   { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
+   { title: "Comercial B2B", url: "/comercial-b2b", icon: Presentation },
 ];
 
 export function AdminSidebar({ 
