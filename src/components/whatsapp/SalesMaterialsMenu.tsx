@@ -46,7 +46,7 @@ interface Lead {
 interface SalesMaterialsMenuProps {
   unit: string;
   lead?: Lead | null;
-  onSendMedia: (url: string, type: "document" | "image" | "video", caption?: string) => Promise<void>;
+  onSendMedia: (url: string, type: "document" | "image" | "video", caption?: string, fileName?: string) => Promise<void>;
   disabled?: boolean;
   variant?: "icon" | "full";
 }
@@ -120,18 +120,22 @@ export function SalesMaterialsMenu({
     try {
       let mediaType: "document" | "image" | "video" = "document";
       let caption = material.name;
+      // Use material name as the file name for documents (adds .pdf extension)
+      let fileName: string | undefined = undefined;
 
       if (material.type === "photo") {
         mediaType = "image";
       } else if (material.type === "video") {
         mediaType = "video";
       } else if (material.type === "pdf_package") {
+        // Create a descriptive file name for PDFs
+        fileName = `${material.name.replace(/[^a-zA-Z0-9\s]/g, '').trim()}.pdf`;
         if (material.guest_count) {
           caption = `📋 ${material.name} - Pacote para ${material.guest_count} pessoas`;
         }
       }
 
-      await onSendMedia(material.file_url, mediaType, caption);
+      await onSendMedia(material.file_url, mediaType, caption, fileName);
       
       toast({
         title: "Material enviado",
