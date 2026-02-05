@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Lead, LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, LeadStatus } from "@/types/crm";
 import { UserWithRole } from "@/types/crm";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { KanbanCard } from "./KanbanCard";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface LeadsKanbanProps {
   leads: Lead[];
@@ -41,6 +45,9 @@ export function LeadsKanban({
     "fechado",
     "perdido",
   ];
+
+  // Mobile column navigation state
+  const [mobileColumnIndex, setMobileColumnIndex] = useState(0);
 
   const getLeadsByStatus = (status: LeadStatus) => {
     return leads.filter((lead) => lead.status === status);
@@ -92,68 +99,175 @@ export function LeadsKanban({
     }
   };
 
-  return (
-    <div className="flex gap-4 overflow-x-auto pb-4 h-full scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
-      {columns.map((status) => {
-        const columnLeads = getLeadsByStatus(status);
-        return (
-          <div
-            key={status}
-            className="flex-shrink-0 w-72 bg-muted/30 rounded-xl border border-border flex flex-col max-h-[calc(100vh-220px)]"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, status)}
-          >
-            {/* Column Header */}
-            <div className="p-3 border-b border-border flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-3 h-3 rounded-full ${LEAD_STATUS_COLORS[status]}`}
-                  />
-                  <span className="font-medium text-sm">
-                    {LEAD_STATUS_LABELS[status]}
-                  </span>
-                </div>
-                <Badge variant="secondary" className="text-xs">
-                  {columnLeads.length}
-                </Badge>
-              </div>
-            </div>
+  const handlePrevColumn = () => {
+    setMobileColumnIndex((prev) => Math.max(0, prev - 1));
+  };
 
-            {/* Column Content */}
-            <ScrollArea className="flex-1 min-h-0">
-              <div className="p-2 space-y-2">
-                {columnLeads.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Nenhum lead
-                  </div>
-                ) : (
-                  columnLeads.map((lead) => (
-                    <div key={lead.id} className="group">
-                      <KanbanCard
-                        lead={lead}
-                        responsavelName={getResponsavelName(lead.responsavel_id)}
-                        canEdit={canEdit}
-                        canEditName={canEditName}
-                        canEditDescription={canEditDescription}
-                        onLeadClick={onLeadClick}
-                        onStatusChange={onStatusChange}
-                        onNameUpdate={handleNameUpdate}
-                        onDescriptionUpdate={handleDescriptionUpdate}
-                        onTransfer={onTransfer}
-                        onDelete={onDelete}
-                        canDelete={canDelete}
-                        getPreviousStatus={getPreviousStatus}
-                        getNextStatus={getNextStatus}
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
+  const handleNextColumn = () => {
+    setMobileColumnIndex((prev) => Math.min(columns.length - 1, prev + 1));
+  };
+
+  const currentMobileColumn = columns[mobileColumnIndex];
+  const mobileColumnLeads = getLeadsByStatus(currentMobileColumn);
+
+  return (
+    <>
+      {/* Mobile Layout - Single column with navigation arrows */}
+      <div className="md:hidden flex flex-col h-full">
+        {/* Mobile Navigation Header */}
+        <div className="flex items-center justify-between gap-2 mb-3 px-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            onClick={handlePrevColumn}
+            disabled={mobileColumnIndex === 0}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          
+          <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+            <div
+              className={cn("w-3 h-3 rounded-full shrink-0", LEAD_STATUS_COLORS[currentMobileColumn])}
+            />
+            <span className="font-medium text-sm truncate">
+              {LEAD_STATUS_LABELS[currentMobileColumn]}
+            </span>
+            <Badge variant="secondary" className="text-xs shrink-0">
+              {mobileColumnLeads.length}
+            </Badge>
           </div>
-        );
-      })}
-    </div>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            onClick={handleNextColumn}
+            disabled={mobileColumnIndex === columns.length - 1}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {/* Column indicators (dots) */}
+        <div className="flex justify-center gap-1.5 mb-3">
+          {columns.map((status, index) => (
+            <button
+              key={status}
+              onClick={() => setMobileColumnIndex(index)}
+              className={cn(
+                "w-2 h-2 rounded-full transition-all",
+                index === mobileColumnIndex 
+                  ? LEAD_STATUS_COLORS[status]
+                  : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+              )}
+              title={LEAD_STATUS_LABELS[status]}
+            />
+          ))}
+        </div>
+
+        {/* Mobile Column Content */}
+        <div
+          className="flex-1 bg-muted/30 rounded-xl border border-border flex flex-col min-h-0"
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, currentMobileColumn)}
+        >
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-2 space-y-2">
+              {mobileColumnLeads.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Nenhum lead
+                </div>
+              ) : (
+                mobileColumnLeads.map((lead) => (
+                  <div key={lead.id} className="group">
+                    <KanbanCard
+                      lead={lead}
+                      responsavelName={getResponsavelName(lead.responsavel_id)}
+                      canEdit={canEdit}
+                      canEditName={canEditName}
+                      canEditDescription={canEditDescription}
+                      onLeadClick={onLeadClick}
+                      onStatusChange={onStatusChange}
+                      onNameUpdate={handleNameUpdate}
+                      onDescriptionUpdate={handleDescriptionUpdate}
+                      onTransfer={onTransfer}
+                      onDelete={onDelete}
+                      canDelete={canDelete}
+                      getPreviousStatus={getPreviousStatus}
+                      getNextStatus={getNextStatus}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+
+      {/* Desktop Layout - All columns visible with horizontal scroll */}
+      <div className="hidden md:flex gap-4 overflow-x-auto pb-4 h-full scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
+        {columns.map((status) => {
+          const columnLeads = getLeadsByStatus(status);
+          return (
+            <div
+              key={status}
+              className="flex-shrink-0 w-72 bg-muted/30 rounded-xl border border-border flex flex-col max-h-[calc(100vh-220px)]"
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, status)}
+            >
+              {/* Column Header */}
+              <div className="p-3 border-b border-border flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${LEAD_STATUS_COLORS[status]}`}
+                    />
+                    <span className="font-medium text-sm">
+                      {LEAD_STATUS_LABELS[status]}
+                    </span>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {columnLeads.length}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Column Content */}
+              <ScrollArea className="flex-1 min-h-0">
+                <div className="p-2 space-y-2">
+                  {columnLeads.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      Nenhum lead
+                    </div>
+                  ) : (
+                    columnLeads.map((lead) => (
+                      <div key={lead.id} className="group">
+                        <KanbanCard
+                          lead={lead}
+                          responsavelName={getResponsavelName(lead.responsavel_id)}
+                          canEdit={canEdit}
+                          canEditName={canEditName}
+                          canEditDescription={canEditDescription}
+                          onLeadClick={onLeadClick}
+                          onStatusChange={onStatusChange}
+                          onNameUpdate={handleNameUpdate}
+                          onDescriptionUpdate={handleDescriptionUpdate}
+                          onTransfer={onTransfer}
+                          onDelete={onDelete}
+                          canDelete={canDelete}
+                          getPreviousStatus={getPreviousStatus}
+                          getNextStatus={getNextStatus}
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
