@@ -1472,7 +1472,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   };
 
   // Send material by URL (for sales materials menu)
-  const sendMaterialByUrl = async (url: string, type: "document" | "image" | "video", caption?: string) => {
+  const sendMaterialByUrl = async (url: string, type: "document" | "image" | "video", caption?: string, fileName?: string) => {
     if (!selectedConversation || !selectedInstance) {
       throw new Error("Nenhuma conversa selecionada");
     }
@@ -1482,6 +1482,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     if (type === 'video') action = 'send-video';
 
     try {
+      // For documents, use the provided fileName or extract from URL
+      const finalFileName = type === 'document' 
+        ? (fileName || url.split('/').pop()?.split('?')[0] || 'documento.pdf')
+        : undefined;
+
       const response = await supabase.functions.invoke("wapi-send", {
         body: {
           action,
@@ -1491,7 +1496,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
           instanceToken: selectedInstance.instance_token,
           mediaUrl: url,
           caption: caption || undefined,
-          fileName: type === 'document' ? url.split('/').pop() : undefined,
+          fileName: finalFileName,
         },
       });
 
