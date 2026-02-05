@@ -439,6 +439,8 @@ export default function Admin() {
                   await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de nome", old_value: lead.name, new_value: newName });
                   const { error } = await supabase.from("campaign_leads").update({ name: newName }).eq("id", leadId);
                   if (error) throw error;
+                  // Also update contact_name in linked conversations
+                  await supabase.from("wapi_conversations").update({ contact_name: newName }).eq("lead_id", leadId);
                   setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, name: newName } : l));
                   toast({ title: "Nome atualizado", description: `O nome foi alterado para "${newName}".` });
                 }}
@@ -556,6 +558,8 @@ export default function Admin() {
                     await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de nome", old_value: lead.name, new_value: newName });
                     const { error } = await supabase.from("campaign_leads").update({ name: newName }).eq("id", leadId);
                     if (error) throw error;
+                    // Also update contact_name in linked conversations
+                    await supabase.from("wapi_conversations").update({ contact_name: newName }).eq("lead_id", leadId);
                     setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, name: newName } : l));
                     toast({ title: "Nome atualizado", description: `O nome foi alterado para "${newName}".` });
                   }}
