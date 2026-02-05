@@ -44,6 +44,7 @@ export function LeadsKanban({
     "aguardando_resposta",
     "fechado",
     "perdido",
+    "transferido",
   ];
 
   // Mobile column navigation state

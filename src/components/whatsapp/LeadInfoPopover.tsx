@@ -172,20 +172,22 @@ interface LeadInfoPopoverProps {
     { value: 'aguardando_resposta', label: 'Negociando', color: 'bg-orange-500' },
     { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
     { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+    { value: 'transferido', label: 'Transferência', color: 'bg-cyan-500' },
   ];
- 
-   const getStatusBadgeClass = (status: string) => {
-     switch (status) {
-       case 'novo': return 'bg-blue-500';
-       case 'em_contato': return 'bg-yellow-500 text-yellow-950';
-       case 'orcamento_enviado': return 'bg-purple-500';
-       case 'aguardando_resposta': return 'bg-orange-500';
-       case 'fechado': return 'bg-green-500';
-       case 'perdido': return 'bg-red-500';
-       default: return '';
-     }
-   };
- 
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'novo': return 'bg-blue-500';
+      case 'em_contato': return 'bg-yellow-500 text-yellow-950';
+      case 'orcamento_enviado': return 'bg-purple-500';
+      case 'aguardando_resposta': return 'bg-orange-500';
+      case 'fechado': return 'bg-green-500';
+      case 'perdido': return 'bg-red-500';
+      case 'transferido': return 'bg-cyan-500';
+      default: return '';
+    }
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'novo': return 'Novo';
@@ -193,10 +195,11 @@ interface LeadInfoPopoverProps {
       case 'orcamento_enviado': return 'Orçamento Enviado';
       case 'aguardando_resposta': return 'Negociando';
       case 'fechado': return 'Fechado';
-       case 'perdido': return 'Perdido';
-       default: return status;
-     }
-   };
+      case 'perdido': return 'Perdido';
+      case 'transferido': return 'Transferência';
+      default: return status;
+    }
+  };
  
    return (
      <Popover>

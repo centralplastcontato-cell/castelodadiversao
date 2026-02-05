@@ -703,6 +703,7 @@ export type Database = {
         | "aguardando_resposta"
         | "fechado"
         | "perdido"
+        | "transferido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -838,6 +839,7 @@ export const Constants = {
         "aguardando_resposta",
         "fechado",
         "perdido",
+        "transferido",
       ],
     },
   },
