@@ -356,16 +356,16 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="pb-4">
+    <div className="space-y-6 w-full overflow-hidden">
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-4 px-4 sm:px-6">
           <div className="flex flex-col gap-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <FolderOpen className="w-5 h-5 shrink-0" />
-              Materiais de Vendas
+              <span>Materiais de Vendas</span>
             </CardTitle>
-            <CardDescription className="text-sm leading-relaxed">
-              Gerencie PDFs de pacotes, fotos e vídeos por unidade para envio rápido no chat.
+            <CardDescription className="text-sm leading-relaxed break-words">
+              Gerencie PDFs, fotos e vídeos por unidade para envio rápido.
             </CardDescription>
             {isAdmin && (
               <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto mt-1">
@@ -375,7 +375,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           {/* Unit selector */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex-1">
