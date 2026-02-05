@@ -282,10 +282,12 @@ interface LeadInfoPopoverProps {
                  <span className="truncate">{linkedLead.whatsapp}</span>
                </div>
                
-               <div className="flex items-center gap-2 text-muted-foreground">
-                 <Clock className="w-3.5 h-3.5 shrink-0" />
-                 <span>Chegou em {format(new Date(linkedLead.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-               </div>
+                {linkedLead.created_at && !isNaN(new Date(linkedLead.created_at).getTime()) && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span>Chegou em {format(new Date(linkedLead.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                  </div>
+                )}
                
                {linkedLead.unit && (
                  <div className="flex items-center gap-2 text-muted-foreground">
