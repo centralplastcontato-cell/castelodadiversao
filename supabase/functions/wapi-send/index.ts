@@ -1161,12 +1161,76 @@ Deno.serve(async (req) => {
                 mimeType = contentType.split(';')[0].trim();
               }
               
-              // Convert to base64
+              // Convert to base64 using chunked approach to avoid memory issues with large files
               const arrayBuffer = await fileResponse.arrayBuffer();
               const bytes = new Uint8Array(arrayBuffer);
+              
+              // Check file size - if too large (>15MB), skip base64 conversion and use streaming upload
+              const MAX_SIZE_FOR_BASE64 = 15 * 1024 * 1024; // 15MB
+              
+              if (bytes.length > MAX_SIZE_FOR_BASE64) {
+                console.log(`File too large for base64 (${bytes.length} bytes), using direct upload`);
+                
+                // Upload directly to storage without base64 conversion
+                const extensionMap: Record<string, string> = {
+                  'image/jpeg': 'jpg',
+                  'image/png': 'png',
+                  'image/webp': 'webp',
+                  'audio/ogg': 'ogg',
+                  'audio/mpeg': 'mp3',
+                  'video/mp4': 'mp4',
+                  'application/pdf': 'pdf',
+                };
+                const ext = extensionMap[mimeType] || 'bin';
+                const path = `received/downloads/${downloadMsgId}.${ext}`;
+                
+                const { error: directUploadError } = await supabase.storage
+                  .from('whatsapp-media')
+                  .upload(path, bytes, {
+                    contentType: mimeType,
+                    upsert: true,
+                  });
+
+                if (directUploadError) {
+                  console.error('Direct storage upload error:', directUploadError);
+                  return new Response(JSON.stringify({ 
+                    error: 'Falha ao salvar mídia grande no storage',
+                    details: directUploadError.message,
+                  }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  });
+                }
+                
+                const { data: directPublicUrl } = supabase.storage
+                  .from('whatsapp-media')
+                  .getPublicUrl(path);
+                
+                await supabase
+                  .from('wapi_messages')
+                  .update({ 
+                    media_key: null, 
+                    media_direct_path: null,
+                    media_url: directPublicUrl.publicUrl 
+                  })
+                  .eq('message_id', downloadMsgId);
+                
+                return new Response(JSON.stringify({ 
+                  success: true,
+                  url: directPublicUrl.publicUrl,
+                  mimeType,
+                }), {
+                  status: 200,
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
+              }
+              
+              // For smaller files, use chunked base64 conversion
+              const CHUNK_SIZE = 32768;
               let binary = '';
-              for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
+              for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+                const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.length));
+                binary += String.fromCharCode.apply(null, Array.from(chunk));
               }
               base64Data = btoa(binary);
               console.log('FileLink fetched successfully, size:', bytes.length);
