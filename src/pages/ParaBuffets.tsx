@@ -1,4 +1,5 @@
  import { useState } from "react";
+ import { Helmet } from "react-helmet-async";
  import { motion } from "framer-motion";
  import { Link } from "react-router-dom";
  import { 
@@ -114,6 +115,32 @@
  
    return (
      <div className="min-h-screen bg-background">
+       <Helmet>
+         <title>Plataforma de Gestão para Buffets | CRM + WhatsApp + Landing Pages</title>
+         <meta name="description" content="Plataforma completa de gestão comercial para buffets infantis. WhatsApp integrado, CRM visual Kanban e landing pages que convertem. Agende uma demonstração gratuita!" />
+         <meta name="keywords" content="plataforma buffet, CRM buffet infantil, gestão buffet, WhatsApp business buffet, software buffet, sistema para buffet" />
+         <meta name="robots" content="index, follow" />
+         
+         <link rel="canonical" href="https://castelodadiversao.online/para-buffets" />
+         
+         <meta property="og:type" content="website" />
+         <meta property="og:url" content="https://castelodadiversao.online/para-buffets" />
+         <meta property="og:title" content="Plataforma de Gestão para Buffets Infantis" />
+         <meta property="og:description" content="Transforme visitantes em contratos fechados. WhatsApp integrado, CRM visual e landing pages profissionais. Feito por quem entende de buffet." />
+         <meta property="og:image" content="https://castelodadiversao.online/og-para-buffets.jpg" />
+         <meta property="og:image:width" content="1200" />
+         <meta property="og:image:height" content="630" />
+         <meta property="og:image:alt" content="Plataforma de Gestão para Buffets - Dashboard, CRM e WhatsApp integrado" />
+         <meta property="og:locale" content="pt_BR" />
+         <meta property="og:site_name" content="Castelo da Diversão" />
+         
+         <meta name="twitter:card" content="summary_large_image" />
+         <meta name="twitter:url" content="https://castelodadiversao.online/para-buffets" />
+         <meta name="twitter:title" content="Plataforma de Gestão para Buffets Infantis" />
+         <meta name="twitter:description" content="Transforme visitantes em contratos fechados. WhatsApp integrado, CRM visual e landing pages profissionais." />
+         <meta name="twitter:image" content="https://castelodadiversao.online/og-para-buffets.jpg" />
+       </Helmet>
+ 
        {/* Header */}
        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
