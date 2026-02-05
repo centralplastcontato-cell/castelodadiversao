@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, ImageIcon, Mic, Video, Download, ExternalLink, Loader2 } from "lucide-react";
+import { FileText, ImageIcon, Mic, Video, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,7 +17,7 @@ interface MediaMessageProps {
 
 /**
  * Check if a media URL is from our persistent storage (Supabase)
- * URLs from WhatsApp CDN (mmg.whatsapp.net) expire quickly and won't work
+ * URLs from WhatsApp CDN (mmg.whatsapp.net) are encrypted .enc files and won't work
  * Signed URLs include a token parameter and are also valid
  */
 function isPersistedMediaUrl(url: string | null): boolean {
@@ -30,34 +30,29 @@ function isPersistedMediaUrl(url: string | null): boolean {
   // Check for signed URL token parameter
   if (url.includes('token=')) return true;
   
-  // WhatsApp CDN URLs expire quickly - treat as not persisted
+  // WhatsApp CDN URLs are encrypted .enc files - NOT usable
   if (url.includes('mmg.whatsapp.net')) return false;
   if (url.includes('.whatsapp.net')) return false;
   if (url.includes('whatsapp.com')) return false;
+  
+  // Check for .enc extension (encrypted WhatsApp file)
+  if (url.includes('.enc')) return false;
   
   // Other URLs (might be external) - assume they work
   return true;
 }
 
 /**
- * Extract storage path from a Supabase URL for generating fresh signed URLs
+ * Check if URL points to an encrypted WhatsApp file
  */
-function extractStoragePath(url: string): string | null {
-  if (!url) return null;
-  
-  // Pattern: .../storage/v1/object/.../whatsapp-media/path
-  const storageMatch = url.match(/\/storage\/v1\/object\/(?:public|sign)\/whatsapp-media\/(.+?)(?:\?|$)/);
-  if (storageMatch) {
-    return storageMatch[1];
-  }
-  
-  // Pattern: storage://whatsapp-media/path (internal format)
-  if (url.startsWith('storage://whatsapp-media/')) {
-    return url.replace('storage://whatsapp-media/', '');
-  }
-  
-  return null;
+function isEncryptedUrl(url: string | null): boolean {
+  if (!url) return false;
+  return url.includes('.enc') || 
+         url.includes('mmg.whatsapp.net') || 
+         url.includes('.whatsapp.net') ||
+         url.includes('whatsapp.com');
 }
+
 
 /**
  * MediaMessage component - Displays media with automatic download for persistence
@@ -77,7 +72,6 @@ export function MediaMessage({
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
-  const [hasAttemptedDownload, setHasAttemptedDownload] = useState(false);
 
   const isPersisted = isPersistedMediaUrl(currentUrl);
   
@@ -138,7 +132,7 @@ export function MediaMessage({
         // Unknown error
         setDownloadError('Mídia expirada');
       }
-    } catch (err) {
+    } catch {
       // Network or unexpected error - assume expired
       setDownloadError('Mídia expirada');
     } finally {
@@ -154,8 +148,11 @@ export function MediaMessage({
 
   // Render based on media type
   const renderMedia = () => {
-    // If we have a persisted URL or a potentially valid URL and no error
-    const hasValidUrl = currentUrl && (isPersisted || !imageLoadError);
+    // Check if URL is actually usable (not encrypted WhatsApp URL)
+    const isUrlEncrypted = isEncryptedUrl(currentUrl);
+    
+    // Only show media directly if we have a persisted/valid URL that's not encrypted
+    const hasValidUrl = currentUrl && isPersisted && !isUrlEncrypted && !imageLoadError;
 
     switch (mediaType) {
       case 'image':
@@ -226,38 +223,57 @@ export function MediaMessage({
         return renderPlaceholder();
 
       case 'document':
+        // For documents, only show download link if URL is valid and not encrypted
         if (hasValidUrl) {
+          // Extract filename from content (which should have the original filename)
+          const displayName = content || 'Documento';
+          const isPdf = displayName.toLowerCase().endsWith('.pdf') || 
+                       (currentUrl && currentUrl.toLowerCase().includes('.pdf'));
+          
           return (
             <a
               href={currentUrl!}
               target="_blank"
               rel="noopener noreferrer"
-              download
+              download={displayName}
               className={cn(
-                "flex items-center gap-2 p-2 rounded border transition-colors",
+                "flex items-center gap-3 p-3 rounded-lg border transition-colors min-w-[200px] max-w-[300px]",
                 fromMe
-                  ? "border-primary-foreground/30 hover:bg-primary-foreground/10"
-                  : "border-border hover:bg-muted"
+                  ? "border-primary-foreground/30 hover:bg-primary-foreground/10 bg-primary-foreground/5"
+                  : "border-border hover:bg-muted bg-background/50"
               )}
             >
-              <FileText className="w-5 h-5 shrink-0" />
+              <div className={cn(
+                "p-2 rounded-lg shrink-0",
+                fromMe ? "bg-primary-foreground/10" : "bg-primary/10"
+              )}>
+                <FileText className={cn(
+                  "w-5 h-5",
+                  fromMe ? "text-primary-foreground" : isPdf ? "text-destructive" : "text-primary"
+                )} />
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{content || 'Documento'}</p>
+                <p className={cn(
+                  "text-sm font-medium truncate",
+                  fromMe ? "text-primary-foreground" : "text-foreground"
+                )} title={displayName}>
+                  {displayName}
+                </p>
                 <p className={cn(
                   "text-xs",
                   fromMe ? "text-primary-foreground/60" : "text-muted-foreground"
                 )}>
-                  {isDownloading ? "Salvando..." : "Clique para baixar"}
+                  {isPdf ? 'PDF' : 'Documento'} • Clique para baixar
                 </p>
               </div>
-              {isDownloading ? (
-                <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
-              ) : (
-                <ExternalLink className="w-4 h-4 shrink-0" />
-              )}
+              <Download className={cn(
+                "w-4 h-4 shrink-0",
+                fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
+              )} />
             </a>
           );
         }
+        // Document not available - show placeholder with retry option
         return renderPlaceholder();
 
       default:
