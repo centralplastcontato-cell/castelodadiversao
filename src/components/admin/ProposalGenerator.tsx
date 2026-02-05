@@ -10,7 +10,7 @@
  import { toast } from "sonner";
  import jsPDF from "jspdf";
  import autoTable from "jspdf-autotable";
- import logoCastelo from "@/assets/logo-castelo.png";
+ import logoPlataforma from "@/assets/logo-plataforma-buffets.png";
  import { supabase } from "@/integrations/supabase/client";
  
  interface ProposalData {
@@ -190,7 +190,7 @@
        
        // Add logo
        try {
-         doc.addImage(logoCastelo, "PNG", 15, 8, 25, 25);
+        doc.addImage(logoPlataforma, "PNG", 15, 8, 25, 25);
        } catch (e) {
          console.log("Could not add logo to PDF");
        }
@@ -202,7 +202,7 @@
        
        doc.setFontSize(12);
        doc.setFont("helvetica", "normal");
-       doc.text("Castelo da Diversão", pageWidth / 2 + 10, 30, { align: "center" });
+      doc.text("Plataforma para Buffets", pageWidth / 2 + 10, 30, { align: "center" });
  
        // Reset text color
        doc.setTextColor(0, 0, 0);
@@ -382,16 +382,16 @@
        
        // Add logo to footer
        try {
-         doc.addImage(logoCastelo, "PNG", 15, footerY - 2, 18, 18);
+        doc.addImage(logoPlataforma, "PNG", 15, footerY - 2, 18, 18);
        } catch {
          console.log("Could not add logo to footer");
        }
  
        doc.setTextColor(255, 255, 255);
        doc.setFontSize(10);
-       doc.text("Castelo da Diversão", pageWidth / 2 + 10, footerY + 3, { align: "center" });
+      doc.text("Plataforma para Buffets", pageWidth / 2 + 10, footerY + 3, { align: "center" });
        doc.setFontSize(8);
-       doc.text("contato@castelodadiversao.com.br | castelodadiversao.online", pageWidth / 2 + 10, footerY + 10, { align: "center" });
+      doc.text("contato@plataformabuffets.com.br | plataformabuffets.com.br", pageWidth / 2 + 10, footerY + 10, { align: "center" });
  
        // Save
        const fileName = `proposta-${formData.companyName.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.pdf`;
