@@ -22,11 +22,13 @@
    FileText,
    Copy,
    Check,
-   Phone
+   Phone,
+   Building2
  } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { toast } from "sonner";
  import { ProposalGenerator } from "@/components/admin/ProposalGenerator";
+ import { B2BLeadsManager } from "@/components/admin/B2BLeadsManager";
  
  const ComercialB2B = () => {
    const navigate = useNavigate();
@@ -139,8 +141,13 @@
              </div>
  
              {/* Tabs */}
-             <Tabs defaultValue="pitch" className="space-y-6">
-               <TabsList className="grid w-full grid-cols-6 h-auto p-1">
+             <Tabs defaultValue="leads" className="space-y-6">
+               <TabsList className="grid w-full grid-cols-7 h-auto p-1">
+                 <TabsTrigger value="leads" className="flex items-center gap-2 py-3">
+                   <Building2 className="h-4 w-4" />
+                   <span className="hidden sm:inline">Leads B2B</span>
+                   <span className="sm:hidden">Leads</span>
+                 </TabsTrigger>
                  <TabsTrigger value="pitch" className="flex items-center gap-2 py-3">
                    <Target className="h-4 w-4" />
                    <span className="hidden sm:inline">Pitch de Vendas</span>
@@ -879,6 +886,11 @@ Deixe o prospect falar. Anote objeções.
                      </blockquote>
                    </CardContent>
                  </Card>
+               </TabsContent>
+               
+               {/* Leads B2B Tab */}
+               <TabsContent value="leads">
+                 <B2BLeadsManager />
                </TabsContent>
              </Tabs>
            </div>
