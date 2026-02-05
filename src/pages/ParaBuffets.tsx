@@ -34,7 +34,8 @@
  import logoPlataforma from "@/assets/logo-plataforma-buffets.png";
  import mockupDashboard from "@/assets/mockup-dashboard.png";
  import mockupWhatsapp from "@/assets/mockup-whatsapp.png";
- import { MessageCircle } from "lucide-react";
+ import { B2BChatbot } from "@/components/b2b/B2BChatbot";
+ import { FloatingB2BCTA } from "@/components/b2b/FloatingB2BCTA";
  
  const metrics = [
    { value: "40%", label: "Aumento em conversões", desc: "Média dos clientes nos primeiros 3 meses" },
@@ -72,6 +73,7 @@
  export default function ParaBuffets() {
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [submitted, setSubmitted] = useState(false);
+   const [isChatOpen, setIsChatOpen] = useState(false);
    const [formData, setFormData] = useState({
      company_name: "",
      contact_name: "",
@@ -855,29 +857,9 @@
          </div>
        </footer>
 
-       {/* Floating WhatsApp CTA */}
-       <motion.a
-         href="https://wa.me/5515991336278?text=Ol%C3%A1!%20Vi%20a%20plataforma%20para%20buffets%20e%20gostaria%20de%20saber%20mais%20sobre%20a%20demonstra%C3%A7%C3%A3o."
-         target="_blank"
-         rel="noopener noreferrer"
-         initial={{ scale: 0, opacity: 0 }}
-         animate={{ scale: 1, opacity: 1 }}
-         transition={{ delay: 2, type: "spring", stiffness: 300, damping: 20 }}
-         whileHover={{ scale: 1.05 }}
-         whileTap={{ scale: 0.95 }}
-         className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-full shadow-2xl shadow-green-500/30 hover:shadow-green-500/50 transition-shadow duration-300 flex items-center gap-3 group"
-       >
-         <motion.div
-           animate={{ scale: [1, 1.15, 1] }}
-           transition={{ duration: 2, repeat: Infinity }}
-         >
-           <MessageCircle className="w-7 h-7" />
-         </motion.div>
-         <span className="hidden sm:inline font-bold text-lg pr-2">Falar pelo WhatsApp</span>
-         
-         {/* Pulse ring */}
-         <span className="absolute inset-0 rounded-full bg-green-400/40 animate-ping" />
-       </motion.a>
+       {/* Floating CTA & Chatbot */}
+       <FloatingB2BCTA onClick={() => setIsChatOpen(true)} />
+       <B2BChatbot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
      </div>
    );
  }
