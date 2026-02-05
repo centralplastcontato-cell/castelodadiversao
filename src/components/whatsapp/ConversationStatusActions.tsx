@@ -46,9 +46,9 @@ const STATUS_CONFIG = [
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10'
   },
-  { 
+{ 
     value: 'em_contato', 
-    label: 'Em Contato', 
+    label: 'Visita', 
     icon: Phone, 
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-500/10'
@@ -107,7 +107,7 @@ export function ConversationStatusActions({
     try {
       const statusLabels: Record<string, string> = {
         novo: 'Novo',
-        em_contato: 'Em Contato',
+        em_contato: 'Visita',
         orcamento_enviado: 'Orçamento Enviado',
         aguardando_resposta: 'Aguardando Resposta',
         fechado: 'Fechado',

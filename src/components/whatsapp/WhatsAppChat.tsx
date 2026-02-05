@@ -305,7 +305,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       // Create notification for the receiving user
       const statusLabels: Record<string, string> = {
         novo: 'Novo',
-        em_contato: 'Em Contato',
+        em_contato: 'Visita',
         orcamento_enviado: 'Orçamento Enviado',
         aguardando_resposta: 'Aguardando Resposta',
         fechado: 'Fechado',
@@ -845,7 +845,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       // Add history entry
       const statusLabels: Record<string, string> = {
         novo: 'Novo',
-        em_contato: 'Em Contato',
+        em_contato: 'Visita',
         orcamento_enviado: 'Orçamento Enviado',
         aguardando_resposta: 'Aguardando Resposta',
         fechado: 'Fechado',
@@ -2009,7 +2009,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           const newStatus = isCurrentlyOE ? 'em_contato' : 'orcamento_enviado';
                           const statusLabels: Record<string, string> = {
                             novo: 'Novo',
-                            em_contato: 'Em Contato',
+                            em_contato: 'Visita',
                             orcamento_enviado: 'Orçamento Enviado',
                             aguardando_resposta: 'Aguardando Resposta',
                             fechado: 'Fechado',
@@ -2045,7 +2045,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           
                           toast({
                             title: isCurrentlyOE ? "Orçamento desmarcado" : "Orçamento marcado",
-                            description: isCurrentlyOE ? "Status alterado para 'Em Contato'" : "Status alterado para 'Orçamento Enviado'",
+                            description: isCurrentlyOE ? "Status alterado para 'Visita'" : "Status alterado para 'Orçamento Enviado'",
                           });
                         }}
                         title={!linkedLead ? "Vincule um lead primeiro" : (linkedLead.status === 'orcamento_enviado' ? "Desmarcar Orçamento Enviado" : "Marcar como Orçamento Enviado")}
@@ -2128,7 +2128,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         <span className="text-xs font-medium text-muted-foreground">Status:</span>
                         {[
                           { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
-                          { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
+                          { value: 'em_contato', label: 'Visita', color: 'bg-yellow-500' },
                           { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
                           { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
                           { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
@@ -2164,7 +2164,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                               
                               const statusLabels: Record<string, string> = {
                                 novo: 'Novo',
-                                em_contato: 'Em Contato',
+                                em_contato: 'Visita',
                                 orcamento_enviado: 'Orçamento Enviado',
                                 aguardando_resposta: 'Aguardando Resposta',
                                 fechado: 'Fechado',
@@ -2197,7 +2197,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         <span className="text-xs font-medium text-destructive shrink-0">⚠ Não classificado:</span>
                         {[
                           { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
-                          { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
+                          { value: 'em_contato', label: 'Visita', color: 'bg-yellow-500' },
                           { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
                           { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
                           { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
@@ -2589,7 +2589,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         const newStatus = isCurrentlyOE ? 'em_contato' : 'orcamento_enviado';
                         const statusLabels: Record<string, string> = {
                           novo: 'Novo',
-                          em_contato: 'Em Contato',
+                          em_contato: 'Visita',
                           orcamento_enviado: 'Orçamento Enviado',
                           aguardando_resposta: 'Aguardando Resposta',
                           fechado: 'Fechado',
