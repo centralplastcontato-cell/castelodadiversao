@@ -1651,12 +1651,14 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 min-w-0 overflow-hidden">
+                      <div className={cn(
+                        "grid mt-0.5 items-center gap-2",
+                        conv.unread_count > 0 ? "grid-cols-[1fr_auto]" : "grid-cols-1"
+                      )}>
                         <span className={cn(
-                          "text-xs truncate flex-1 min-w-0",
+                          "text-xs truncate block",
                           conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
-                        )}
-                        >
+                        )}>
                           {conv.last_message_from_me && (
                             <CheckCheck className="w-3 h-3 shrink-0 text-primary inline mr-1 align-text-bottom" />
                           )}
@@ -1665,7 +1667,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         {conv.unread_count > 0 && (
                           <AnimatedBadge 
                             value={conv.unread_count > 99 ? "99+" : conv.unread_count}
-                            className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full bg-destructive text-destructive-foreground"
+                            className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold rounded-full bg-destructive text-destructive-foreground"
                           />
                         )}
                       </div>
@@ -1845,12 +1847,14 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5 min-w-0 overflow-hidden">
+                          <div className={cn(
+                            "grid mt-0.5 items-center gap-2",
+                            conv.unread_count > 0 ? "grid-cols-[1fr_auto]" : "grid-cols-1"
+                          )}>
                             <span className={cn(
-                              "text-xs truncate flex-1 min-w-0",
+                              "text-xs truncate block",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
-                            )}
-                            >
+                            )}>
                               {conv.last_message_from_me && (
                                 <CheckCheck className="w-3 h-3 shrink-0 text-primary inline mr-1 align-text-bottom" />
                               )}
@@ -1859,7 +1863,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             {conv.unread_count > 0 && (
                               <AnimatedBadge 
                                 value={conv.unread_count > 99 ? "99+" : conv.unread_count}
-                                className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full bg-destructive text-destructive-foreground"
+                                className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold rounded-full bg-destructive text-destructive-foreground"
                               />
                             )}
                           </div>
