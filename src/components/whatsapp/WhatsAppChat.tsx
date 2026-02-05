@@ -174,7 +174,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [closedLeadConversationIds, setClosedLeadConversationIds] = useState<Set<string>>(new Set());
   const [orcamentoEnviadoConversationIds, setOrcamentoEnviadoConversationIds] = useState<Set<string>>(new Set());
   const [conversationLeadsMap, setConversationLeadsMap] = useState<Record<string, Lead | null>>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRefDesktop = useRef<HTMLDivElement>(null);
+  const messagesEndRefMobile = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -223,8 +224,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
-    // Find the ScrollArea viewport through the messagesEndRef
-    const endElement = messagesEndRef.current;
+    // Find the ScrollArea viewport through the appropriate ref (desktop or mobile)
+    // Try desktop first, then mobile
+    const endElement = messagesEndRefDesktop.current || messagesEndRefMobile.current;
     if (endElement) {
       // Find the scrollable viewport parent (Radix ScrollArea viewport)
       const viewport = endElement.closest('[data-radix-scroll-area-viewport]');
@@ -517,7 +519,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   }, [selectedConversation?.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Auto-scroll when new messages arrive
+    const endElement = messagesEndRefDesktop.current || messagesEndRefMobile.current;
+    if (endElement) {
+      const viewport = endElement.closest('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        requestAnimationFrame(() => {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+        });
+      } else {
+        endElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   }, [messages]);
 
   const fetchInstances = async () => {
@@ -2612,7 +2625,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             </div>
                           ))
                         )}
-                        <div ref={messagesEndRef} />
+                        <div ref={messagesEndRefDesktop} />
                       </div>
                     </ScrollArea>
                     {/* Scroll to bottom button - outside ScrollArea for proper positioning */}
@@ -3329,7 +3342,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           </div>
                         </div>
                       ))}
-                      <div ref={messagesEndRef} />
+                      <div ref={messagesEndRefMobile} />
                     </div>
                   </ScrollArea>
                   {/* Scroll to bottom button - outside ScrollArea for proper positioning */}
