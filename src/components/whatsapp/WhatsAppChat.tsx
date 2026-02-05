@@ -226,10 +226,13 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     // Find the ScrollArea viewport through the messagesEndRef
     const endElement = messagesEndRef.current;
     if (endElement) {
-      // Find the scrollable viewport parent
+      // Find the scrollable viewport parent (Radix ScrollArea viewport)
       const viewport = endElement.closest('[data-radix-scroll-area-viewport]');
       if (viewport) {
-        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+        });
       } else {
         // Fallback: try scrollIntoView
         endElement.scrollIntoView({ behavior: 'smooth' });
@@ -2542,75 +2545,77 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   </div>
 
                   {/* Messages */}
-                  <ScrollArea className="flex-1 bg-muted/30 relative">
-                    <div className="space-y-2 sm:space-y-3 p-3 sm:p-4">
-                      {messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <MessageSquare className="w-10 h-10 text-muted-foreground mb-3" />
-                          <p className="text-sm text-muted-foreground">
-                            Nenhuma mensagem ainda
-                          </p>
-                        </div>
-                      ) : (
-                        messages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={cn(
-                              "flex",
-                              msg.from_me ? "justify-end" : "justify-start"
-                            )}
-                          >
+                  <div className="flex-1 relative min-h-0">
+                    <ScrollArea className="h-full bg-muted/30">
+                      <div className="space-y-2 sm:space-y-3 p-3 sm:p-4">
+                        {messages.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <MessageSquare className="w-10 h-10 text-muted-foreground mb-3" />
+                            <p className="text-sm text-muted-foreground">
+                              Nenhuma mensagem ainda
+                            </p>
+                          </div>
+                        ) : (
+                          messages.map((msg) => (
                             <div
+                              key={msg.id}
                               className={cn(
-                                "max-w-[85%] sm:max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm",
-                                msg.from_me
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-card border"
+                                "flex",
+                                msg.from_me ? "justify-end" : "justify-start"
                               )}
                             >
+                              <div
+                                className={cn(
+                                  "max-w-[85%] sm:max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm",
+                                  msg.from_me
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-card border"
+                                )}
+                              >
 {(msg.message_type === 'image' || msg.message_type === 'video' || msg.message_type === 'audio' || msg.message_type === 'document') && (
-                                <div className="mb-2">
-                                  <MediaMessage
-                                    messageId={msg.message_id}
-                                    mediaType={msg.message_type as 'image' | 'video' | 'audio' | 'document'}
-                                    mediaUrl={msg.media_url}
-                                    content={msg.content}
-                                    fromMe={msg.from_me}
-                                    instanceId={selectedInstance?.instance_id}
-                                    instanceToken={selectedInstance?.instance_token}
-                                    onMediaUrlUpdate={(url) => {
-                                      setMessages(prev => prev.map(m => 
-                                        m.id === msg.id ? { ...m, media_url: url } : m
-                                      ));
-                                    }}
-                                  />
-                                </div>
-                              )}
-                              {msg.message_type === 'text' && (
-                                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                              )}
-                              {msg.message_type !== 'text' && msg.content && msg.content !== '[Imagem]' && msg.content !== '[Áudio]' && (
-                                <p className="whitespace-pre-wrap break-words mt-1">{msg.content}</p>
-                              )}
-                              <div className={cn(
-                                "flex items-center gap-1 mt-1",
-                                msg.from_me ? "justify-end" : "justify-start"
-                              )}>
-                                <span className={cn(
-                                  "text-[10px]",
-                                  msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                                  <div className="mb-2">
+                                    <MediaMessage
+                                      messageId={msg.message_id}
+                                      mediaType={msg.message_type as 'image' | 'video' | 'audio' | 'document'}
+                                      mediaUrl={msg.media_url}
+                                      content={msg.content}
+                                      fromMe={msg.from_me}
+                                      instanceId={selectedInstance?.instance_id}
+                                      instanceToken={selectedInstance?.instance_token}
+                                      onMediaUrlUpdate={(url) => {
+                                        setMessages(prev => prev.map(m => 
+                                          m.id === msg.id ? { ...m, media_url: url } : m
+                                        ));
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                {msg.message_type === 'text' && (
+                                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                                )}
+                                {msg.message_type !== 'text' && msg.content && msg.content !== '[Imagem]' && msg.content !== '[Áudio]' && (
+                                  <p className="whitespace-pre-wrap break-words mt-1">{msg.content}</p>
+                                )}
+                                <div className={cn(
+                                  "flex items-center gap-1 mt-1",
+                                  msg.from_me ? "justify-end" : "justify-start"
                                 )}>
-                                  {formatMessageTime(msg.timestamp)}
-                                </span>
-                                {msg.from_me && getStatusIcon(msg.status)}
+                                  <span className={cn(
+                                    "text-[10px]",
+                                    msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                                  )}>
+                                    {formatMessageTime(msg.timestamp)}
+                                  </span>
+                                  {msg.from_me && getStatusIcon(msg.status)}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-                    {/* Scroll to bottom button */}
+                          ))
+                        )}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    </ScrollArea>
+                    {/* Scroll to bottom button - outside ScrollArea for proper positioning */}
                     <Button
                       variant="secondary"
                       size="icon"
@@ -2620,7 +2625,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     >
                       <ArrowDown className="w-5 h-5" />
                     </Button>
-                  </ScrollArea>
+                  </div>
 
                   {/* Message Input */}
                   <div className="p-3 border-t shrink-0">
@@ -3269,63 +3274,65 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   )}
                 </div>
 
-                <ScrollArea className="flex-1 bg-muted/30 relative">
-                  <div className="space-y-2 p-3">
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={cn(
-                          "flex",
-                          msg.from_me ? "justify-end" : "justify-start"
-                        )}
-                      >
+                <div className="flex-1 relative min-h-0">
+                  <ScrollArea className="h-full bg-muted/30">
+                    <div className="space-y-2 p-3">
+                      {messages.map((msg) => (
                         <div
+                          key={msg.id}
                           className={cn(
-                            "max-w-[85%] rounded-lg px-3 py-2 text-sm shadow-sm",
-                            msg.from_me
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-card border"
+                            "flex",
+                            msg.from_me ? "justify-end" : "justify-start"
                           )}
                         >
+                          <div
+                            className={cn(
+                              "max-w-[85%] rounded-lg px-3 py-2 text-sm shadow-sm",
+                              msg.from_me
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card border"
+                            )}
+                          >
 {(msg.message_type === 'image' || msg.message_type === 'video' || msg.message_type === 'audio' || msg.message_type === 'document') && (
-                            <div className="mb-2">
-                              <MediaMessage
-                                messageId={msg.message_id}
-                                mediaType={msg.message_type as 'image' | 'video' | 'audio' | 'document'}
-                                mediaUrl={msg.media_url}
-                                content={msg.content}
-                                fromMe={msg.from_me}
-                                instanceId={selectedInstance?.instance_id}
-                                instanceToken={selectedInstance?.instance_token}
-                                onMediaUrlUpdate={(url) => {
-                                  setMessages(prev => prev.map(m => 
-                                    m.id === msg.id ? { ...m, media_url: url } : m
-                                  ));
-                                }}
-                              />
-                            </div>
-                          )}
-                          {msg.message_type === 'text' && (
-                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                          )}
-                          <div className={cn(
-                            "flex items-center gap-1 mt-1",
-                            msg.from_me ? "justify-end" : "justify-start"
-                          )}>
-                            <span className={cn(
-                              "text-[10px]",
-                              msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                              <div className="mb-2">
+                                <MediaMessage
+                                  messageId={msg.message_id}
+                                  mediaType={msg.message_type as 'image' | 'video' | 'audio' | 'document'}
+                                  mediaUrl={msg.media_url}
+                                  content={msg.content}
+                                  fromMe={msg.from_me}
+                                  instanceId={selectedInstance?.instance_id}
+                                  instanceToken={selectedInstance?.instance_token}
+                                  onMediaUrlUpdate={(url) => {
+                                    setMessages(prev => prev.map(m => 
+                                      m.id === msg.id ? { ...m, media_url: url } : m
+                                    ));
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {msg.message_type === 'text' && (
+                              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                            )}
+                            <div className={cn(
+                              "flex items-center gap-1 mt-1",
+                              msg.from_me ? "justify-end" : "justify-start"
                             )}>
-                              {formatMessageTime(msg.timestamp)}
-                            </span>
-                            {msg.from_me && getStatusIcon(msg.status)}
+                              <span className={cn(
+                                "text-[10px]",
+                                msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                              )}>
+                                {formatMessageTime(msg.timestamp)}
+                              </span>
+                              {msg.from_me && getStatusIcon(msg.status)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                  {/* Scroll to bottom button */}
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
+                  {/* Scroll to bottom button - outside ScrollArea for proper positioning */}
                   <Button
                     variant="secondary"
                     size="icon"
@@ -3335,7 +3342,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   >
                     <ArrowDown className="w-5 h-5" />
                   </Button>
-                </ScrollArea>
+                </div>
                 <div className="p-3 border-t shrink-0">
                   <form
                     onSubmit={(e) => {
