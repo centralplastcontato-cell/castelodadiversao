@@ -15,7 +15,7 @@ import {
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
   Users, ArrowRightLeft, Trash2,
-  CalendarCheck, Briefcase, FileCheck, ArrowDown
+  CalendarCheck, Briefcase, FileCheck, ArrowDown, Video
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -159,7 +159,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [mediaPreview, setMediaPreview] = useState<{
-    type: 'image' | 'audio' | 'document';
+    type: 'image' | 'audio' | 'document' | 'video';
     file: File;
     preview?: string;
   } | null>(null);
@@ -181,6 +181,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Audio recording hook
   const {
@@ -1002,24 +1003,24 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   };
 
   // Handle file selection for media
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'audio' | 'document') => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'audio' | 'document' | 'video') => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // Validate file size (max 16MB for video, 10MB for others)
+    const maxSize = type === 'video' ? 16 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxSize) {
       toast({
         title: "Arquivo muito grande",
-        description: "O tamanho máximo é 10MB.",
+        description: type === 'video' ? "O tamanho máximo para vídeos é 16MB." : "O tamanho máximo é 10MB.",
         variant: "destructive",
       });
       return;
     }
 
-    // Create preview for images
+    // Create preview for images and videos
     let preview: string | undefined;
-    if (type === 'image') {
+    if (type === 'image' || type === 'video') {
       preview = URL.createObjectURL(file);
     }
 
@@ -1256,6 +1257,39 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         if (response.error) {
           throw new Error(response.error.message);
         }
+      } else if (type === 'video') {
+        // For videos: upload to storage first (W-API needs URL)
+        const { error: uploadError } = await supabase.storage
+          .from('whatsapp-media')
+          .upload(fileName, file, {
+            contentType: file.type || 'video/mp4',
+          });
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('whatsapp-media')
+          .getPublicUrl(fileName);
+
+        const mediaUrl = urlData.publicUrl;
+
+        const response = await supabase.functions.invoke("wapi-send", {
+          body: {
+            action: 'send-video',
+            phone: selectedConversation.contact_phone,
+            conversationId: selectedConversation.id,
+            instanceId: selectedInstance.instance_id,
+            instanceToken: selectedInstance.instance_token,
+            mediaUrl,
+            caption: mediaCaption,
+          },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
       }
 
       // Clear preview
@@ -1263,7 +1297,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
       toast({
         title: "Mídia enviada",
-        description: `${type === 'image' ? 'Imagem' : type === 'audio' ? 'Áudio' : 'Arquivo'} enviado com sucesso.`,
+        description: `${type === 'image' ? 'Imagem' : type === 'audio' ? 'Áudio' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado com sucesso.`,
       });
     } catch (error: any) {
       toast({
@@ -2413,6 +2447,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                               <ImageIcon className="w-4 h-4 mr-2" />
                               Imagem
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => videoInputRef.current?.click()}>
+                              <Video className="w-4 h-4 mr-2" />
+                              Vídeo
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
                               <Mic className="w-4 h-4 mr-2" />
                               Arquivo de Áudio
@@ -2852,6 +2890,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           <ImageIcon className="w-4 h-4 mr-2" />
                           Imagem
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => videoInputRef.current?.click()}>
+                          <Video className="w-4 h-4 mr-2" />
+                          Vídeo
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
                           <FileText className="w-4 h-4 mr-2" />
                           Arquivo
@@ -2917,6 +2959,13 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         className="hidden"
         onChange={(e) => handleFileSelect(e, 'document')}
       />
+      <input
+        type="file"
+        ref={videoInputRef}
+        accept="video/mp4,video/3gpp,video/quicktime,video/*"
+        className="hidden"
+        onChange={(e) => handleFileSelect(e, 'video')}
+      />
 
       {/* Media Preview Dialog */}
       <Dialog open={!!mediaPreview} onOpenChange={(open) => !open && cancelMediaUpload()}>
@@ -2926,6 +2975,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
               {mediaPreview?.type === 'image' && 'Enviar imagem'}
               {mediaPreview?.type === 'audio' && 'Enviar áudio'}
               {mediaPreview?.type === 'document' && 'Enviar arquivo'}
+              {mediaPreview?.type === 'video' && 'Enviar vídeo'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -2961,9 +3011,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 </div>
               </div>
             )}
+            {mediaPreview?.type === 'video' && mediaPreview.preview && (
+              <div className="flex justify-center">
+                <video 
+                  src={mediaPreview.preview} 
+                  className="max-h-64 rounded-lg object-contain"
+                  controls
+                />
+              </div>
+            )}
 
-            {/* Caption for images */}
-            {mediaPreview?.type === 'image' && (
+            {/* Caption for images and videos */}
+            {(mediaPreview?.type === 'image' || mediaPreview?.type === 'video') && (
               <Input
                 placeholder="Adicionar legenda (opcional)..."
                 value={mediaCaption}

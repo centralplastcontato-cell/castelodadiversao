@@ -524,6 +524,99 @@ Deno.serve(async (req) => {
         });
       }
 
+      case 'send-video': {
+        const { mediaUrl: videoMediaUrl, caption: videoCaption } = body;
+        
+        // W-API requires a URL for videos
+        if (!videoMediaUrl) {
+          console.error('send-video: No mediaUrl provided');
+          return new Response(JSON.stringify({ error: 'URL do vídeo é obrigatória.' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        console.log('Sending video to W-API, phone:', phone, 'url:', videoMediaUrl);
+
+        const response = await fetch(
+          `${WAPI_BASE_URL}/message/send-video?instanceId=${instance_id}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${instance_token}`,
+            },
+            body: JSON.stringify({
+              phone: phone,
+              video: videoMediaUrl,
+              caption: videoCaption || '',
+            }),
+          }
+        );
+
+        // Handle non-JSON responses (HTML error pages)
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('W-API send-video returned HTML:', htmlText.substring(0, 200));
+          return new Response(JSON.stringify({ 
+            error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis.' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        let result;
+        try {
+          result = await response.json();
+        } catch (parseErr) {
+          console.error('Failed to parse W-API send-video response:', parseErr);
+          return new Response(JSON.stringify({ error: 'Resposta inválida da W-API' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        console.log('W-API send-video response:', result);
+
+        if (!response.ok || result.error) {
+          return new Response(JSON.stringify({ error: result.message || 'Failed to send video' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (conversationId) {
+          await supabase
+            .from('wapi_messages')
+            .insert({
+              conversation_id: conversationId,
+              message_id: result.messageId,
+              from_me: true,
+              message_type: 'video',
+              content: videoCaption || '[Vídeo]',
+              media_url: videoMediaUrl,
+              status: 'sent',
+              timestamp: new Date().toISOString(),
+            });
+
+          await supabase
+            .from('wapi_conversations')
+            .update({ 
+              last_message_at: new Date().toISOString(),
+              last_message_content: videoCaption ? `🎬 ${videoCaption.substring(0, 90)}` : '🎬 Vídeo',
+              last_message_from_me: true,
+            })
+            .eq('id', conversationId);
+        }
+
+        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       case 'get-status': {
         try {
           // W-API uses the qr-code endpoint to check connection status
