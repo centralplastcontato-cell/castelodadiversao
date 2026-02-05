@@ -564,13 +564,26 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       .from("wapi_conversations")
       .select("*")
       .eq("instance_id", selectedInstance.id)
-      .order("last_message_at", { ascending: false });
+      .order("last_message_at", { ascending: false, nullsFirst: true });
 
     if (data) {
-      setConversations(data as Conversation[]);
+      // Sort: conversations without last_message_at (new leads) first, then by most recent
+      const sortedConversations = [...data].sort((a, b) => {
+        // If both have no last_message_at, sort by created_at desc
+        if (!a.last_message_at && !b.last_message_at) {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        // Conversations without last_message_at come first
+        if (!a.last_message_at) return -1;
+        if (!b.last_message_at) return 1;
+        // Otherwise sort by last_message_at desc
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+      });
+      
+      setConversations(sortedConversations as Conversation[]);
       
       // Fetch lead IDs that are linked to conversations
-      const leadIds = data
+      const leadIds = sortedConversations
         .map((conv: Conversation) => conv.lead_id)
         .filter((id): id is string => id !== null);
       
