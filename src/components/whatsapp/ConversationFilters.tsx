@@ -212,7 +212,7 @@
          )} />
        </Button>
      </CollapsibleTrigger>
-     <CollapsibleContent className="pt-2">
+      <CollapsibleContent className="pt-2 overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
        {filterButtons}
      </CollapsibleContent>
    </Collapsible>
