@@ -56,6 +56,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
     file_url: "",
     file_path: null as string | null,
     is_active: true,
+    unit: null as string | null,
   });
 
   useEffect(() => {
@@ -181,6 +182,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
             file_url: formData.file_url,
             file_path: formData.file_path,
             is_active: formData.is_active,
+            unit: formData.unit || editingMaterial.unit,
           })
           .eq("id", editingMaterial.id);
 
@@ -298,6 +300,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
         file_url: material.file_url,
         file_path: material.file_path,
         is_active: material.is_active,
+        unit: material.unit,
       });
     } else {
       resetForm();
@@ -314,6 +317,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
       file_url: "",
       file_path: null,
       is_active: true,
+      unit: null,
     });
   };
 
@@ -356,87 +360,80 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
   }
 
   return (
-    <div className="space-y-6 w-full overflow-hidden">
-      <Card className="overflow-hidden">
-        <CardHeader className="pb-4 px-4 sm:px-6">
-          <div className="flex flex-col gap-3">
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <FolderOpen className="w-5 h-5 shrink-0" />
-              <span>Materiais de Vendas</span>
-            </CardTitle>
-            <CardDescription className="text-sm leading-relaxed break-words">
-              Gerencie PDFs, fotos e vídeos por unidade para envio rápido.
-            </CardDescription>
+    <div className="space-y-4 w-full">
+      <Card>
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <FolderOpen className="w-5 h-5 shrink-0 text-primary" />
+              <div className="min-w-0">
+                <CardTitle className="text-base">Materiais</CardTitle>
+                <CardDescription className="text-xs">PDFs, fotos e vídeos</CardDescription>
+              </div>
+            </div>
             {isAdmin && (
-              <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto mt-1">
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Material
+              <Button size="sm" onClick={() => handleOpenDialog()}>
+                <Plus className="w-4 h-4" />
               </Button>
             )}
           </div>
         </CardHeader>
-        <CardContent className="px-4 sm:px-6">
+        <CardContent className="px-3 sm:px-6 pt-0">
           {/* Unit selector */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <Label className="mb-2 block text-sm">Unidade</Label>
-              <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNITS.map(unit => (
-                    <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="mb-4">
+            <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {UNITS.map(unit => (
+                  <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Type tabs */}
           <Tabs value={selectedType} onValueChange={setSelectedType}>
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="pdf_package" className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                <span className="hidden sm:inline">Pacotes</span>
+            <TabsList className="grid w-full grid-cols-3 mb-3 h-9">
+              <TabsTrigger value="pdf_package" className="text-xs px-2">
+                <FileText className="w-3.5 h-3.5 mr-1" />
+                PDFs
               </TabsTrigger>
-              <TabsTrigger value="photo" className="flex items-center gap-2">
-                <Image className="w-4 h-4" />
-                <span className="hidden sm:inline">Fotos</span>
+              <TabsTrigger value="photo" className="text-xs px-2">
+                <Image className="w-3.5 h-3.5 mr-1" />
+                Fotos
               </TabsTrigger>
-              <TabsTrigger value="video" className="flex items-center gap-2">
-                <Video className="w-4 h-4" />
-                <span className="hidden sm:inline">Vídeos</span>
+              <TabsTrigger value="video" className="text-xs px-2">
+                <Video className="w-3.5 h-3.5 mr-1" />
+                Vídeos
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value={selectedType}>
+            <TabsContent value={selectedType} className="mt-0">
               {filteredMaterials.length === 0 ? (
-                <div className="text-center py-8 border rounded-lg border-dashed">
-                  <div className="bg-muted rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                <div className="text-center py-6 border rounded-lg border-dashed">
+                  <div className="bg-muted rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2">
                     {getTypeIcon(selectedType)}
                   </div>
-                  <h3 className="font-medium mb-1">Nenhum material</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Adicione {selectedType === "pdf_package" ? "PDFs de pacotes" : selectedType === "photo" ? "fotos do salão" : "vídeos do salão"} para {selectedUnit}.
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-3">Nenhum material</p>
                   {isAdmin && (
-                    <Button variant="outline" onClick={() => handleOpenDialog()}>
-                      <Plus className="w-4 h-4 mr-2" />
+                    <Button size="sm" variant="outline" onClick={() => handleOpenDialog()}>
+                      <Plus className="w-4 h-4 mr-1" />
                       Adicionar
                     </Button>
                   )}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {filteredMaterials.map((material) => (
                     <div 
                       key={material.id} 
-                      className={`flex items-center gap-3 p-3 border rounded-lg ${!material.is_active ? 'opacity-60' : ''}`}
+                      className={`flex items-center gap-2 p-2 border rounded-lg ${!material.is_active ? 'opacity-50' : ''}`}
                     >
                       {getTypeIcon(material.type)}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{material.name}</p>
+                        <p className="text-sm font-medium truncate">{material.name}</p>
                         {material.guest_count && (
                           <p className="text-xs text-muted-foreground">
                             {material.guest_count} pessoas
@@ -444,25 +441,27 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
                         )}
                       </div>
                       {isAdmin && (
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           <Switch
                             checked={material.is_active}
                             onCheckedChange={() => handleToggleActive(material)}
+                            className="scale-75"
                           />
                           <Button 
                             variant="ghost" 
                             size="icon"
+                            className="h-8 w-8"
                             onClick={() => handleOpenDialog(material)}
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-3.5 h-3.5" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => handleDeleteMaterial(material)}
-                            className="text-destructive hover:text-destructive"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       )}
@@ -474,11 +473,10 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
           </Tabs>
 
           {/* Summary */}
-          <div className="mt-6 pt-4 border-t">
-            <p className="text-sm text-muted-foreground">
-              <strong>{selectedUnit}:</strong>{" "}
-              {materials.filter(m => m.unit === selectedUnit && m.type === "pdf_package" && m.is_active).length} pacotes,{" "}
-              {materials.filter(m => m.unit === selectedUnit && m.type === "photo" && m.is_active).length} fotos,{" "}
+          <div className="mt-4 pt-3 border-t">
+            <p className="text-xs text-muted-foreground">
+              {materials.filter(m => m.unit === selectedUnit && m.type === "pdf_package" && m.is_active).length} PDFs · {" "}
+              {materials.filter(m => m.unit === selectedUnit && m.type === "photo" && m.is_active).length} fotos · {" "}
               {materials.filter(m => m.unit === selectedUnit && m.type === "video" && m.is_active).length} vídeos
             </p>
           </div>
@@ -500,6 +498,30 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Unit selector - always visible for editing */}
+            <div className="space-y-2">
+              <Label>Unidade *</Label>
+              <Select 
+                value={editingMaterial ? formData.unit || selectedUnit : selectedUnit} 
+                onValueChange={(value) => {
+                  if (editingMaterial) {
+                    setFormData({ ...formData, unit: value });
+                  } else {
+                    setSelectedUnit(value);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNITS.map(unit => (
+                    <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {!editingMaterial && (
               <div className="space-y-2">
                 <Label>Tipo de Material *</Label>
