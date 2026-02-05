@@ -1653,7 +1653,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className={cn(
-                          "text-xs flex-1 min-w-0 truncate",
+                          "text-xs flex-1 min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap",
                           conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>
                           {conv.last_message_from_me && (
@@ -1846,7 +1846,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className={cn(
-                              "text-xs flex-1 min-w-0 truncate",
+                              "text-xs flex-1 min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                             )}>
                               {conv.last_message_from_me && (
