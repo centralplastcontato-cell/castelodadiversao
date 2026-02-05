@@ -143,6 +143,7 @@ import { MediaMessage } from "@/components/whatsapp/MediaMessage";
 import { ConversationStatusActions } from "@/components/whatsapp/ConversationStatusActions";
 import { ConversationFilters } from "@/components/whatsapp/ConversationFilters";
 import { LeadInfoPopover } from "@/components/whatsapp/LeadInfoPopover";
+import { SalesMaterialsMenu } from "@/components/whatsapp/SalesMaterialsMenu";
 
 export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
@@ -1311,6 +1312,34 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     setIsUploading(false);
   };
 
+  // Send material by URL (for sales materials menu)
+  const sendMaterialByUrl = async (url: string, type: "document" | "image" | "video", caption?: string) => {
+    if (!selectedConversation || !selectedInstance) {
+      throw new Error("Nenhuma conversa selecionada");
+    }
+
+    let action = 'send-document';
+    if (type === 'image') action = 'send-image';
+    if (type === 'video') action = 'send-video';
+
+    const response = await supabase.functions.invoke("wapi-send", {
+      body: {
+        action,
+        phone: selectedConversation.contact_phone,
+        conversationId: selectedConversation.id,
+        instanceId: selectedInstance.instance_id,
+        instanceToken: selectedInstance.instance_token,
+        mediaUrl: url,
+        caption: caption || undefined,
+        fileName: type === 'document' ? url.split('/').pop() : undefined,
+      },
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+  };
+
   // Common emojis for quick access
   const commonEmojis = ['😊', '👍', '❤️', '🎉', '👋', '🙏', '😄', '🎂', '🎈', '⭐', '✨', '🔥'];
 
@@ -2409,6 +2438,14 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
+                        {selectedInstance?.unit && (
+                          <SalesMaterialsMenu
+                            unit={selectedInstance.unit}
+                            lead={linkedLead}
+                            onSendMedia={sendMaterialByUrl}
+                            disabled={isSending}
+                          />
+                        )}
                         <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                           <PopoverTrigger asChild>
                             <Button 
@@ -2929,6 +2966,14 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                    )}
+                    {selectedInstance?.unit && (
+                      <SalesMaterialsMenu
+                        unit={selectedInstance.unit}
+                        lead={linkedLead}
+                        onSendMedia={sendMaterialByUrl}
+                        disabled={isSending}
+                      />
                     )}
                     <Textarea
                       placeholder="Digite uma mensagem..."

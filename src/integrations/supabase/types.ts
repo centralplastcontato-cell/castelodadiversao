@@ -346,6 +346,48 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_materials: {
+        Row: {
+          created_at: string
+          file_path: string | null
+          file_url: string
+          guest_count: number | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          type: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_path?: string | null
+          file_url: string
+          guest_count?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          type: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string | null
+          file_url?: string
+          guest_count?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          type?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_permissions: {
         Row: {
           created_at: string | null
