@@ -185,15 +185,18 @@ export function ConversationStatusActions({
         {STATUS_CONFIG.map((status) => {
           const Icon = status.icon;
           const isActive = linkedLead.status === status.value;
+          // Block reverting to "novo" - leads that left this status cannot return
+          const isBlockedReversion = status.value === 'novo' && linkedLead.status !== 'novo';
           
           return (
             <DropdownMenuItem
               key={status.value}
               onClick={() => handleStatusChange(status.value)}
-              disabled={isUpdating || isActive}
+              disabled={isUpdating || isActive || isBlockedReversion}
               className={cn(
                 "flex items-center gap-2 cursor-pointer",
-                isActive && status.bgColor
+                isActive && status.bgColor,
+                isBlockedReversion && "opacity-50"
               )}
             >
               <Icon className={cn("w-4 h-4", status.color)} />
@@ -202,6 +205,9 @@ export function ConversationStatusActions({
               </span>
               {isActive && (
                 <span className="ml-auto text-xs text-muted-foreground">Atual</span>
+              )}
+              {isBlockedReversion && !isActive && (
+                <span className="ml-auto text-xs text-muted-foreground">Bloqueado</span>
               )}
             </DropdownMenuItem>
           );
