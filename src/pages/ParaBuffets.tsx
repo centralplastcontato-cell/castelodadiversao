@@ -32,6 +32,15 @@
  import { supabase } from "@/integrations/supabase/client";
  import { toast } from "sonner";
  import logoPlataforma from "@/assets/logo-plataforma-buffets.png";
+ import mockupDashboard from "@/assets/mockup-dashboard.png";
+ import mockupWhatsapp from "@/assets/mockup-whatsapp.png";
+ 
+ const metrics = [
+   { value: "40%", label: "Aumento em conversões", desc: "Média dos clientes nos primeiros 3 meses" },
+   { value: "2h", label: "Economizadas por dia", desc: "Tempo ganho com automações" },
+   { value: "0", label: "Leads perdidos", desc: "Com notificações em tempo real" },
+   { value: "100%", label: "Visibilidade", desc: "Do seu funil de vendas" },
+ ];
  
  const features = [
    { icon: MessageSquare, title: "WhatsApp Integrado", desc: "Todas as conversas em um só lugar. Histórico completo, envio de mídia e templates." },
@@ -157,44 +166,248 @@
        </header>
  
        {/* Hero */}
-       <section className="relative py-20 lg:py-32 overflow-hidden">
-         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10" />
-         <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl" />
-         <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
+       <section className="relative py-16 lg:py-24 overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+         {/* Animated background elements */}
+         <div className="absolute inset-0 overflow-hidden">
+           <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-pulse" />
+           <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-purple-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-3xl" />
+         </div>
          
          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-           <div className="text-center max-w-4xl mx-auto">
+           <div className="grid lg:grid-cols-2 gap-12 items-center">
+             {/* Left content */}
              <motion.div
-               initial={{ opacity: 0, y: 20 }}
-               animate={{ opacity: 1, y: 0 }}
+               initial={{ opacity: 0, x: -30 }}
+               animate={{ opacity: 1, x: 0 }}
                transition={{ duration: 0.6 }}
+               className="text-left"
              >
-               <Badge className="mb-6 text-sm px-4 py-2" variant="secondary">
-                 🚀 Plataforma desenvolvida dentro de um buffet real
-               </Badge>
+               <motion.div
+                 initial={{ opacity: 0, scale: 0.9 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 transition={{ delay: 0.2 }}
+               >
+                 <Badge className="mb-6 text-sm px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
+                   🚀 Plataforma desenvolvida dentro de um buffet real
+                 </Badge>
+               </motion.div>
                
-               <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 leading-tight">
+               <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
                  Transforme visitantes em{" "}
-                 <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+                 <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                    contratos fechados
                  </span>
                </h1>
                
-               <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+               <p className="text-xl text-slate-300 mb-8">
                  A plataforma completa de gestão comercial para buffets infantis. 
                  WhatsApp integrado, CRM visual e landing pages que convertem.
                </p>
  
-               <div className="flex flex-col sm:flex-row gap-4 justify-center">
+               <div className="flex flex-col sm:flex-row gap-4">
                  <a href="#form">
-                   <Button size="lg" className="text-lg px-8">
+                   <Button size="lg" className="text-lg px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-lg shadow-purple-500/25">
                      Quero uma Demonstração
                      <ArrowRight className="ml-2 h-5 w-5" />
                    </Button>
                  </a>
-                 <a href="#features">
-                   <Button size="lg" variant="outline" className="text-lg px-8">
-                     Ver Funcionalidades
+                 <a href="#demo-video">
+                   <Button size="lg" variant="outline" className="text-lg px-8 border-slate-500 text-white hover:bg-slate-800">
+                     ▶ Assistir Demo
+                   </Button>
+                 </a>
+               </div>
+               
+               {/* Quick stats */}
+               <div className="mt-12 flex items-center gap-8">
+                 <div className="text-center">
+                   <div className="text-3xl font-bold text-white">+40%</div>
+                   <div className="text-sm text-slate-400">Conversões</div>
+                 </div>
+                 <div className="w-px h-12 bg-slate-600" />
+                 <div className="text-center">
+                   <div className="text-3xl font-bold text-white">2h</div>
+                   <div className="text-sm text-slate-400">Economizadas/dia</div>
+                 </div>
+                 <div className="w-px h-12 bg-slate-600" />
+                 <div className="text-center">
+                   <div className="text-3xl font-bold text-white">0</div>
+                   <div className="text-sm text-slate-400">Leads perdidos</div>
+                 </div>
+               </div>
+             </motion.div>
+             
+             {/* Right content - Mockup */}
+             <motion.div
+               initial={{ opacity: 0, x: 30 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ duration: 0.6, delay: 0.3 }}
+               className="relative hidden lg:block"
+             >
+               <div className="relative">
+                 {/* Main dashboard mockup */}
+                 <motion.img
+                   src={mockupDashboard}
+                   alt="Dashboard da plataforma"
+                   className="rounded-xl shadow-2xl shadow-black/50"
+                   whileHover={{ scale: 1.02 }}
+                   transition={{ type: "spring", stiffness: 300 }}
+                 />
+                 
+                 {/* Floating WhatsApp mockup */}
+                 <motion.img
+                   src={mockupWhatsapp}
+                   alt="WhatsApp integrado"
+                   className="absolute -bottom-10 -left-10 w-40 rounded-2xl shadow-xl shadow-black/30 border-4 border-slate-800"
+                   initial={{ y: 20 }}
+                   animate={{ y: [0, -10, 0] }}
+                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                 />
+                 
+                 {/* Floating badge */}
+                 <motion.div
+                   className="absolute -top-4 -right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg"
+                   initial={{ scale: 0 }}
+                   animate={{ scale: 1 }}
+                   transition={{ delay: 0.8, type: "spring" }}
+                 >
+                   ✓ 100% na nuvem
+                 </motion.div>
+               </div>
+             </motion.div>
+           </div>
+         </div>
+       </section>
+ 
+       {/* Metrics Section */}
+       <section className="py-16 bg-gradient-to-r from-blue-600 to-purple-600">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+             {metrics.map((metric, index) => (
+               <motion.div
+                 key={index}
+                 initial={{ opacity: 0, y: 20 }}
+                 whileInView={{ opacity: 1, y: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ delay: index * 0.1 }}
+                 className="text-center text-white"
+               >
+                 <div className="text-4xl md:text-5xl font-bold mb-2">{metric.value}</div>
+                 <div className="text-lg font-semibold opacity-90">{metric.label}</div>
+                 <div className="text-sm opacity-70">{metric.desc}</div>
+               </motion.div>
+             ))}
+           </div>
+         </div>
+       </section>
+ 
+       {/* Video Demo Section */}
+       <section id="demo-video" className="py-20 bg-slate-900">
+         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+           <motion.div
+             initial={{ opacity: 0, y: 20 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             className="text-center mb-12"
+           >
+             <Badge className="mb-4 bg-slate-800 text-slate-300 border-slate-700">Demonstração</Badge>
+             <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
+               Veja a plataforma em ação
+             </h2>
+             <p className="text-xl text-slate-400">
+               2 minutos que podem transformar seu comercial
+             </p>
+           </motion.div>
+ 
+           <motion.div
+             initial={{ opacity: 0, scale: 0.95 }}
+             whileInView={{ opacity: 1, scale: 1 }}
+             viewport={{ once: true }}
+             className="relative aspect-video rounded-2xl overflow-hidden bg-slate-800 border border-slate-700 shadow-2xl"
+           >
+             {/* Video placeholder - replace with actual video */}
+             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+               <img
+                 src={mockupDashboard}
+                 alt="Preview do vídeo"
+                 className="w-full h-full object-cover opacity-50"
+               />
+               <div className="absolute inset-0 flex items-center justify-center">
+                 <motion.button
+                   whileHover={{ scale: 1.1 }}
+                   whileTap={{ scale: 0.95 }}
+                   className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30"
+                 >
+                   <span className="text-white text-3xl ml-1">▶</span>
+                 </motion.button>
+               </div>
+             </div>
+           </motion.div>
+           
+           <p className="text-center text-slate-500 mt-4 text-sm">
+             * Vídeo demonstrativo em breve. Solicite uma demo ao vivo!
+           </p>
+         </div>
+       </section>
+ 
+       {/* Product Screenshots Section */}
+       <section className="py-20 bg-muted/30">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+           <motion.div
+             initial={{ opacity: 0, y: 20 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             className="text-center mb-16"
+           >
+             <Badge className="mb-4" variant="outline">Screenshots</Badge>
+             <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+               Interface pensada para produtividade
+             </h2>
+             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+               Design moderno que sua equipe vai adorar usar
+             </p>
+           </motion.div>
+ 
+           <div className="grid lg:grid-cols-2 gap-8 items-center">
+             <motion.div
+               initial={{ opacity: 0, x: -20 }}
+               whileInView={{ opacity: 1, x: 0 }}
+               viewport={{ once: true }}
+             >
+               <img
+                 src={mockupDashboard}
+                 alt="Dashboard completo"
+                 className="rounded-xl shadow-2xl border border-border"
+               />
+             </motion.div>
+             
+             <motion.div
+               initial={{ opacity: 0, x: 20 }}
+               whileInView={{ opacity: 1, x: 0 }}
+               viewport={{ once: true }}
+               className="space-y-6"
+             >
+               <h3 className="text-2xl font-bold text-foreground">Dashboard completo</h3>
+               <ul className="space-y-4">
+                 {[
+                   "CRM Kanban com drag-and-drop",
+                   "Métricas de conversão em tempo real",
+                   "Histórico de interações por lead",
+                   "Relatórios exportáveis",
+                 ].map((item, i) => (
+                   <li key={i} className="flex items-center gap-3">
+                     <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                     <span className="text-muted-foreground">{item}</span>
+                   </li>
+                 ))}
+               </ul>
+               
+               <div className="pt-4">
+                 <a href="#form">
+                   <Button size="lg">
+                     Ver demonstração completa
+                     <ArrowRight className="ml-2 h-4 w-4" />
                    </Button>
                  </a>
                </div>
