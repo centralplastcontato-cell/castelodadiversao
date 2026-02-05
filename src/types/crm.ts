@@ -6,7 +6,7 @@ export type LeadStatus = 'novo' | 'em_contato' | 'orcamento_enviado' | 'aguardan
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   novo: 'Novo',
-  em_contato: 'Em contato',
+  em_contato: 'Negociando para visita',
   orcamento_enviado: 'Orçamento enviado',
   aguardando_resposta: 'Aguardando resposta',
   fechado: 'Fechado',
