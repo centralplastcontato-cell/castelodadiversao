@@ -2904,6 +2904,32 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    {templates.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon"
+                            className="shrink-0 h-9 w-9"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-64">
+                          <DropdownMenuLabel>Templates Rápidos</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {templates.map((template) => (
+                            <DropdownMenuItem 
+                              key={template.id}
+                              onClick={() => applyTemplate(template)}
+                            >
+                              <span className="truncate">{template.name}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                     <Textarea
                       placeholder="Digite uma mensagem..."
                       value={newMessage}
