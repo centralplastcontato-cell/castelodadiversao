@@ -264,6 +264,43 @@ async function processBotQualification(
     .eq('id', conversation.id);
 }
 
+// Helper function to validate PDF content by checking magic bytes
+function isPdfContent(bytes: Uint8Array): boolean {
+  // PDF files start with %PDF (0x25 0x50 0x44 0x46)
+  if (bytes.length < 4) return false;
+  return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+}
+
+// Helper function to get file extension from mime type or filename
+function getFileExtension(mimeType: string, fileName?: string): string {
+  // Try to get extension from filename first
+  if (fileName) {
+    const parts = fileName.split('.');
+    if (parts.length > 1) {
+      return parts[parts.length - 1].toLowerCase();
+    }
+  }
+  
+  // Fallback to mime type
+  const mimeMap: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'video/mp4': 'mp4',
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.ms-excel': 'xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  };
+  
+  return mimeMap[mimeType] || 'bin';
+}
+
 // Helper function to download media from W-API and upload to storage
 async function downloadAndStoreMedia(
   supabase: SupabaseClient,
@@ -274,43 +311,42 @@ async function downloadAndStoreMedia(
   fileName?: string,
   mediaKey?: string | null,
   directPath?: string | null,
-  mediaUrl?: string | null
-): Promise<string | null> {
+  mediaUrl?: string | null,
+  mimeType?: string | null
+): Promise<{ url: string; fileName: string } | null> {
   try {
-    console.log(`Downloading media for message ${messageId}, type: ${mediaType}, hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}`);
+    console.log(`[MEDIA] Starting download for message ${messageId}, type: ${mediaType}, fileName: ${fileName || 'N/A'}`);
+    console.log(`[MEDIA] Metadata - hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}, hasUrl: ${!!mediaUrl}`);
     
-    // Map media type to mimetype
-    const getMimetypeFromType = (type: string): string => {
+    // W-API requires BOTH mediaKey AND directPath for the download-media endpoint
+    if (!mediaKey || !directPath) {
+      console.log('[MEDIA] Missing required metadata (mediaKey or directPath) - cannot download');
+      return null;
+    }
+    
+    // Map media type to default mimetype
+    const getDefaultMimetype = (type: string): string => {
       switch (type) {
         case 'image': return 'image/jpeg';
         case 'video': return 'video/mp4';
         case 'audio': return 'audio/ogg';
-        case 'document': return 'application/pdf';
+        case 'document': return mimeType || 'application/pdf';
         default: return 'application/octet-stream';
       }
     };
     
-    // Build request body - W-API requires type, mimetype, mediaKey AND directPath for download
-    const requestBody: Record<string, unknown> = {
+    // Build request body for W-API
+    const requestMime = mimeType || getDefaultMimetype(mediaType);
+    const requestBody = {
       messageId: messageId,
-      type: mediaType, // Required by W-API: image, audio, video, document
-      mimetype: getMimetypeFromType(mediaType), // Required by W-API
+      type: mediaType,
+      mimetype: requestMime,
+      mediaKey: mediaKey,
+      directPath: directPath,
+      ...(mediaUrl && !mediaUrl.includes('supabase.co') ? { url: mediaUrl } : {}),
     };
     
-    // W-API download-media requires type, mediaKey, and directPath
-    if (mediaKey && directPath) {
-      requestBody.mediaKey = mediaKey;
-      requestBody.directPath = directPath;
-      if (mediaUrl) {
-        requestBody.url = mediaUrl;
-      }
-    } else if (mediaKey) {
-      // Try with type, messageId and mediaKey (may fail if W-API requires directPath)
-      requestBody.mediaKey = mediaKey;
-    }
-    // If neither mediaKey nor directPath, just use messageId and type (W-API may find it in recent cache)
-    
-    console.log('W-API download request body:', JSON.stringify(requestBody));
+    console.log('[MEDIA] W-API download request:', JSON.stringify(requestBody));
     
     // Call W-API download media endpoint
     const downloadResponse = await fetch(
@@ -327,26 +363,63 @@ async function downloadAndStoreMedia(
 
     if (!downloadResponse.ok) {
       const errorText = await downloadResponse.text();
-      console.error(`W-API download failed: ${downloadResponse.status} - ${errorText}`);
+      console.error(`[MEDIA] W-API download failed: ${downloadResponse.status} - ${errorText}`);
       return null;
     }
 
     const result = await downloadResponse.json();
-    console.log('W-API download response keys:', Object.keys(result));
+    console.log('[MEDIA] W-API response keys:', Object.keys(result));
     
-    // W-API returns base64 data
-    const base64Data = result.base64 || result.data || result.media;
-    const mimeType = result.mimetype || result.mimeType || getMimeType(mediaType);
+    let base64Data = result.base64 || result.data || result.media;
+    let responseMimeType = result.mimetype || result.mimeType || requestMime;
     
-    if (!base64Data) {
-      console.error('No base64 data in W-API response');
-      return null;
+    // W-API may return a fileLink URL instead of base64 - we need to fetch it
+    const fileLink = result.fileLink || result.file_link || result.url || result.link;
+    
+    if (!base64Data && fileLink) {
+      console.log('[MEDIA] W-API returned fileLink, fetching:', fileLink);
+      try {
+        const fileResponse = await fetch(fileLink);
+        if (!fileResponse.ok) {
+          console.error('[MEDIA] Failed to fetch fileLink:', fileResponse.status);
+          return null;
+        }
+        
+        // Get content type from response
+        const contentType = fileResponse.headers.get('content-type');
+        if (contentType) {
+          responseMimeType = contentType.split(';')[0].trim();
+        }
+        
+        // Convert to base64
+        const arrayBuffer = await fileResponse.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        
+        // Validate content for PDFs
+        if (mediaType === 'document' && responseMimeType === 'application/pdf') {
+          if (!isPdfContent(bytes)) {
+            console.error('[MEDIA] Downloaded content is NOT a valid PDF (missing %PDF header). Received encrypted/invalid file.');
+            return null;
+          }
+          console.log('[MEDIA] PDF validation PASSED - content has valid %PDF header');
+        }
+        
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        base64Data = btoa(binary);
+        console.log('[MEDIA] FileLink fetched successfully, size:', bytes.length, 'bytes');
+      } catch (fetchErr) {
+        console.error('[MEDIA] Error fetching fileLink:', fetchErr);
+        return null;
+      }
     }
     
-    // Generate unique filename
-    const extension = getExtension(mimeType, fileName);
-    const uniqueFileName = `${messageId}.${extension}`;
-    const storagePath = `received/${mediaType}s/${uniqueFileName}`;
+    if (!base64Data) {
+      console.error('[MEDIA] No base64 data in W-API response');
+      return null;
+    }
     
     // Convert base64 to binary
     const binaryString = atob(base64Data);
@@ -355,35 +428,62 @@ async function downloadAndStoreMedia(
       bytes[i] = binaryString.charCodeAt(i);
     }
     
+    // Validate content for PDFs if we haven't already
+    if (mediaType === 'document' && (responseMimeType === 'application/pdf' || fileName?.toLowerCase().endsWith('.pdf'))) {
+      if (!isPdfContent(bytes)) {
+        console.error('[MEDIA] Downloaded content is NOT a valid PDF (missing %PDF header). Content is likely still encrypted.');
+        return null;
+      }
+      console.log('[MEDIA] PDF validation PASSED - content has valid %PDF header');
+    }
+    
+    // Generate storage path with proper extension
+    const extension = getFileExtension(responseMimeType, fileName);
+    
+    // For documents, preserve original filename in storage path for better traceability
+    let storagePath: string;
+    if (mediaType === 'document' && fileName) {
+      // Sanitize filename for storage (remove special chars but keep extension)
+      const sanitizedName = fileName
+        .replace(/[^a-zA-Z0-9\-_\.]/g, '_')
+        .substring(0, 100);
+      storagePath = `received/documents/${messageId}_${sanitizedName}`;
+    } else {
+      storagePath = `received/${mediaType}s/${messageId}.${extension}`;
+    }
+    
+    console.log(`[MEDIA] Uploading to storage: ${storagePath}, size: ${bytes.length} bytes, contentType: ${responseMimeType}`);
+    
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('whatsapp-media')
       .upload(storagePath, bytes, {
-        contentType: mimeType,
+        contentType: responseMimeType,
         upsert: true,
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      console.error('[MEDIA] Storage upload error:', uploadError);
       return null;
     }
     
-    // Create signed URL (1 week expiry for stored media)
-    // The bucket is now private, so we use signed URLs
-    const { data: signedUrl, error: signError } = await supabase.storage
+    // Get public URL (bucket is public)
+    const { data: publicUrl } = supabase.storage
       .from('whatsapp-media')
-      .createSignedUrl(storagePath, 604800); // 7 days in seconds
+      .getPublicUrl(storagePath);
     
-    if (signError) {
-      console.error('Failed to create signed URL:', signError);
-      // Fallback: return the storage path for later URL generation
-      return `storage://whatsapp-media/${storagePath}`;
+    if (!publicUrl?.publicUrl) {
+      console.error('[MEDIA] Failed to get public URL');
+      return null;
     }
     
-    console.log(`Media stored successfully with signed URL`);
-    return signedUrl.signedUrl;
+    console.log(`[MEDIA] Successfully stored media at: ${publicUrl.publicUrl}`);
+    return { 
+      url: publicUrl.publicUrl, 
+      fileName: fileName || `${messageId}.${extension}` 
+    };
   } catch (err) {
-    console.error('Error downloading/storing media:', err);
+    console.error('[MEDIA] Error downloading/storing media:', err);
     return null;
   }
 }
@@ -829,6 +929,8 @@ Deno.serve(async (req) => {
           mediaKey = msgContent.documentMessage.mediaKey || null;
           mediaDirectPath = msgContent.documentMessage.directPath || null;
           shouldDownloadMedia = true;
+          // Extract mime type for documents
+          const docMimeType = msgContent.documentMessage.mimetype || 'application/pdf';
         } else if (message.body || message.text) {
           content = message.body || message.text;
         } else {
@@ -844,9 +946,15 @@ Deno.serve(async (req) => {
 
         // For incoming messages with media, try to download and store in our storage
         // This ensures we have a permanent copy since WhatsApp URLs expire
+        let mediaMimeType: string | null = null;
+        if (msgContent.imageMessage) mediaMimeType = msgContent.imageMessage.mimetype || null;
+        if (msgContent.videoMessage) mediaMimeType = msgContent.videoMessage.mimetype || null;
+        if (msgContent.audioMessage) mediaMimeType = msgContent.audioMessage.mimetype || null;
+        if (msgContent.documentMessage) mediaMimeType = msgContent.documentMessage.mimetype || null;
+        
         if (shouldDownloadMedia && !fromMe && messageId) {
-          console.log(`Attempting to download and store media for message: ${messageId}, type: ${messageType}`);
-          const storedUrl = await downloadAndStoreMedia(
+          console.log(`Attempting to download and store media for message: ${messageId}, type: ${messageType}, mimeType: ${mediaMimeType || 'N/A'}`);
+          const storedResult = await downloadAndStoreMedia(
             supabase,
             instance.instance_id,
             instance.instance_token,
@@ -855,17 +963,24 @@ Deno.serve(async (req) => {
             mediaFileName,
             mediaKey,
             mediaDirectPath,
-            mediaUrl
+            mediaUrl,
+            mediaMimeType
           );
           
-          if (storedUrl) {
-            mediaUrl = storedUrl;
+          if (storedResult) {
+            mediaUrl = storedResult.url;
             // Clear media key and directPath since we successfully downloaded
             mediaKey = null;
             mediaDirectPath = null;
-            console.log(`Media stored successfully, new URL: ${storedUrl}`);
+            console.log(`Media stored successfully, new URL: ${storedResult.url}, fileName: ${storedResult.fileName}`);
           } else {
-            console.log('Media download failed, keeping original URL (may expire) and mediaKey/directPath for later retry');
+            console.log('Media download failed - keeping mediaKey/directPath for later retry, but NOT keeping WhatsApp URL as it will be encrypted');
+            // IMPORTANT: For failed downloads, we DON'T keep the original WhatsApp URL
+            // because that URL points to an ENCRYPTED .enc file that won't be useful
+            // Instead, we null it and rely on mediaKey/directPath for retry
+            if (mediaType === 'document') {
+              mediaUrl = null; // Don't save .enc URLs for documents
+            }
           }
         }
 
