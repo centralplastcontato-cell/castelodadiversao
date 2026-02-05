@@ -60,10 +60,13 @@ export function TransferLeadDialog({
         (r) => r.user_id === lead.responsavel_id
       );
 
-      // Update the lead's responsavel
+      // Update the lead's responsavel and status
       const { error: updateError } = await supabase
         .from("campaign_leads")
-        .update({ responsavel_id: selectedUserId })
+        .update({ 
+          responsavel_id: selectedUserId,
+          status: "transferido" as const
+        })
         .eq("id", lead.id);
 
       if (updateError) throw updateError;
