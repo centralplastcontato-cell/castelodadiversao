@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,1254 +7,294 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
-// Bot configuration - Mensagens personalizadas Castelo da Diversão
 const BOT_QUESTIONS = {
-  nome: {
-    message: 'Para começar, me conta: qual é o seu nome? 👑',
-    next: 'mes',
-  },
-  mes: {
-    message: 'Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Ex: Fevereiro, Março, Abril...',
-    next: 'dia',
-  },
-  dia: {
-    message: 'Maravilha! Tem preferência de dia da semana? 🗓️\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo',
-    next: 'convidados',
-  },
-  convidados: {
-    message: 'E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Ex: 50, 70, 100 pessoas...',
-    next: 'complete',
-  },
+  nome: { message: 'Para começar, me conta: qual é o seu nome? 👑', next: 'mes' },
+  mes: { message: 'Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Ex: Fevereiro, Março, Abril...', next: 'dia' },
+  dia: { message: 'Maravilha! Tem preferência de dia da semana? 🗓️\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo', next: 'convidados' },
+  convidados: { message: 'E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Ex: 50, 70, 100 pessoas...', next: 'complete' },
 };
 
-// Helper function to normalize phone numbers for comparison
-function normalizePhoneNumber(phone: string): string {
-  return phone.replace(/\D/g, '');
+const normalizePhone = (phone: string) => phone.replace(/\D/g, '');
+
+async function isVipNumber(supabase: SupabaseClient, instanceId: string, phone: string): Promise<boolean> {
+  const n = normalizePhone(phone);
+  const { data } = await supabase.from('wapi_vip_numbers').select('id').eq('instance_id', instanceId)
+    .or(`phone.ilike.%${n}%,phone.ilike.%${n.replace(/^55/, '')}%`).limit(1);
+  return Boolean(data?.length);
 }
 
-// Helper function to check if a phone number is in the VIP list
-async function isVipNumber(
-  supabase: SupabaseClient,
-  instanceId: string,
-  phone: string
-): Promise<boolean> {
-  const normalizedPhone = normalizePhoneNumber(phone);
-  
-  const { data } = await supabase
-    .from('wapi_vip_numbers')
-    .select('id')
-    .eq('instance_id', instanceId)
-    .or(`phone.ilike.%${normalizedPhone}%,phone.ilike.%${normalizedPhone.replace(/^55/, '')}%`)
-    .limit(1);
-  
-  return Boolean(data && data.length > 0);
-}
-
-// Helper function to get bot settings for an instance
-async function getBotSettings(
-  supabase: SupabaseClient,
-  instanceId: string
-): Promise<{
-  bot_enabled: boolean;
-  test_mode_enabled: boolean;
-  test_mode_number: string | null;
-  welcome_message: string;
-} | null> {
-  const { data } = await supabase
-    .from('wapi_bot_settings')
-    .select('*')
-    .eq('instance_id', instanceId)
-    .single();
-  
+async function getBotSettings(supabase: SupabaseClient, instanceId: string) {
+  const { data } = await supabase.from('wapi_bot_settings').select('*').eq('instance_id', instanceId).single();
   return data;
 }
 
-// Helper function to send a WhatsApp message via W-API
-async function sendBotMessage(
-  instanceId: string,
-  instanceToken: string,
-  remoteJid: string,
-  message: string
-): Promise<string | null> {
+async function sendBotMessage(instanceId: string, instanceToken: string, remoteJid: string, message: string): Promise<string | null> {
   try {
     const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
-    
-    const response = await fetch(`${WAPI_BASE_URL}/message/send-text?instanceId=${instanceId}`, {
+    const res = await fetch(`${WAPI_BASE_URL}/message/send-text?instanceId=${instanceId}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${instanceToken}`,
-      },
-      body: JSON.stringify({
-        phone: phone,
-        message: message,
-        delayTyping: 1,
-      }),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${instanceToken}` },
+      body: JSON.stringify({ phone, message, delayTyping: 1 }),
     });
-
-    if (!response.ok) {
-      console.error('Failed to send bot message:', await response.text());
-      return null;
-    }
-
-    const result = await response.json();
-    return result.messageId || result.id || null;
-  } catch (error) {
-    console.error('Error sending bot message:', error);
-    return null;
-  }
+    if (!res.ok) return null;
+    const r = await res.json();
+    return r.messageId || r.id || null;
+  } catch { return null; }
 }
 
-// Process bot qualification flow
 async function processBotQualification(
   supabase: SupabaseClient,
   instance: { id: string; instance_id: string; instance_token: string; unit: string | null },
-  conversation: { id: string; remote_jid: string; bot_enabled: boolean | null; bot_step: string | null; bot_data: Record<string, unknown> | null; lead_id: string | null },
-  messageContent: string,
-  contactPhone: string,
-  contactName: string | null
-): Promise<void> {
-  // Get bot settings
+  conv: { id: string; remote_jid: string; bot_enabled: boolean | null; bot_step: string | null; bot_data: Record<string, unknown> | null; lead_id: string | null },
+  content: string, contactPhone: string, contactName: string | null
+) {
   const settings = await getBotSettings(supabase, instance.id);
-  
-  if (!settings) {
-    console.log('No bot settings found for instance:', instance.id);
-    return;
-  }
+  if (!settings) return;
 
-  const normalizedPhone = normalizePhoneNumber(contactPhone);
-  const testModeNormalized = settings.test_mode_number ? normalizePhoneNumber(settings.test_mode_number) : null;
-  
-  // Check if bot should run for this conversation:
-  // 1. Conversation bot_enabled must be true (individual toggle)
-  // 2. Either global bot is enabled OR test mode is enabled AND this is the test number
-  const isTestNumber = testModeNormalized && normalizedPhone.includes(testModeNormalized.replace(/^55/, ''));
-  const shouldRunBot = (
-    conversation.bot_enabled !== false && // Individual toggle (default true)
-    (
-      settings.bot_enabled || // Global toggle
-      (settings.test_mode_enabled && isTestNumber) // Test mode for specific number
-    )
-  );
+  const n = normalizePhone(contactPhone);
+  const tn = settings.test_mode_number ? normalizePhone(settings.test_mode_number) : null;
+  const isTest = tn && n.includes(tn.replace(/^55/, ''));
+  const shouldRun = conv.bot_enabled !== false && (settings.bot_enabled || (settings.test_mode_enabled && isTest));
+  if (!shouldRun) return;
+  if (await isVipNumber(supabase, instance.id, contactPhone)) return;
+  if (conv.lead_id) return;
 
-  if (!shouldRunBot) {
-    console.log('Bot not active for this conversation. Global:', settings.bot_enabled, 'TestMode:', settings.test_mode_enabled, 'IsTestNumber:', isTestNumber, 'ConvBot:', conversation.bot_enabled);
-    return;
-  }
+  const step = conv.bot_step || 'welcome';
+  const botData = (conv.bot_data || {}) as Record<string, string>;
+  let nextStep: string, msg: string;
+  const updated = { ...botData };
 
-  // Check if number is in VIP list
-  if (await isVipNumber(supabase, instance.id, contactPhone)) {
-    console.log('Phone is in VIP list, skipping bot:', contactPhone);
-    return;
-  }
+  if (step === 'welcome') { msg = settings.welcome_message + '\n\n' + BOT_QUESTIONS.nome.message; nextStep = 'nome'; }
+  else if (step === 'nome') { updated.nome = content.trim(); msg = `Muito prazer, ${updated.nome}! 👑✨\n\n${BOT_QUESTIONS.mes.message}`; nextStep = 'mes'; }
+  else if (step === 'mes') { updated.mes = content.trim(); msg = `${updated.mes}, ótima escolha! 🎊\n\n${BOT_QUESTIONS.dia.message}`; nextStep = 'dia'; }
+  else if (step === 'dia') { updated.dia = content.trim(); msg = `Anotado! ${BOT_QUESTIONS.convidados.message}`; nextStep = 'convidados'; }
+  else if (step === 'convidados') {
+    updated.convidados = content.trim(); nextStep = 'complete';
+    const { data: newLead, error } = await supabase.from('campaign_leads').insert({
+      name: updated.nome || contactName || contactPhone, whatsapp: n, unit: instance.unit,
+      campaign_id: 'whatsapp-bot', campaign_name: 'WhatsApp Bot', status: 'novo',
+      month: updated.mes || null, day_preference: updated.dia || null, guests: updated.convidados || null,
+    }).select('id').single();
+    if (error) { msg = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato!'; }
+    else { await supabase.from('wapi_conversations').update({ lead_id: newLead.id }).eq('id', conv.id);
+      msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`; }
+  } else return;
 
-  // Skip if lead is already linked (already qualified)
-  if (conversation.lead_id) {
-    console.log('Conversation already has a lead linked, skipping bot');
-    return;
-  }
-
-  const currentStep = conversation.bot_step || 'welcome';
-  const botData = (conversation.bot_data || {}) as Record<string, string>;
-
-  console.log('Processing bot step:', currentStep, 'for conversation:', conversation.id);
-
-  let nextStep: string;
-  let messageToSend: string;
-  const updatedBotData = { ...botData };
-
-  if (currentStep === 'welcome') {
-    // First contact - send welcome message and ask for name
-    messageToSend = settings.welcome_message + '\n\n' + BOT_QUESTIONS.nome.message;
-    nextStep = 'nome';
-  } else if (currentStep === 'nome') {
-    // Save name and ask for month
-    updatedBotData.nome = messageContent.trim();
-    messageToSend = `Muito prazer, ${updatedBotData.nome}! 👑✨\n\n${BOT_QUESTIONS.mes.message}`;
-    nextStep = 'mes';
-  } else if (currentStep === 'mes') {
-    // Save month and ask for day preference
-    updatedBotData.mes = messageContent.trim();
-    messageToSend = `${updatedBotData.mes}, ótima escolha! 🎊\n\n${BOT_QUESTIONS.dia.message}`;
-    nextStep = 'dia';
-  } else if (currentStep === 'dia') {
-    // Save day preference and ask for guests
-    updatedBotData.dia = messageContent.trim();
-    messageToSend = `Anotado! ${BOT_QUESTIONS.convidados.message}`;
-    nextStep = 'convidados';
-  } else if (currentStep === 'convidados') {
-    // Save guests and complete qualification
-    updatedBotData.convidados = messageContent.trim();
-    nextStep = 'complete';
-    
-    // Create the lead
-    const leadName = updatedBotData.nome || contactName || contactPhone;
-    
-    const { data: newLead, error: leadError } = await supabase
-      .from('campaign_leads')
-      .insert({
-        name: leadName,
-        whatsapp: normalizedPhone,
-        unit: instance.unit,
-        campaign_id: 'whatsapp-bot',
-        campaign_name: 'WhatsApp Bot',
-        status: 'novo',
-        month: updatedBotData.mes || null,
-        day_preference: updatedBotData.dia || null,
-        guests: updatedBotData.convidados || null,
-      })
-      .select('id')
-      .single();
-
-    if (leadError) {
-      console.error('Error creating lead from bot:', leadError);
-      messageToSend = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato pra fazer dessa festa um conto de fadas! ✨';
-    } else {
-      console.log('Lead created from bot:', newLead.id);
-      
-      // Link conversation to lead
-      await supabase
-        .from('wapi_conversations')
-        .update({ lead_id: newLead.id })
-        .eq('id', conversation.id);
-      
-      messageToSend = `Perfeito, ${updatedBotData.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updatedBotData.mes}\n🗓️ Dia: ${updatedBotData.dia}\n👥 Convidados: ${updatedBotData.convidados}\n\nAgora é só aguardar! Nossa equipe vai entrar em contato em breve pra transformar essa festa num verdadeiro conto de fadas! 👑🎉`;
-    }
-  } else {
-    // Already completed or unknown step
-    console.log('Bot already completed or unknown step:', currentStep);
-    return;
-  }
-
-  // Send the bot message
-  const messageId = await sendBotMessage(
-    instance.instance_id,
-    instance.instance_token,
-    conversation.remote_jid,
-    messageToSend
-  );
-
-  if (messageId) {
-    console.log('Bot message sent:', messageId);
-    
-    // Save bot message to database
-    await supabase
-      .from('wapi_messages')
-      .insert({
-        conversation_id: conversation.id,
-        message_id: messageId,
-        from_me: true,
-        message_type: 'text',
-        content: messageToSend,
-        status: 'sent',
-        timestamp: new Date().toISOString(),
-      });
-  }
-
-  // Update conversation with new step and data
-  await supabase
-    .from('wapi_conversations')
-    .update({
-      bot_step: nextStep,
-      bot_data: updatedBotData,
-      last_message_at: new Date().toISOString(),
-      last_message_content: messageToSend.substring(0, 100),
-      last_message_from_me: true,
-    })
-    .eq('id', conversation.id);
+  const msgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, msg);
+  if (msgId) { await supabase.from('wapi_messages').insert({ conversation_id: conv.id, message_id: msgId, from_me: true, message_type: 'text', content: msg, status: 'sent', timestamp: new Date().toISOString() }); }
+  await supabase.from('wapi_conversations').update({ bot_step: nextStep, bot_data: updated, last_message_at: new Date().toISOString(), last_message_content: msg.substring(0, 100), last_message_from_me: true }).eq('id', conv.id);
 }
 
-// Helper function to validate PDF content by checking magic bytes
-function isPdfContent(bytes: Uint8Array): boolean {
-  // PDF files start with %PDF (0x25 0x50 0x44 0x46)
-  if (bytes.length < 4) return false;
-  return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+function isPdfContent(bytes: Uint8Array): boolean { return bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; }
+
+function getExt(mime: string, fn?: string): string {
+  if (fn) { const p = fn.split('.'); if (p.length > 1) return p[p.length - 1].toLowerCase(); }
+  const m: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'video/mp4': 'mp4', 'application/pdf': 'pdf' };
+  return m[mime] || 'bin';
 }
 
-// Helper function to get file extension from mime type or filename
-function getFileExtension(mimeType: string, fileName?: string): string {
-  // Try to get extension from filename first
-  if (fileName) {
-    const parts = fileName.split('.');
-    if (parts.length > 1) {
-      return parts[parts.length - 1].toLowerCase();
-    }
-  }
-  
-  // Fallback to mime type
-  const mimeMap: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
-    'image/gif': 'gif',
-    'audio/ogg': 'ogg',
-    'audio/mpeg': 'mp3',
-    'audio/mp4': 'm4a',
-    'video/mp4': 'mp4',
-    'application/pdf': 'pdf',
-    'application/msword': 'doc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-    'application/vnd.ms-excel': 'xls',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
-  };
-  
-  return mimeMap[mimeType] || 'bin';
-}
-
-// Helper function to download media from W-API and upload to storage
-async function downloadAndStoreMedia(
-  supabase: SupabaseClient,
-  instanceId: string,
-  instanceToken: string,
-  messageId: string,
-  mediaType: 'image' | 'audio' | 'video' | 'document',
-  fileName?: string,
-  mediaKey?: string | null,
-  directPath?: string | null,
-  mediaUrl?: string | null,
-  mimeType?: string | null
-): Promise<{ url: string; fileName: string } | null> {
+async function downloadMedia(supabase: SupabaseClient, iId: string, iToken: string, msgId: string, type: string, fn?: string, mKey?: string | null, dPath?: string | null, mUrl?: string | null, mime?: string | null): Promise<{ url: string; fileName: string } | null> {
   try {
-    console.log(`[MEDIA] Starting download for message ${messageId}, type: ${mediaType}, fileName: ${fileName || 'N/A'}`);
-    console.log(`[MEDIA] Metadata - hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}, hasUrl: ${!!mediaUrl}`);
-    
-    // W-API requires BOTH mediaKey AND directPath for the download-media endpoint
-    if (!mediaKey || !directPath) {
-      console.log('[MEDIA] Missing required metadata (mediaKey or directPath) - cannot download');
-      return null;
+    if (!mKey || !dPath) return null;
+    const defMime = type === 'image' ? 'image/jpeg' : type === 'video' ? 'video/mp4' : type === 'audio' ? 'audio/ogg' : mime || 'application/pdf';
+    const body = { messageId: msgId, type, mimetype: defMime, mediaKey: mKey, directPath: dPath, ...(mUrl && !mUrl.includes('supabase.co') ? { url: mUrl } : {}) };
+    const res = await fetch(`${WAPI_BASE_URL}/message/download-media?instanceId=${iId}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${iToken}` }, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const r = await res.json();
+    let b64 = r.base64 || r.data || r.media, rMime = r.mimetype || r.mimeType || defMime;
+    const link = r.fileLink || r.file_link || r.url || r.link;
+    if (!b64 && link) {
+      const fr = await fetch(link); if (!fr.ok) return null;
+      const ct = fr.headers.get('content-type'); if (ct) rMime = ct.split(';')[0].trim();
+      const ab = await fr.arrayBuffer(), bytes = new Uint8Array(ab);
+      if (type === 'document' && rMime === 'application/pdf' && !isPdfContent(bytes)) return null;
+      let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]); b64 = btoa(bin);
     }
-    
-    // Map media type to default mimetype
-    const getDefaultMimetype = (type: string): string => {
-      switch (type) {
-        case 'image': return 'image/jpeg';
-        case 'video': return 'video/mp4';
-        case 'audio': return 'audio/ogg';
-        case 'document': return mimeType || 'application/pdf';
-        default: return 'application/octet-stream';
-      }
-    };
-    
-    // Build request body for W-API
-    const requestMime = mimeType || getDefaultMimetype(mediaType);
-    const requestBody = {
-      messageId: messageId,
-      type: mediaType,
-      mimetype: requestMime,
-      mediaKey: mediaKey,
-      directPath: directPath,
-      ...(mediaUrl && !mediaUrl.includes('supabase.co') ? { url: mediaUrl } : {}),
-    };
-    
-    console.log('[MEDIA] W-API download request:', JSON.stringify(requestBody));
-    
-    // Call W-API download media endpoint
-    const downloadResponse = await fetch(
-      `${WAPI_BASE_URL}/message/download-media?instanceId=${instanceId}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${instanceToken}`,
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
-
-    if (!downloadResponse.ok) {
-      const errorText = await downloadResponse.text();
-      console.error(`[MEDIA] W-API download failed: ${downloadResponse.status} - ${errorText}`);
-      return null;
-    }
-
-    const result = await downloadResponse.json();
-    console.log('[MEDIA] W-API response keys:', Object.keys(result));
-    
-    let base64Data = result.base64 || result.data || result.media;
-    let responseMimeType = result.mimetype || result.mimeType || requestMime;
-    
-    // W-API may return a fileLink URL instead of base64 - we need to fetch it
-    const fileLink = result.fileLink || result.file_link || result.url || result.link;
-    
-    if (!base64Data && fileLink) {
-      console.log('[MEDIA] W-API returned fileLink, fetching:', fileLink);
-      try {
-        const fileResponse = await fetch(fileLink);
-        if (!fileResponse.ok) {
-          console.error('[MEDIA] Failed to fetch fileLink:', fileResponse.status);
-          return null;
-        }
-        
-        // Get content type from response
-        const contentType = fileResponse.headers.get('content-type');
-        if (contentType) {
-          responseMimeType = contentType.split(';')[0].trim();
-        }
-        
-        // Convert to base64
-        const arrayBuffer = await fileResponse.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        
-        // Validate content for PDFs
-        if (mediaType === 'document' && responseMimeType === 'application/pdf') {
-          if (!isPdfContent(bytes)) {
-            console.error('[MEDIA] Downloaded content is NOT a valid PDF (missing %PDF header). Received encrypted/invalid file.');
-            return null;
-          }
-          console.log('[MEDIA] PDF validation PASSED - content has valid %PDF header');
-        }
-        
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        base64Data = btoa(binary);
-        console.log('[MEDIA] FileLink fetched successfully, size:', bytes.length, 'bytes');
-      } catch (fetchErr) {
-        console.error('[MEDIA] Error fetching fileLink:', fetchErr);
-        return null;
-      }
-    }
-    
-    if (!base64Data) {
-      console.error('[MEDIA] No base64 data in W-API response');
-      return null;
-    }
-    
-    // Convert base64 to binary
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    
-    // Validate content for PDFs if we haven't already
-    if (mediaType === 'document' && (responseMimeType === 'application/pdf' || fileName?.toLowerCase().endsWith('.pdf'))) {
-      if (!isPdfContent(bytes)) {
-        console.error('[MEDIA] Downloaded content is NOT a valid PDF (missing %PDF header). Content is likely still encrypted.');
-        return null;
-      }
-      console.log('[MEDIA] PDF validation PASSED - content has valid %PDF header');
-    }
-    
-    // Generate storage path with proper extension
-    const extension = getFileExtension(responseMimeType, fileName);
-    
-    // For documents, preserve original filename in storage path for better traceability
-    let storagePath: string;
-    if (mediaType === 'document' && fileName) {
-      // Sanitize filename for storage (remove special chars but keep extension)
-      const sanitizedName = fileName
-        .replace(/[^a-zA-Z0-9\-_\.]/g, '_')
-        .substring(0, 100);
-      storagePath = `received/documents/${messageId}_${sanitizedName}`;
-    } else {
-      storagePath = `received/${mediaType}s/${messageId}.${extension}`;
-    }
-    
-    console.log(`[MEDIA] Uploading to storage: ${storagePath}, size: ${bytes.length} bytes, contentType: ${responseMimeType}`);
-    
-    // Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from('whatsapp-media')
-      .upload(storagePath, bytes, {
-        contentType: responseMimeType,
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('[MEDIA] Storage upload error:', uploadError);
-      return null;
-    }
-    
-    // Get public URL (bucket is public)
-    const { data: publicUrl } = supabase.storage
-      .from('whatsapp-media')
-      .getPublicUrl(storagePath);
-    
-    if (!publicUrl?.publicUrl) {
-      console.error('[MEDIA] Failed to get public URL');
-      return null;
-    }
-    
-    console.log(`[MEDIA] Successfully stored media at: ${publicUrl.publicUrl}`);
-    return { 
-      url: publicUrl.publicUrl, 
-      fileName: fileName || `${messageId}.${extension}` 
-    };
-  } catch (err) {
-    console.error('[MEDIA] Error downloading/storing media:', err);
-    return null;
-  }
+    if (!b64) return null;
+    const bs = atob(b64), bytes = new Uint8Array(bs.length); for (let i = 0; i < bs.length; i++) bytes[i] = bs.charCodeAt(i);
+    if (type === 'document' && (rMime === 'application/pdf' || fn?.toLowerCase().endsWith('.pdf')) && !isPdfContent(bytes)) return null;
+    const ext = getExt(rMime, fn);
+    const path = type === 'document' && fn ? `received/documents/${msgId}_${fn.replace(/[^a-zA-Z0-9\-_\.]/g, '_').substring(0, 100)}` : `received/${type}s/${msgId}.${ext}`;
+    const { error } = await supabase.storage.from('whatsapp-media').upload(path, bytes, { contentType: rMime, upsert: true });
+    if (error) return null;
+    const { data: pu } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+    return pu?.publicUrl ? { url: pu.publicUrl, fileName: fn || `${msgId}.${ext}` } : null;
+  } catch { return null; }
 }
 
-function getMimeType(mediaType: string): string {
-  switch (mediaType) {
-    case 'image': return 'image/jpeg';
-    case 'audio': return 'audio/ogg';
-    case 'video': return 'video/mp4';
-    case 'document': return 'application/octet-stream';
-    default: return 'application/octet-stream';
-  }
+function extractMsgContent(mc: Record<string, unknown>, msg: Record<string, unknown>) {
+  let type = 'text', content = '', url: string | null = null, key: string | null = null, path: string | null = null, fn: string | undefined, download = false, mime: string | null = null;
+  
+  if (mc.locationMessage) { type = 'location'; const l = mc.locationMessage as Record<string, unknown>; content = `📍 Localização: ${(l.degreesLatitude as number)?.toFixed(6) || '?'}, ${(l.degreesLongitude as number)?.toFixed(6) || '?'}`; }
+  else if (mc.liveLocationMessage) { type = 'location'; content = '📍 Localização ao vivo'; }
+  else if (mc.contactMessage || mc.contactsArrayMessage) { type = 'contact'; content = `👤 ${(mc.contactMessage as Record<string, unknown>)?.displayName || 'Contato'}`; }
+  else if (mc.stickerMessage) { type = 'sticker'; content = '🎭 Figurinha'; }
+  else if (mc.reactionMessage) return null;
+  else if (mc.pollCreationMessage || mc.pollUpdateMessage) { type = 'poll'; content = '📊 Enquete'; }
+  else if ((mc as Record<string, unknown>).conversation) content = (mc as Record<string, string>).conversation;
+  else if ((mc.extendedTextMessage as Record<string, unknown>)?.text) content = ((mc.extendedTextMessage as Record<string, unknown>).text as string);
+  else if (mc.imageMessage) { const m = mc.imageMessage as Record<string, unknown>; type = 'image'; content = (m.caption as string) || '[Imagem]'; url = m.url as string || null; key = m.mediaKey as string || null; path = m.directPath as string || null; download = true; mime = m.mimetype as string || null; }
+  else if (mc.videoMessage) { const m = mc.videoMessage as Record<string, unknown>; type = 'video'; content = (m.caption as string) || '[Vídeo]'; url = m.url as string || null; key = m.mediaKey as string || null; path = m.directPath as string || null; download = true; mime = m.mimetype as string || null; }
+  else if (mc.audioMessage) { const m = mc.audioMessage as Record<string, unknown>; type = 'audio'; content = '[Áudio]'; url = m.url as string || null; key = m.mediaKey as string || null; path = m.directPath as string || null; download = true; mime = m.mimetype as string || null; }
+  else if (mc.documentMessage) { const m = mc.documentMessage as Record<string, unknown>; type = 'document'; content = (m.fileName as string) || '[Documento]'; fn = m.fileName as string; url = m.url as string || null; key = m.mediaKey as string || null; path = m.directPath as string || null; download = true; mime = m.mimetype as string || null; }
+  else if (mc.documentWithCaptionMessage) { const d = ((mc.documentWithCaptionMessage as Record<string, unknown>).message as Record<string, unknown>)?.documentMessage as Record<string, unknown>; if (d) { type = 'document'; content = (d.caption as string) || (d.fileName as string) || '[Documento]'; fn = d.fileName as string; url = d.url as string || null; key = d.mediaKey as string || null; path = d.directPath as string || null; download = true; mime = d.mimetype as string || null; } }
+  else if ((msg as Record<string, string>).body || (msg as Record<string, string>).text) content = (msg as Record<string, string>).body || (msg as Record<string, string>).text;
+  
+  return { type, content, url, key, path, fn, download, mime };
 }
 
-function getExtension(mimeType: string, fileName?: string): string {
-  // Try to get extension from filename first
-  if (fileName) {
-    const parts = fileName.split('.');
-    if (parts.length > 1) {
-      return parts[parts.length - 1].toLowerCase();
-    }
-  }
-  
-  // Fallback to mime type
-  const mimeMap: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
-    'image/gif': 'gif',
-    'audio/ogg': 'ogg',
-    'audio/mpeg': 'mp3',
-    'audio/mp4': 'm4a',
-    'video/mp4': 'mp4',
-    'application/pdf': 'pdf',
-    'application/msword': 'doc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-  };
-  
-  return mimeMap[mimeType] || 'bin';
+function getPreview(mc: Record<string, unknown>, msg: Record<string, unknown>): string {
+  if ((mc as Record<string, unknown>).conversation) return (mc as Record<string, string>).conversation;
+  if ((mc.extendedTextMessage as Record<string, unknown>)?.text) return ((mc.extendedTextMessage as Record<string, unknown>).text as string);
+  if (mc.imageMessage) return '📷 Imagem';
+  if (mc.videoMessage) return '🎥 Vídeo';
+  if (mc.audioMessage) return '🎤 Áudio';
+  if (mc.documentMessage) return '📄 ' + ((mc.documentMessage as Record<string, unknown>).fileName || 'Documento');
+  if (mc.documentWithCaptionMessage) return '📄 ' + (((mc.documentWithCaptionMessage as Record<string, unknown>).message as Record<string, unknown>)?.documentMessage as Record<string, unknown>)?.fileName || 'Documento';
+  if (mc.locationMessage) return '📍 Localização';
+  if (mc.contactMessage || mc.contactsArrayMessage) return '👤 Contato';
+  if (mc.stickerMessage) return '🎭 Figurinha';
+  return (msg as Record<string, string>).body || (msg as Record<string, string>).text || '';
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const body = await req.json();
     console.log('Webhook received:', JSON.stringify(body, null, 2));
 
     const { event, instanceId, data } = body;
+    const { data: instance, error: iErr } = await supabase.from('wapi_instances').select('*').eq('instance_id', instanceId).single();
+    if (iErr || !instance) return new Response(JSON.stringify({ error: 'Instance not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    // Find the instance by W-API instance_id
-    const { data: instance, error: instanceError } = await supabase
-      .from('wapi_instances')
-      .select('*')
-      .eq('instance_id', instanceId)
-      .single();
+    const evt = event || body.event;
 
-    if (instanceError || !instance) {
-      console.log('Instance not found for instanceId:', instanceId);
-      return new Response(JSON.stringify({ error: 'Instance not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Handle different webhook events
-    // W-API sends events in different formats, normalize them
-    const eventType = event || body.event;
-    console.log('Processing event type:', eventType);
-
-    switch (eventType) {
-      case 'connection':
-      case 'webhookConnected': {
-        // WhatsApp connection status changed
-        const connected = data?.connected ?? body.connected ?? false;
-        const phone = data?.phone || body.connectedPhone || null;
-        await supabase
-          .from('wapi_instances')
-          .update({
-            status: connected ? 'connected' : 'disconnected',
-            phone_number: phone || null,
-            connected_at: connected ? new Date().toISOString() : null,
-          })
-          .eq('id', instance.id);
-        console.log('Connection status updated:', connected ? 'connected' : 'disconnected');
+    switch (evt) {
+      case 'connection': case 'webhookConnected': {
+        const c = data?.connected ?? body.connected ?? false;
+        await supabase.from('wapi_instances').update({ status: c ? 'connected' : 'disconnected', phone_number: data?.phone || body.connectedPhone || null, connected_at: c ? new Date().toISOString() : null }).eq('id', instance.id);
         break;
       }
+      case 'disconnection': case 'webhookDisconnected':
+        await supabase.from('wapi_instances').update({ status: 'disconnected', connected_at: null }).eq('id', instance.id);
+        break;
+      case 'call': case 'webhookCall': case 'call_offer': case 'call_reject': case 'call_timeout': break;
+      case 'message': case 'message-received': case 'webhookReceived': {
+        const msg = data?.message || data || body;
+        if (!msg) break;
+        const mc = msg.message || msg.msgContent || {};
+        if (mc.protocolMessage) break;
+        
+        let rj = msg.key?.remoteJid || msg.from || msg.remoteJid || (msg.chat?.id ? `${msg.chat.id}` : null) || (msg.sender?.id ? `${msg.sender.id}@s.whatsapp.net` : null);
+        if (!rj) break;
+        const isGrp = rj.includes('@g.us');
+        if (!isGrp && !rj.includes('@')) rj = `${rj}@s.whatsapp.net`;
+        else if (rj.includes('@c.us')) rj = rj.replace('@c.us', '@s.whatsapp.net');
+        
+        const fromMe = msg.key?.fromMe || msg.fromMe || false;
+        const msgId = msg.key?.id || msg.id || msg.messageId;
+        const phone = rj.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@g.us', '').replace('@lid', '');
+        
+        let cName = isGrp ? (msg.chat?.name || msg.groupName || msg.subject || null) : (msg.pushName || msg.verifiedBizName || msg.sender?.pushName || phone);
+        const cPic = msg.chat?.profilePicture || msg.sender?.profilePicture || null;
 
-      case 'disconnection':
-      case 'webhookDisconnected': {
-        await supabase
-          .from('wapi_instances')
-          .update({
-            status: 'disconnected',
-            connected_at: null,
-          })
-          .eq('id', instance.id);
-        console.log('Instance disconnected');
+        if (Object.keys(mc).length === 0 && !msg.body && !msg.text) break;
+        if (mc.call || mc.callLogMessage || mc.bcallMessage || mc.missedCallMessage || msg.type === 'call' || msg.callId) break;
+
+        const preview = getPreview(mc, msg);
+        const { data: ex } = await supabase.from('wapi_conversations').select('*, bot_enabled, bot_step, bot_data').eq('instance_id', instance.id).eq('remote_jid', rj).single();
+        
+        if (fromMe && ex?.bot_step && ex.bot_step !== 'complete') await supabase.from('wapi_conversations').update({ bot_enabled: false }).eq('id', ex.id);
+
+        let conv;
+        if (ex) {
+          conv = ex;
+          const upd: Record<string, unknown> = { last_message_at: new Date().toISOString(), unread_count: fromMe ? ex.unread_count : (ex.unread_count || 0) + 1, last_message_content: preview.substring(0, 100), last_message_from_me: fromMe };
+          if (!fromMe && ex.is_closed) upd.is_closed = false;
+          if (isGrp) { const gn = msg.chat?.name || msg.groupName || msg.subject; if (gn && gn !== ex.contact_name) upd.contact_name = gn; }
+          else if (cName && cName !== ex.contact_name) upd.contact_name = cName;
+          if (cPic) upd.contact_picture = cPic;
+          await supabase.from('wapi_conversations').update(upd).eq('id', ex.id);
+        } else {
+          const n = phone.replace(/\D/g, ''), vars = [n, n.replace(/^55/, ''), `55${n}`];
+          const { data: lead } = await supabase.from('campaign_leads').select('id').or(vars.map(p => `whatsapp.ilike.%${p}%`).join(',')).eq('unit', instance.unit).limit(1).single();
+          const { data: nc, error: ce } = await supabase.from('wapi_conversations').insert({
+            instance_id: instance.id, remote_jid: rj, contact_phone: phone, contact_name: cName || (isGrp ? `Grupo ${phone}` : phone), contact_picture: cPic,
+            last_message_at: new Date().toISOString(), unread_count: fromMe ? 0 : 1, last_message_content: preview.substring(0, 100), last_message_from_me: fromMe,
+            lead_id: lead?.id || null, bot_enabled: true, bot_step: lead?.id ? null : 'welcome', bot_data: {}
+          }).select('*, bot_enabled, bot_step, bot_data').single();
+          if (ce) break;
+          conv = nc;
+        }
+
+        const ext = extractMsgContent(mc, msg);
+        if (!ext) break;
+        let { type, content, url, key, path, fn, download, mime } = ext;
+
+        if (download && !fromMe && msgId) {
+          const res = await downloadMedia(supabase, instance.instance_id, instance.instance_token, msgId, type, fn, key, path, url, mime);
+          if (res) { url = res.url; key = null; path = null; }
+          else if (type === 'document') url = null;
+        }
+
+        await supabase.from('wapi_messages').insert({
+          conversation_id: conv.id, message_id: msgId, from_me: fromMe, message_type: type, content,
+          media_url: url, media_key: key, media_direct_path: path, status: fromMe ? 'sent' : 'received',
+          timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000).toISOString() : msg.moment ? new Date(msg.moment * 1000).toISOString() : new Date().toISOString()
+        });
+
+        if (!fromMe && !isGrp && type === 'text' && content) await processBotQualification(supabase, instance, conv, content, phone, cName);
         break;
       }
-
-      case 'call':
-      case 'webhookCall':
-      case 'call_offer':
-      case 'call_reject':
-      case 'call_timeout': {
-        // Voice/Video call events - just log and ignore
-        console.log('Call event received, ignoring. Event:', eventType, 'callId:', body.call?.id || body.callId);
-        break;
-      }
-
-      case 'message':
-      case 'message-received':
-      case 'webhookReceived': {
-        // Message received - handle both old and new W-API formats
-        const message = data?.message || data || body;
-        if (!message) {
-          console.log('No message data found');
-          break;
-        }
-
-        // Skip protocol messages (internal WhatsApp messages)
-        if (message.msgContent?.protocolMessage) {
-          console.log('Skipping protocol message');
-          break;
-        }
-
-        // Extract remote JID from different possible locations
-        let rawRemoteJid = message.key?.remoteJid || 
-                          message.from || 
-                          message.remoteJid || 
-                          (message.chat?.id ? `${message.chat.id}` : null) ||
-                          (message.sender?.id ? `${message.sender.id}@s.whatsapp.net` : null);
+      case 'message-status': case 'message_ack': case 'webhookStatus': case 'webhookDelivery': {
+        const sd = data || body, mId = sd?.messageId || body?.messageId, st = sd?.status, ack = sd?.ack;
+        const fm = body?.fromMe || sd?.fromMe || false, mcd = body?.msgContent || sd?.msgContent;
         
-        if (!rawRemoteJid) {
-          console.log('No remoteJid found, skipping message');
-          break;
-        }
-        
-        // Normalize remote_jid to always include the proper suffix
-        // This prevents duplicate conversations from being created
-        const isGroup = rawRemoteJid.includes('@g.us');
-        let remoteJid = rawRemoteJid;
-        if (!isGroup && !rawRemoteJid.includes('@')) {
-          // Individual chat without suffix - add @s.whatsapp.net
-          remoteJid = `${rawRemoteJid}@s.whatsapp.net`;
-        } else if (rawRemoteJid.includes('@c.us')) {
-          // Convert @c.us to @s.whatsapp.net for consistency
-          remoteJid = rawRemoteJid.replace('@c.us', '@s.whatsapp.net');
-        }
-
-        // isGroup already determined above from rawRemoteJid
-        
-        const fromMe = message.key?.fromMe || message.fromMe || false;
-        const messageId = message.key?.id || message.id || message.messageId;
-        
-        // Extract phone number from remoteJid (format: 5511999999999@s.whatsapp.net or 5511999999999)
-        // For groups, extract the group ID
-        const contactPhone = remoteJid
-          ?.replace('@s.whatsapp.net', '')
-          .replace('@c.us', '')
-          .replace('@g.us', '')
-          .replace('@lid', '') || '';
-        
-        // Get contact/group name from various sources
-        // For groups: ONLY use explicit group name fields, never use sender's pushName
-        // For individuals: use pushName or sender info
-        let contactName: string | null = null;
-        let senderName: string | null = null;
-        
-        if (isGroup) {
-          // For groups, ONLY use explicit group name sources - never pushName
-          const groupName = message.chat?.name || 
-                           message.groupName ||
-                           message.subject ||
-                           message.chat?.subject ||
-                           null;
-          
-          // Store sender name separately for logging
-          senderName = message.pushName || message.sender?.pushName || null;
-          
-          if (groupName) {
-            contactName = groupName;
-          }
-          // If no group name, we'll use existing name from DB or fallback to generic
-          console.log(`Group message - Group name: ${groupName || 'NOT PROVIDED'}, Sender: ${senderName || 'unknown'}`);
-        } else {
-          // For individual chats, use sender info
-          contactName = message.pushName || 
-                       message.verifiedBizName || 
-                       message.sender?.pushName || 
-                       message.sender?.verifiedBizName || 
-                       contactPhone;
-        }
-
-        // Get contact/group profile picture from various sources
-        const contactPicture = message.chat?.profilePicture || 
-                              message.sender?.profilePicture || 
-                              null;
-
-        // Get or create conversation
-        let conversation;
-        const { data: existingConv } = await supabase
-          .from('wapi_conversations')
-          .select('*, bot_enabled, bot_step, bot_data')
-          .eq('instance_id', instance.id)
-          .eq('remote_jid', remoteJid)
-          .single();
-
-        // Extract message content for preview - handle both old and new formats
-        let previewContent = '';
-        const msgContent = message.message || message.msgContent || {};
-        
-        // Check for call events early - they often come with empty msgContent
-        // and we should skip them entirely before creating/updating conversations
-        if (Object.keys(msgContent).length === 0 && !message.body && !message.text) {
-          console.log('Empty message content detected (likely a call event), skipping. MessageId:', messageId);
-          break;
-        }
-        
-        // Also check for specific call-related message types
-        if (msgContent.call || msgContent.callLogMessage || 
-            msgContent.bcallMessage || msgContent.missedCallMessage ||
-            message.type === 'call' || message.type === 'call_log' ||
-            message.callId) {
-          console.log('Call event detected, skipping message save. Type:', message.type, 'callId:', message.callId);
-          break;
-        }
-        
-        if (msgContent.conversation) {
-          previewContent = msgContent.conversation;
-        } else if (msgContent.extendedTextMessage?.text) {
-          previewContent = msgContent.extendedTextMessage.text;
-        } else if (msgContent.imageMessage) {
-          previewContent = '📷 Imagem';
-        } else if (msgContent.videoMessage) {
-          previewContent = '🎥 Vídeo';
-        } else if (msgContent.audioMessage) {
-          previewContent = '🎤 Áudio';
-        } else if (msgContent.documentMessage) {
-          previewContent = '📄 ' + (msgContent.documentMessage.fileName || 'Documento');
-        } else if (msgContent.locationMessage) {
-          previewContent = '📍 Localização';
-        } else if (msgContent.contactMessage || msgContent.contactsArrayMessage) {
-          previewContent = '👤 Contato';
-        } else if (msgContent.stickerMessage) {
-          previewContent = '🎭 Figurinha';
-        } else if (message.body || message.text) {
-          previewContent = message.body || message.text;
-        } else {
-          // No recognizable content for preview - likely an unsupported message type
-          console.log('Unrecognized message content for preview, msgContent keys:', Object.keys(msgContent));
-        }
-
-        // Check if this is a human response (fromMe=true from web platform, not bot)
-        // If it is, disable the bot for this conversation
-        if (fromMe && existingConv && existingConv.bot_step && existingConv.bot_step !== 'complete') {
-          console.log('Human response detected during bot flow, disabling bot for conversation:', existingConv.id);
-          await supabase
-            .from('wapi_conversations')
-            .update({ bot_enabled: false })
-            .eq('id', existingConv.id);
-        }
-
-        if (existingConv) {
-          conversation = existingConv;
-          // Update last message timestamp, preview, and profile picture
-          const updateData: Record<string, unknown> = { 
-            last_message_at: new Date().toISOString(),
-            unread_count: fromMe ? existingConv.unread_count : (existingConv.unread_count || 0) + 1,
-            last_message_content: previewContent.substring(0, 100),
-            last_message_from_me: fromMe,
-          };
-          
-          // If this is an incoming message (not from me) and the conversation is closed,
-          // automatically reopen it so the user sees it in the main list
-          if (!fromMe && existingConv.is_closed === true) {
-            updateData.is_closed = false;
-            console.log('Reopening closed conversation due to new incoming message:', existingConv.id);
-          }
-          
-          // For groups: only update name if we have a valid group name (not sender name)
-          // For individuals: update name if we have a new one
-          if (isGroup) {
-            // Only update group name if it's explicitly provided and different from generic
-            const groupName = message.chat?.name || message.groupName || message.subject;
-            if (groupName && groupName !== existingConv.contact_name) {
-              updateData.contact_name = groupName;
-            }
-          } else {
-            // For individual chats, update with sender name
-            if (contactName && contactName !== existingConv.contact_name) {
-              updateData.contact_name = contactName;
-            }
-          }
-          
-          // Only update picture if we have a new one
-          if (contactPicture) {
-            updateData.contact_picture = contactPicture;
-          }
-          await supabase
-            .from('wapi_conversations')
-            .update(updateData)
-            .eq('id', existingConv.id);
-        } else {
-          // Try to find a matching lead by phone number
-          let matchedLeadId = null;
-          
-          // Normalize phone number for comparison (remove common prefixes/formats)
-          const normalizedPhone = contactPhone.replace(/\D/g, '');
-          const phoneVariants = [
-            normalizedPhone,
-            normalizedPhone.replace(/^55/, ''), // Remove Brazil country code
-            `55${normalizedPhone}`, // Add Brazil country code
-          ];
-          
-          // Search for a lead matching this phone number in the same unit as the instance
-          const { data: matchingLead } = await supabase
-            .from('campaign_leads')
-            .select('id, whatsapp, unit')
-            .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
-            .eq('unit', instance.unit)
-            .limit(1)
-            .single();
-          
-          if (matchingLead) {
-            matchedLeadId = matchingLead.id;
-            console.log('Auto-linked conversation to lead:', matchingLead.id);
-          }
-          // Note: We no longer auto-create leads here - the bot will do it after qualification
-          // or if bot is disabled, no lead will be created automatically
-          
-          // Create new conversation with lead link (now always has a lead for individual chats)
-          // For groups without a name, use a generic fallback
-          const finalContactName = contactName || (isGroup ? `Grupo ${contactPhone}` : contactPhone);
-          
-          const { data: newConv, error: convError } = await supabase
-            .from('wapi_conversations')
-            .insert({
-              instance_id: instance.id,
-              remote_jid: remoteJid,
-              contact_phone: contactPhone,
-              contact_name: finalContactName,
-              contact_picture: contactPicture,
-              last_message_at: new Date().toISOString(),
-              unread_count: fromMe ? 0 : 1,
-              last_message_content: previewContent.substring(0, 100),
-              last_message_from_me: fromMe,
-              lead_id: matchedLeadId,
-              bot_enabled: true, // Start with bot enabled by default
-              bot_step: matchedLeadId ? null : 'welcome', // Only start bot if no lead linked
-              bot_data: {},
-            })
-            .select('*, bot_enabled, bot_step, bot_data')
-            .single();
-
-          if (convError) {
-            console.error('Error creating conversation:', convError);
-            break;
-          }
-          conversation = newConv;
-        }
-
-        // Extract message content
-        let content = '';
-        let messageType = 'text';
-        let mediaUrl: string | null = null;
-        let mediaKey: string | null = null;
-        let mediaDirectPath: string | null = null;
-        let shouldDownloadMedia = false;
-        let mediaFileName: string | undefined;
-
-        // Check for call events (voice/video calls) - skip saving these
-        if (msgContent.call || msgContent.callLogMessage || message.type === 'call' || message.type === 'call_log') {
-          console.log('Call event detected, skipping message save');
-          break;
-        }
-
-        // Check for location messages
-        if (msgContent.locationMessage) {
-          messageType = 'location';
-          const lat = msgContent.locationMessage.degreesLatitude;
-          const lng = msgContent.locationMessage.degreesLongitude;
-          content = `📍 Localização: ${lat?.toFixed(6) || '?'}, ${lng?.toFixed(6) || '?'}`;
-        } else if (msgContent.liveLocationMessage) {
-          messageType = 'location';
-          content = '📍 Localização ao vivo';
-        // Check for contact/vcard messages
-        } else if (msgContent.contactMessage || msgContent.contactsArrayMessage) {
-          messageType = 'contact';
-          const contactName = msgContent.contactMessage?.displayName || 'Contato';
-          content = `👤 ${contactName}`;
-        // Check for stickers
-        } else if (msgContent.stickerMessage) {
-          messageType = 'sticker';
-          content = '🎭 Figurinha';
-        // Check for reactions
-        } else if (msgContent.reactionMessage) {
-          console.log('Reaction message detected, skipping save');
-          break;
-        // Check for poll messages
-        } else if (msgContent.pollCreationMessage || msgContent.pollUpdateMessage) {
-          messageType = 'poll';
-          content = '📊 Enquete';
-        // Regular text/media messages
-        } else if (msgContent.conversation) {
-          content = msgContent.conversation;
-        } else if (msgContent.extendedTextMessage?.text) {
-          content = msgContent.extendedTextMessage.text;
-        } else if (msgContent.imageMessage) {
-          messageType = 'image';
-          content = msgContent.imageMessage.caption || '[Imagem]';
-          mediaUrl = msgContent.imageMessage.url || null;
-          mediaKey = msgContent.imageMessage.mediaKey || null;
-          mediaDirectPath = msgContent.imageMessage.directPath || null;
-          shouldDownloadMedia = true;
-        } else if (msgContent.videoMessage) {
-          messageType = 'video';
-          content = msgContent.videoMessage.caption || '[Vídeo]';
-          mediaUrl = msgContent.videoMessage.url || null;
-          mediaKey = msgContent.videoMessage.mediaKey || null;
-          mediaDirectPath = msgContent.videoMessage.directPath || null;
-          shouldDownloadMedia = true;
-        } else if (msgContent.audioMessage) {
-          messageType = 'audio';
-          content = '[Áudio]';
-          mediaUrl = msgContent.audioMessage.url || null;
-          mediaKey = msgContent.audioMessage.mediaKey || null;
-          mediaDirectPath = msgContent.audioMessage.directPath || null;
-          shouldDownloadMedia = true;
-        } else if (msgContent.documentMessage) {
-          messageType = 'document';
-          content = msgContent.documentMessage.fileName || '[Documento]';
-          mediaFileName = msgContent.documentMessage.fileName;
-          mediaUrl = msgContent.documentMessage.url || null;
-          mediaKey = msgContent.documentMessage.mediaKey || null;
-          mediaDirectPath = msgContent.documentMessage.directPath || null;
-          shouldDownloadMedia = true;
-          console.log('[DOCUMENT] documentMessage received:', msgContent.documentMessage.fileName);
-        } else if (msgContent.documentWithCaptionMessage) {
-          // Document with caption - the actual documentMessage is nested inside
-          const docMsg = msgContent.documentWithCaptionMessage.message?.documentMessage;
-          if (docMsg) {
-            messageType = 'document';
-            // Use caption if available, otherwise fileName
-            const caption = docMsg.caption || '';
-            content = caption || docMsg.fileName || '[Documento]';
-            mediaFileName = docMsg.fileName;
-            mediaUrl = docMsg.url || null;
-            mediaKey = docMsg.mediaKey || null;
-            mediaDirectPath = docMsg.directPath || null;
-            shouldDownloadMedia = true;
-            console.log('[DOCUMENT] documentWithCaptionMessage received:', docMsg.fileName, 'caption:', caption);
-          } else {
-            console.log('[DOCUMENT] documentWithCaptionMessage missing nested documentMessage');
-          }
-        } else if (message.body || message.text) {
-          content = message.body || message.text;
-        } else {
-          // No recognizable content - skip to avoid saving empty/null messages
-          console.log('Unrecognized message type, msgContent keys:', Object.keys(msgContent));
-          break;
-        }
-        
-        // Log media key availability for debugging
-        if (shouldDownloadMedia) {
-          console.log(`Media message received - type: ${messageType}, hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!mediaDirectPath}, hasUrl: ${!!mediaUrl}`);
-        }
-
-        // For incoming messages with media, try to download and store in our storage
-        // This ensures we have a permanent copy since WhatsApp URLs expire
-        let mediaMimeType: string | null = null;
-        if (msgContent.imageMessage) mediaMimeType = msgContent.imageMessage.mimetype || null;
-        if (msgContent.videoMessage) mediaMimeType = msgContent.videoMessage.mimetype || null;
-        if (msgContent.audioMessage) mediaMimeType = msgContent.audioMessage.mimetype || null;
-        if (msgContent.documentMessage) mediaMimeType = msgContent.documentMessage.mimetype || null;
-        if (msgContent.documentWithCaptionMessage?.message?.documentMessage) {
-          mediaMimeType = msgContent.documentWithCaptionMessage.message.documentMessage.mimetype || null;
-        }
-        
-        if (shouldDownloadMedia && !fromMe && messageId) {
-          console.log(`Attempting to download and store media for message: ${messageId}, type: ${messageType}, mimeType: ${mediaMimeType || 'N/A'}`);
-          const storedResult = await downloadAndStoreMedia(
-            supabase,
-            instance.instance_id,
-            instance.instance_token,
-            messageId,
-            messageType as 'image' | 'audio' | 'video' | 'document',
-            mediaFileName,
-            mediaKey,
-            mediaDirectPath,
-            mediaUrl,
-            mediaMimeType
-          );
-          
-          if (storedResult) {
-            mediaUrl = storedResult.url;
-            // Clear media key and directPath since we successfully downloaded
-            mediaKey = null;
-            mediaDirectPath = null;
-            console.log(`Media stored successfully, new URL: ${storedResult.url}, fileName: ${storedResult.fileName}`);
-          } else {
-            console.log('Media download failed - keeping mediaKey/directPath for later retry, but NOT keeping WhatsApp URL as it will be encrypted');
-            // IMPORTANT: For failed downloads, we DON'T keep the original WhatsApp URL
-            // because that URL points to an ENCRYPTED .enc file that won't be useful
-            // Instead, we null it and rely on mediaKey/directPath for retry
-            if (mediaType === 'document') {
-              mediaUrl = null; // Don't save .enc URLs for documents
-            }
-          }
-        }
-
-        // Insert message (include media_key and media_direct_path for later retry if initial download failed)
-        const { error: msgError } = await supabase
-          .from('wapi_messages')
-          .insert({
-            conversation_id: conversation.id,
-            message_id: messageId,
-            from_me: fromMe,
-            message_type: messageType,
-            content: content,
-            media_url: mediaUrl,
-            media_key: mediaKey,
-            media_direct_path: mediaDirectPath,
-            status: fromMe ? 'sent' : 'received',
-            timestamp: message.messageTimestamp 
-              ? new Date(message.messageTimestamp * 1000).toISOString() 
-              : message.moment
-              ? new Date(message.moment * 1000).toISOString()
-              : new Date().toISOString(),
-          });
-
-        if (msgError) {
-          console.error('Error inserting message:', msgError);
-        } else {
-          console.log('Message saved:', messageId, 'content:', content.substring(0, 50), 'mediaUrl:', mediaUrl ? 'yes' : 'no', 'mediaKey:', mediaKey ? 'yes' : 'no');
-        }
-
-        // Process bot qualification for incoming text messages only (not from groups)
-        if (!fromMe && !isGroup && messageType === 'text' && content) {
-          await processBotQualification(
-            supabase,
-            instance,
-            conversation,
-            content,
-            contactPhone,
-            contactName
-          );
-        }
-        break;
-      }
-
-      case 'message-status':
-      case 'message_ack':
-      case 'webhookStatus':
-      case 'webhookDelivery': {
-        // Message status update (sent, delivered, read)
-        // Also handle messages sent from other devices (fromMe=true with msgContent)
-        const statusData = data || body;
-        const messageId = statusData?.messageId || body?.messageId;
-        const status = statusData?.status;
-        const ack = statusData?.ack;
-        const fromMeDelivery = body?.fromMe || statusData?.fromMe || false;
-        const msgContentDelivery = body?.msgContent || statusData?.msgContent;
-        
-        // If this is a message sent from another device (has msgContent and fromMe=true)
-        // we need to save it as a new message if it doesn't exist yet
-        if (fromMeDelivery && msgContentDelivery && messageId) {
-          // Check if message already exists
-          const { data: existingMsg } = await supabase
-            .from('wapi_messages')
-            .select('id')
-            .eq('message_id', messageId)
-            .single();
-            
-          if (!existingMsg) {
-            console.log('Processing outgoing message from other device:', messageId);
-            
-            // Get the chat info to find/create conversation
-            const chatId = body?.chat?.id || statusData?.chat?.id;
-            if (chatId) {
-              const remoteJid = chatId.includes('@') ? chatId : `${chatId}@s.whatsapp.net`;
-              const contactPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@g.us', '').replace('@lid', '');
-              
-              // Skip group messages for now (they have @g.us)
-              if (!remoteJid.includes('@g.us')) {
-                // Get or create conversation
-                let conversation;
-                const { data: existingConv } = await supabase
-                  .from('wapi_conversations')
-                  .select('*')
-                  .eq('instance_id', instance.id)
-                  .eq('remote_jid', remoteJid)
-                  .single();
-                  
-                // Extract message content for preview
-                let previewContent = '';
-                const msgContent = msgContentDelivery;
+        if (fm && mcd && mId) {
+          const { data: em } = await supabase.from('wapi_messages').select('id').eq('message_id', mId).single();
+          if (!em) {
+            const cId = body?.chat?.id || sd?.chat?.id;
+            if (cId) {
+              let rj = cId.includes('@') ? cId : `${cId}@s.whatsapp.net`;
+              const p = rj.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@g.us', '').replace('@lid', '');
+              if (!rj.includes('@g.us')) {
+                const { data: ec } = await supabase.from('wapi_conversations').select('*').eq('instance_id', instance.id).eq('remote_jid', rj).single();
+                let pv = '';
+                if (mcd.conversation) pv = mcd.conversation;
+                else if (mcd.extendedTextMessage?.text) pv = mcd.extendedTextMessage.text;
+                else if (mcd.imageMessage) pv = '📷 Imagem';
+                else if (mcd.documentMessage) pv = '📄 ' + (mcd.documentMessage.fileName || 'Documento');
                 
-                if (msgContent.conversation) {
-                  previewContent = msgContent.conversation;
-                } else if (msgContent.extendedTextMessage?.text) {
-                  previewContent = msgContent.extendedTextMessage.text;
-                } else if (msgContent.imageMessage) {
-                  previewContent = '📷 Imagem';
-                } else if (msgContent.videoMessage) {
-                  previewContent = '🎥 Vídeo';
-                } else if (msgContent.audioMessage) {
-                  previewContent = '🎤 Áudio';
-                } else if (msgContent.documentMessage) {
-                  previewContent = '📄 ' + (msgContent.documentMessage.fileName || 'Documento');
-                }
+                let cv;
+                if (ec) { cv = ec; await supabase.from('wapi_conversations').update({ last_message_at: new Date().toISOString(), last_message_content: pv.substring(0, 100), last_message_from_me: true, ...(ec.bot_step && ec.bot_step !== 'complete' ? { bot_enabled: false } : {}) }).eq('id', ec.id); }
+                else { const { data: nc } = await supabase.from('wapi_conversations').insert({ instance_id: instance.id, remote_jid: rj, contact_phone: p, contact_name: body?.chat?.name || p, last_message_at: new Date().toISOString(), last_message_content: pv.substring(0, 100), last_message_from_me: true, bot_enabled: false }).select().single(); cv = nc; }
                 
-                if (existingConv) {
-                  conversation = existingConv;
-                  
-                  // If human is sending message while bot is active, disable bot
-                  if (existingConv.bot_step && existingConv.bot_step !== 'complete') {
-                    console.log('Human response from other device detected during bot flow, disabling bot');
-                    await supabase
-                      .from('wapi_conversations')
-                      .update({ 
-                        bot_enabled: false,
-                        last_message_at: new Date().toISOString(),
-                        last_message_content: previewContent.substring(0, 100),
-                        last_message_from_me: true,
-                      })
-                      .eq('id', existingConv.id);
-                  } else {
-                    await supabase
-                      .from('wapi_conversations')
-                      .update({ 
-                        last_message_at: new Date().toISOString(),
-                        last_message_content: previewContent.substring(0, 100),
-                        last_message_from_me: true,
-                      })
-                      .eq('id', existingConv.id);
-                  }
-                } else {
-                  // Create new conversation
-                  const contactName = body?.chat?.name || body?.chat?.pushName || contactPhone;
-                  const contactPicture = body?.chat?.profilePicture || null;
-                  
-                  const { data: newConv, error: convError } = await supabase
-                    .from('wapi_conversations')
-                    .insert({
-                      instance_id: instance.id,
-                      remote_jid: remoteJid,
-                      contact_phone: contactPhone,
-                      contact_name: contactName,
-                      contact_picture: contactPicture,
-                      last_message_at: new Date().toISOString(),
-                      unread_count: 0,
-                      last_message_content: previewContent.substring(0, 100),
-                      last_message_from_me: true,
-                      bot_enabled: false, // Human started conversation, no bot
-                    })
-                    .select()
-                    .single();
-
-                  if (convError) {
-                    console.error('Error creating conversation for outgoing message:', convError);
-                  } else {
-                    conversation = newConv;
-                  }
-                }
-                
-                if (conversation) {
-                  // Extract message content
-                  let content = '';
-                  let messageType = 'text';
-                  let mediaUrl = null;
-
-                  if (msgContent.conversation) {
-                    content = msgContent.conversation;
-                  } else if (msgContent.extendedTextMessage?.text) {
-                    content = msgContent.extendedTextMessage.text;
-                  } else if (msgContent.imageMessage) {
-                    messageType = 'image';
-                    content = msgContent.imageMessage.caption || '[Imagem]';
-                    mediaUrl = msgContent.imageMessage.url || msgContent.imageMessage.directPath || null;
-                  } else if (msgContent.videoMessage) {
-                    messageType = 'video';
-                    content = msgContent.videoMessage.caption || '[Vídeo]';
-                    mediaUrl = msgContent.videoMessage.url || msgContent.videoMessage.directPath || null;
-                  } else if (msgContent.audioMessage) {
-                    messageType = 'audio';
-                    content = '[Áudio]';
-                    mediaUrl = msgContent.audioMessage.url || msgContent.audioMessage.directPath || null;
-                  } else if (msgContent.documentMessage) {
-                    messageType = 'document';
-                    content = msgContent.documentMessage.fileName || '[Documento]';
-                    mediaUrl = msgContent.documentMessage.url || msgContent.documentMessage.directPath || null;
-                  }
-
-                  // Insert message
-                  const { error: msgError } = await supabase
-                    .from('wapi_messages')
-                    .insert({
-                      conversation_id: conversation.id,
-                      message_id: messageId,
-                      from_me: true,
-                      message_type: messageType,
-                      content: content,
-                      media_url: mediaUrl,
-                      status: 'sent',
-                      timestamp: body.moment 
-                        ? new Date(body.moment * 1000).toISOString() 
-                        : new Date().toISOString(),
-                    });
-
-                  if (msgError) {
-                    console.error('Error inserting outgoing message:', msgError);
-                  } else {
-                    console.log('Outgoing message saved from other device:', messageId, 'content:', content.substring(0, 50));
-                  }
+                if (cv) {
+                  let ct = '', tp = 'text', mu = null;
+                  if (mcd.conversation) ct = mcd.conversation;
+                  else if (mcd.extendedTextMessage?.text) ct = mcd.extendedTextMessage.text;
+                  else if (mcd.imageMessage) { tp = 'image'; ct = mcd.imageMessage.caption || '[Imagem]'; mu = mcd.imageMessage.url; }
+                  else if (mcd.documentMessage) { tp = 'document'; ct = mcd.documentMessage.fileName || '[Documento]'; mu = mcd.documentMessage.url; }
+                  await supabase.from('wapi_messages').insert({ conversation_id: cv.id, message_id: mId, from_me: true, message_type: tp, content: ct, media_url: mu, status: 'sent', timestamp: body.moment ? new Date(body.moment * 1000).toISOString() : new Date().toISOString() });
                 }
               }
             }
           }
         }
         
-        // Also update status if message exists
-        const statusMap: Record<string | number, string> = {
-          0: 'error',
-          1: 'pending',
-          2: 'sent',
-          3: 'delivered',
-          4: 'read',
-          'PENDING': 'pending',
-          'SENT': 'sent',
-          'DELIVERY': 'delivered',
-          'READ': 'read',
-          'PLAYED': 'read',
-          'ERROR': 'error',
-        };
-        
-        const newStatus = statusMap[status] || statusMap[ack] || 'unknown';
-        
-        if (messageId && newStatus !== 'unknown') {
-          await supabase
-            .from('wapi_messages')
-            .update({ status: newStatus })
-            .eq('message_id', messageId);
-          console.log('Message status updated:', messageId, newStatus);
-        }
+        const sm: Record<string | number, string> = { 0: 'error', 1: 'pending', 2: 'sent', 3: 'delivered', 4: 'read', 'PENDING': 'pending', 'SENT': 'sent', 'DELIVERY': 'delivered', 'READ': 'read', 'PLAYED': 'read', 'ERROR': 'error' };
+        const ns = sm[st] || sm[ack] || 'unknown';
+        if (mId && ns !== 'unknown') await supabase.from('wapi_messages').update({ status: ns }).eq('message_id', mId);
         break;
       }
-
-      default:
-        console.log('Unhandled event type:', eventType, 'body keys:', Object.keys(body));
+      default: console.log('Unhandled event:', evt);
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
-  } catch (error: unknown) {
-    console.error('Webhook error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  } catch (e: unknown) {
+    console.error('Webhook error:', e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Unknown error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
