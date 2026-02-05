@@ -31,7 +31,7 @@
  import { Badge } from "@/components/ui/badge";
  import { supabase } from "@/integrations/supabase/client";
  import { toast } from "sonner";
- import logoCastelo from "@/assets/logo-castelo.png";
+ import logoPlataforma from "@/assets/logo-plataforma-buffets.png";
  
  const features = [
    { icon: MessageSquare, title: "WhatsApp Integrado", desc: "Todas as conversas em um só lugar. Histórico completo, envio de mídia e templates." },
@@ -146,7 +146,7 @@
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex items-center justify-between h-16">
              <Link to="/" className="flex items-center gap-3">
-               <img src={logoCastelo} alt="Logo" className="h-10 w-10 object-contain" />
+             <img src={logoPlataforma} alt="Logo" className="h-10 w-10 object-contain" />
                <span className="font-display font-bold text-lg">Plataforma para Buffets</span>
              </Link>
              <a href="#form" className="hidden sm:inline-flex">
@@ -628,7 +628,7 @@
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
              <div className="flex items-center gap-3">
-               <img src={logoCastelo} alt="Logo" className="h-10 w-10 object-contain" />
+             <img src={logoPlataforma} alt="Logo" className="h-10 w-10 object-contain" />
                <span className="font-display font-bold">Plataforma para Buffets</span>
              </div>
              <p className="text-sm opacity-70">
