@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.submit-b2b-lead]
 verify_jwt = false
+
+[functions.migrate-sales-materials]
+verify_jwt = false
