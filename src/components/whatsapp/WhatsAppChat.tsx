@@ -1653,9 +1653,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className={cn(
-                          "text-xs block truncate min-w-0 flex-1",
+                          "text-xs truncate",
                           conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
-                        )}>
+                        )}
+                        style={{ maxWidth: conv.unread_count > 0 ? 'calc(100% - 32px)' : '100%' }}
+                        >
                           {conv.last_message_from_me && (
                             <CheckCheck className="w-3 h-3 shrink-0 text-primary inline mr-1 align-text-bottom" />
                           )}
@@ -1664,7 +1666,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         {conv.unread_count > 0 && (
                           <AnimatedBadge 
                             value={conv.unread_count > 99 ? "99+" : conv.unread_count}
-                            className="h-[20px] min-w-[24px] px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full"
+                            className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full ml-auto"
                           />
                         )}
                       </div>
@@ -1846,9 +1848,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className={cn(
-                              "text-xs block truncate min-w-0 flex-1",
+                              "text-xs truncate",
                               conv.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
-                            )}>
+                            )}
+                            style={{ maxWidth: conv.unread_count > 0 ? 'calc(100% - 32px)' : '100%' }}
+                            >
                               {conv.last_message_from_me && (
                                 <CheckCheck className="w-3 h-3 shrink-0 text-primary inline mr-1 align-text-bottom" />
                               )}
@@ -1857,7 +1861,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             {conv.unread_count > 0 && (
                               <AnimatedBadge 
                                 value={conv.unread_count > 99 ? "99+" : conv.unread_count}
-                                className="h-[20px] min-w-[24px] px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full"
+                                className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold shrink-0 rounded-full ml-auto"
                               />
                             )}
                           </div>
