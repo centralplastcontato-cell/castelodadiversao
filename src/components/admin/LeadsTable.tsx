@@ -233,7 +233,7 @@ export function LeadsTable({
   }
 
   return (
-    <div className="bg-card rounded-xl border border-border overflow-hidden">
+   <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col max-h-[calc(100vh-320px)]">
       {/* Header */}
       <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -301,7 +301,7 @@ export function LeadsTable({
       </div>
 
       {/* Desktop: Table View */}
-     <div className="hidden sm:block overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
+     <div className="hidden sm:block overflow-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent flex-1 min-h-0">
         <Table>
           <TableHeader>
             <TableRow>
