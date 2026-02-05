@@ -1667,7 +1667,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         {conv.unread_count > 0 && (
                           <AnimatedBadge 
                             value={conv.unread_count > 99 ? "99+" : conv.unread_count}
-                            className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold rounded-full bg-destructive text-destructive-foreground"
+                           className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold rounded-full bg-primary text-primary-foreground"
                           />
                         )}
                       </div>
@@ -1863,7 +1863,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             {conv.unread_count > 0 && (
                               <AnimatedBadge 
                                 value={conv.unread_count > 99 ? "99+" : conv.unread_count}
-                                className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold rounded-full bg-destructive text-destructive-foreground"
+                               className="h-5 min-w-6 px-1.5 flex items-center justify-center text-[11px] font-bold rounded-full bg-primary text-primary-foreground"
                               />
                             )}
                           </div>
