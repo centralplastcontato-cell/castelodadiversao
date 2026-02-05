@@ -1689,7 +1689,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     closedLeadCount={closedLeadConversationIds.size}
                     orcamentoEnviadoCount={orcamentoEnviadoConversationIds.size}
                     collapsible={true}
-                    defaultOpen={true}
+                    defaultOpen={false}
                   />
                 </div>
                 
