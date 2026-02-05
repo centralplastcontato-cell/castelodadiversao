@@ -155,10 +155,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true); // Assume there are more until proven otherwise
   const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
   const [oldestMessageTimestamp, setOldestMessageTimestamp] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [hasUserScrolledToTop, setHasUserScrolledToTop] = useState(false); // Track if user manually scrolled to top
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites'>('all');
@@ -554,6 +555,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const prevMessagesLengthRef = useRef(0);
   const lastMessageFromMeRef = useRef(false);
   
+  // Reliable scroll to bottom function with double rAF for Safari
+  const scrollToBottomInstant = (viewport: Element) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        viewport.scrollTop = viewport.scrollHeight;
+      });
+    });
+  };
+  
   useEffect(() => {
     const messagesLength = messages.length;
     const lastMessage = messages[messagesLength - 1];
@@ -571,14 +581,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     );
     
     if (shouldScrollToBottom) {
-      const endElement = messagesEndRefDesktop.current || messagesEndRefMobile.current;
-      if (endElement) {
-        const viewport = endElement.closest('[data-radix-scroll-area-viewport]');
-        if (viewport) {
+      const desktopViewport = scrollAreaDesktopRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      const mobileViewport = scrollAreaMobileRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      const viewport = desktopViewport || mobileViewport;
+      
+      if (viewport) {
+        if (isInitialLoad) {
+          // Use instant scroll with double rAF for initial load (Safari fix)
+          scrollToBottomInstant(viewport);
+        } else {
+          // Use smooth scroll for new messages
           requestAnimationFrame(() => {
-            // Use instant scroll for initial load, smooth for new messages
-            const behavior = isInitialLoad ? 'instant' : 'smooth';
-            viewport.scrollTo({ top: viewport.scrollHeight, behavior: behavior as ScrollBehavior });
+            viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
           });
         }
       }
@@ -596,6 +610,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLDivElement;
       const scrollTop = target.scrollTop;
+      
+      // Track when user reaches top (within 50px)
+      if (scrollTop < 50 && !isInitialLoad && messages.length > 0) {
+        setHasUserScrolledToTop(true);
+      }
       
       // Load more when scrolled near top (within 120px) and not during initial load
       if (scrollTop < 120 && hasMoreMessages && !isLoadingMoreRef.current && !isInitialLoad && messages.length > 0) {
@@ -820,8 +839,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       setIsLoadingMessages(true);
       setMessages([]);
       setOldestMessageTimestamp(null);
-      setHasMoreMessages(false);
+      setHasMoreMessages(true); // Assume there are more until proven otherwise
       setIsInitialLoad(true);
+      setHasUserScrolledToTop(false); // Reset scroll tracking on new conversation
     }
     
     try {
@@ -893,12 +913,14 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       
       await fetchMessages(selectedConversation.id, true);
       
-      // Restore scroll position after messages are prepended
+      // Restore scroll position after messages are prepended - use double rAF for Safari
       if (viewport) {
         requestAnimationFrame(() => {
-          const newScrollHeight = viewport.scrollHeight;
-          const scrollDiff = newScrollHeight - previousScrollHeight;
-          viewport.scrollTop = previousScrollTop + scrollDiff;
+          requestAnimationFrame(() => {
+            const newScrollHeight = viewport.scrollHeight;
+            const scrollDiff = newScrollHeight - previousScrollHeight;
+            viewport.scrollTop = previousScrollTop + scrollDiff;
+          });
         });
       }
     }
@@ -2463,8 +2485,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           </div>
                         )}
                         
-                        {/* Start of conversation indicator */}
-                        {!hasMoreMessages && messages.length > 0 && !isLoadingMessages && (
+                        {/* Start of conversation indicator - only show when user has scrolled to top and there are no more messages */}
+                        {!hasMoreMessages && messages.length > 0 && !isLoadingMessages && hasUserScrolledToTop && (
                           <div className="flex justify-center py-2">
                             <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
                               📬 Início da conversa
@@ -3078,8 +3100,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         </div>
                       )}
                       
-                      {/* Start of conversation indicator - mobile */}
-                      {!hasMoreMessages && messages.length > 0 && !isLoadingMessages && (
+                      {/* Start of conversation indicator - mobile - only show when user has scrolled to top and there are no more messages */}
+                      {!hasMoreMessages && messages.length > 0 && !isLoadingMessages && hasUserScrolledToTop && (
                         <div className="flex justify-center py-2">
                           <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
                             📬 Início da conversa
