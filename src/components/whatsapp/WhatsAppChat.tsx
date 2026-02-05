@@ -1091,15 +1091,35 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       // Note: The Edge Function already saves the message to the database,
       // and the realtime subscription will add it to the UI automatically.
       // No need for optimistic update here to avoid duplicate messages.
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro ao enviar",
-        description: error.message || "Não foi possível enviar a mensagem.",
+        description: error instanceof Error ? error.message : "Não foi possível enviar a mensagem.",
         variant: "destructive",
       });
     }
 
     setIsSending(false);
+  };
+
+  // Direct text message sender for SalesMaterialsMenu
+  const sendTextMessageDirect = async (message: string): Promise<void> => {
+    if (!message.trim() || !selectedConversation || !selectedInstance) return;
+
+    const response = await supabase.functions.invoke("wapi-send", {
+      body: {
+        action: "send-text",
+        phone: selectedConversation.contact_phone,
+        message: message,
+        conversationId: selectedConversation.id,
+        instanceId: selectedInstance.instance_id,
+        instanceToken: selectedInstance.instance_token,
+      },
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
   };
 
   const formatMessageTime = (timestamp: string) => {
@@ -2687,6 +2707,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             unit={selectedInstance.unit}
                             lead={linkedLead}
                             onSendMedia={sendMaterialByUrl}
+                            onSendTextMessage={sendTextMessageDirect}
                             disabled={isSending}
                           />
                         )}
@@ -3251,6 +3272,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         unit={selectedInstance.unit}
                         lead={linkedLead}
                         onSendMedia={sendMaterialByUrl}
+                        onSendTextMessage={sendTextMessageDirect}
                         disabled={isSending}
                       />
                     )}

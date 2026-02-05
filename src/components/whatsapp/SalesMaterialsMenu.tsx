@@ -47,6 +47,7 @@ interface SalesMaterialsMenuProps {
   unit: string;
   lead?: Lead | null;
   onSendMedia: (url: string, type: "document" | "image" | "video", caption?: string, fileName?: string) => Promise<void>;
+  onSendTextMessage?: (message: string) => Promise<void>;
   disabled?: boolean;
   variant?: "icon" | "full";
 }
@@ -56,7 +57,8 @@ type CategoryType = "main" | "pdf_package" | "photo" | "video";
 export function SalesMaterialsMenu({ 
   unit, 
   lead, 
-  onSendMedia, 
+  onSendMedia,
+  onSendTextMessage,
   disabled = false,
   variant = "icon"
 }: SalesMaterialsMenuProps) {
@@ -133,6 +135,23 @@ export function SalesMaterialsMenu({
         if (material.guest_count) {
           caption = `📋 ${material.name} - Pacote para ${material.guest_count} pessoas`;
         }
+        
+        // Send a personalized intro message before the PDF
+        if (onSendTextMessage && material.guest_count) {
+          const leadName = lead?.name?.split(' ')[0] || ''; // First name only
+          const guestCount = material.guest_count;
+          
+          let introMessage = '';
+          if (leadName) {
+            introMessage = `Oi ${leadName}! Segue o pacote para ${guestCount} convidados da unidade ${unit}. Qualquer dúvida, estou à disposição! 🎉`;
+          } else {
+            introMessage = `Segue o pacote para ${guestCount} convidados da unidade ${unit}. Qualquer dúvida, estou à disposição! 🎉`;
+          }
+          
+          await onSendTextMessage(introMessage);
+          // Small delay to ensure message order
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
 
       await onSendMedia(material.file_url, mediaType, caption, fileName);
@@ -143,10 +162,10 @@ export function SalesMaterialsMenu({
       });
       
       setIsOpen(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro ao enviar",
-        description: error.message || "Não foi possível enviar o material.",
+        description: error instanceof Error ? error.message : "Não foi possível enviar o material.",
         variant: "destructive",
       });
     }
