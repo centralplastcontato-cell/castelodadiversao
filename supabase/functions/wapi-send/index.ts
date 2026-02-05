@@ -554,8 +554,55 @@ Deno.serve(async (req) => {
           });
         }
         
+        // If already has a Supabase URL, return it
+        if (msg.media_url && msg.media_url.includes('supabase.co')) {
+          return new Response(JSON.stringify({ success: true, url: msg.media_url, mimeType: 'application/octet-stream' }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        // Try to download from WhatsApp URL directly if available
+        if (msg.media_url && (msg.media_url.includes('mmg.whatsapp.net') || msg.media_url.includes('w-api.app'))) {
+          console.log('Trying direct download from WhatsApp URL:', msg.media_url.substring(0, 60));
+          try {
+            const directRes = await fetch(msg.media_url);
+            if (directRes.ok) {
+              const ct = directRes.headers.get('content-type') || 'application/octet-stream';
+              const mimeType = ct.split(';')[0].trim();
+              const buf = await directRes.arrayBuffer();
+              
+              if (buf.byteLength > 0) {
+                const extMap: Record<string, string> = { 'image/jpeg': 'jpg', 'video/mp4': 'mp4', 'audio/ogg': 'ogg', 'application/pdf': 'pdf' };
+                const ext = extMap[mimeType] || 'bin';
+                const path = `received/downloads/${msgId}.${ext}`;
+                
+                const { error: upErr } = await supabase.storage.from('whatsapp-media').upload(path, buf, {
+                  contentType: mimeType,
+                  upsert: true,
+                });
+                
+                if (!upErr) {
+                  const { data: pubUrl } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+                  
+                  await supabase.from('wapi_messages').update({ 
+                    media_key: null, 
+                    media_direct_path: null,
+                    media_url: pubUrl.publicUrl 
+                  }).eq('message_id', msgId);
+                  
+                  return new Response(JSON.stringify({ success: true, url: pubUrl.publicUrl, mimeType }), {
+                    status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            console.log('Direct URL download failed, trying W-API:', e instanceof Error ? e.message : String(e));
+          }
+        }
+        
         if (!msg.media_key || !msg.media_direct_path) {
-          return new Response(JSON.stringify({ error: 'Dados de mídia não disponíveis', canRetry: false }), {
+          return new Response(JSON.stringify({ error: 'Mídia expirada ou indisponível', canRetry: false, hint: 'A mídia não pode mais ser baixada do WhatsApp' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
