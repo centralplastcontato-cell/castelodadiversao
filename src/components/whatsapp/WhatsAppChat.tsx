@@ -153,6 +153,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites'>('all');
@@ -486,8 +489,22 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
   useEffect(() => {
     if (selectedConversation) {
+      // Use cached lead data if available, otherwise fetch
+      const cachedLead = conversationLeadsMap[selectedConversation.id];
+      
+      // Start fetching messages immediately
       fetchMessages(selectedConversation.id);
-      fetchLinkedLead(selectedConversation.lead_id, selectedConversation);
+      
+      // Use cached lead if available, otherwise fetch
+      if (cachedLead) {
+        setLinkedLead(cachedLead);
+      } else if (selectedConversation.lead_id) {
+        // Only fetch if there's a lead_id but not in cache
+        fetchLinkedLead(selectedConversation.lead_id, selectedConversation);
+      } else {
+        // Try to auto-link by phone
+        fetchLinkedLead(null, selectedConversation);
+      }
 
       // Subscribe to realtime updates for messages
       const messagesChannel = supabase
@@ -738,15 +755,56 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     }
   };
 
-  const fetchMessages = async (conversationId: string) => {
-    const { data } = await supabase
-      .from("wapi_messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("timestamp", { ascending: true });
+  const MESSAGES_LIMIT = 100;
+  
+  const fetchMessages = async (conversationId: string, loadMore: boolean = false) => {
+    if (loadMore) {
+      setIsLoadingMoreMessages(true);
+    } else {
+      setIsLoadingMessages(true);
+      setMessages([]); // Clear immediately for faster perceived loading
+    }
+    
+    try {
+      // Get total count first to know if there are more messages
+      const { count } = await supabase
+        .from("wapi_messages")
+        .select("*", { count: 'exact', head: true })
+        .eq("conversation_id", conversationId);
+      
+      const offset = loadMore ? messages.length : 0;
+      
+      // Fetch only the last MESSAGES_LIMIT messages initially
+      // Order by timestamp DESC to get most recent, then reverse for display
+      const { data } = await supabase
+        .from("wapi_messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("timestamp", { ascending: false })
+        .range(offset, offset + MESSAGES_LIMIT - 1);
 
-    if (data) {
-      setMessages(data as Message[]);
+      if (data) {
+        // Reverse to display oldest first within the batch
+        const orderedMessages = data.reverse() as Message[];
+        
+        if (loadMore) {
+          // Prepend older messages
+          setMessages(prev => [...orderedMessages, ...prev]);
+        } else {
+          setMessages(orderedMessages);
+        }
+        
+        setHasMoreMessages((count || 0) > offset + orderedMessages.length);
+      }
+    } finally {
+      setIsLoadingMessages(false);
+      setIsLoadingMoreMessages(false);
+    }
+  };
+  
+  const loadMoreMessages = async () => {
+    if (selectedConversation && !isLoadingMoreMessages) {
+      await fetchMessages(selectedConversation.id, true);
     }
   };
 
@@ -2283,7 +2341,36 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   <div className="flex-1 relative min-h-0">
                     <ScrollArea ref={scrollAreaDesktopRef} className="h-full bg-muted/30">
                       <div className="space-y-2 sm:space-y-3 p-3 sm:p-4">
-                        {messages.length === 0 ? (
+                        {/* Load more messages button */}
+                        {hasMoreMessages && (
+                          <div className="flex justify-center pb-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={loadMoreMessages}
+                              disabled={isLoadingMoreMessages}
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              {isLoadingMoreMessages ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                  Carregando...
+                                </>
+                              ) : (
+                                'Carregar mensagens anteriores'
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {isLoadingMessages ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <Loader2 className="w-8 h-8 text-muted-foreground mb-3 animate-spin" />
+                            <p className="text-sm text-muted-foreground">
+                              Carregando mensagens...
+                            </p>
+                          </div>
+                        ) : messages.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-12 text-center">
                             <MessageSquare className="w-10 h-10 text-muted-foreground mb-3" />
                             <p className="text-sm text-muted-foreground">
@@ -2872,7 +2959,44 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 <div className="flex-1 relative min-h-0">
                   <ScrollArea ref={scrollAreaMobileRef} className="h-full bg-muted/30">
                     <div className="space-y-2 p-3">
-                      {messages.map((msg) => (
+                      {/* Load more messages button - mobile */}
+                      {hasMoreMessages && (
+                        <div className="flex justify-center pb-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={loadMoreMessages}
+                            disabled={isLoadingMoreMessages}
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            {isLoadingMoreMessages ? (
+                              <>
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                Carregando...
+                              </>
+                            ) : (
+                              'Carregar mais mensagens'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {isLoadingMessages ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <Loader2 className="w-8 h-8 text-muted-foreground mb-3 animate-spin" />
+                          <p className="text-sm text-muted-foreground">
+                            Carregando mensagens...
+                          </p>
+                        </div>
+                      ) : messages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <MessageSquare className="w-8 h-8 text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            Nenhuma mensagem ainda
+                          </p>
+                        </div>
+                      ) : (
+                      messages.map((msg) => (
                         <div
                           key={msg.id}
                           className={cn(
@@ -2923,7 +3047,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             </div>
                           </div>
                         </div>
-                      ))}
+                      ))
+                      )}
                       <div ref={messagesEndRefMobile} />
                     </div>
                   </ScrollArea>
