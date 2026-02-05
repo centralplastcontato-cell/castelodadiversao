@@ -60,9 +60,9 @@ const STATUS_CONFIG = [
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10'
   },
-  { 
+{ 
     value: 'aguardando_resposta', 
-    label: 'Aguardando Resposta', 
+    label: 'Negociando', 
     icon: Clock, 
     color: 'text-orange-500',
     bgColor: 'bg-orange-500/10'
@@ -109,7 +109,7 @@ export function ConversationStatusActions({
         novo: 'Novo',
         em_contato: 'Visita',
         orcamento_enviado: 'Orçamento Enviado',
-        aguardando_resposta: 'Aguardando Resposta',
+        aguardando_resposta: 'Negociando',
         fechado: 'Fechado',
         perdido: 'Perdido',
       };

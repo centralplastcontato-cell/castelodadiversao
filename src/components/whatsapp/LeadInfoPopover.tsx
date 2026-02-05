@@ -169,7 +169,7 @@ interface LeadInfoPopoverProps {
     { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
     { value: 'em_contato', label: 'Visita', color: 'bg-yellow-500' },
     { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
-    { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+    { value: 'aguardando_resposta', label: 'Negociando', color: 'bg-orange-500' },
     { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
     { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
   ];
@@ -191,7 +191,7 @@ interface LeadInfoPopoverProps {
       case 'novo': return 'Novo';
       case 'em_contato': return 'Visita';
       case 'orcamento_enviado': return 'Orçamento Enviado';
-      case 'aguardando_resposta': return 'Aguardando';
+      case 'aguardando_resposta': return 'Negociando';
       case 'fechado': return 'Fechado';
        case 'perdido': return 'Perdido';
        default: return status;

@@ -8,7 +8,7 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   novo: 'Novo',
   em_contato: 'Visita',
   orcamento_enviado: 'Orçamento enviado',
-  aguardando_resposta: 'Aguardando resposta',
+  aguardando_resposta: 'Negociando',
   fechado: 'Fechado',
   perdido: 'Perdido',
 };
