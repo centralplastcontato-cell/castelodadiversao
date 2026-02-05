@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -301,313 +301,202 @@ export function LeadsTable({
       </div>
 
       {/* Desktop: Table View with dual scrollbars */}
-      <DesktopTableWithDualScroll
-        leads={leads}
-        selectedIds={selectedIds}
-        isAdmin={isAdmin}
-        canEdit={canEdit}
-        responsaveis={responsaveis}
-        toggleSelectAll={toggleSelectAll}
-        toggleSelect={toggleSelect}
-        handleStatusChangeInline={handleStatusChangeInline}
-        getResponsavelName={getResponsavelName}
-        onLeadClick={onLeadClick}
-        formatWhatsAppLink={formatWhatsAppLink}
-        handleDeleteSingle={handleDeleteSingle}
-      />
-    </div>
-  );
-}
-
-// Extracted component for desktop table with dual scrollbars
-interface DesktopTableProps {
-  leads: Lead[];
-  selectedIds: Set<string>;
-  isAdmin: boolean;
-  canEdit: boolean;
-  responsaveis: UserWithRole[];
-  toggleSelectAll: () => void;
-  toggleSelect: (id: string) => void;
-  handleStatusChangeInline: (lead: Lead, newStatus: LeadStatus) => void;
-  getResponsavelName: (responsavelId: string | null) => string | null;
-  onLeadClick: (lead: Lead) => void;
-  formatWhatsAppLink: (phone: string) => string;
-  handleDeleteSingle: (id: string) => Promise<void>;
-}
-
-function DesktopTableWithDualScroll({
-  leads,
-  selectedIds,
-  isAdmin,
-  canEdit,
-  responsaveis,
-  toggleSelectAll,
-  toggleSelect,
-  handleStatusChangeInline,
-  getResponsavelName,
-  onLeadClick,
-  formatWhatsAppLink,
-  handleDeleteSingle,
-}: DesktopTableProps) {
-  const topScrollRef = useRef<HTMLDivElement>(null);
-  const tableScrollRef = useRef<HTMLDivElement>(null);
-  const [scrollWidth, setScrollWidth] = useState(0);
-  const isSyncing = useRef(false);
-
-  // Sync scroll positions between top scrollbar and table
-  const handleTopScroll = useCallback(() => {
-    if (isSyncing.current) return;
-    isSyncing.current = true;
-    if (topScrollRef.current && tableScrollRef.current) {
-      tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
-    }
-    requestAnimationFrame(() => { isSyncing.current = false; });
-  }, []);
-
-  const handleTableScroll = useCallback(() => {
-    if (isSyncing.current) return;
-    isSyncing.current = true;
-    if (topScrollRef.current && tableScrollRef.current) {
-      topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
-    }
-    requestAnimationFrame(() => { isSyncing.current = false; });
-  }, []);
-
-  // Update scroll width when table content changes
-  useEffect(() => {
-    const updateScrollWidth = () => {
-      if (tableScrollRef.current) {
-        const newScrollWidth = tableScrollRef.current.scrollWidth;
-        setScrollWidth(newScrollWidth);
-      }
-    };
-    // Initial update with a small delay to ensure content is rendered
-    const timeout = setTimeout(updateScrollWidth, 100);
-    const resizeObserver = new ResizeObserver(updateScrollWidth);
-    if (tableScrollRef.current) {
-      resizeObserver.observe(tableScrollRef.current);
-    }
-    return () => {
-      clearTimeout(timeout);
-      resizeObserver.disconnect();
-    };
-  }, [leads]);
-
-  // Only show top scrollbar if content is wider than container
-  const showTopScrollbar = scrollWidth > 0 && tableScrollRef.current && scrollWidth > tableScrollRef.current.clientWidth;
-
-  return (
-    <div className="hidden sm:flex flex-col flex-1 min-h-0">
-      {/* Top scrollbar */}
-      {showTopScrollbar && (
-        <div
-          ref={topScrollRef}
-          onScroll={handleTopScroll}
-          className="overflow-x-scroll shrink-0 border-b border-border"
-          style={{ overflowY: 'hidden', height: 12 }}
-        >
-          <div style={{ width: scrollWidth, height: 1 }} />
-        </div>
-      )}
-      
-      {/* Table container */}
-      <div
-        ref={tableScrollRef}
-        onScroll={handleTableScroll}
-        className="overflow-auto flex-1 min-h-0"
-      >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {isAdmin && (
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedIds.size === leads.length && leads.length > 0}
-                    onCheckedChange={toggleSelectAll}
-                    aria-label="Selecionar todos"
-                  />
-                </TableHead>
-              )}
-              <TableHead>Nome</TableHead>
-              <TableHead>WhatsApp</TableHead>
-              <TableHead>Unidade</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Responsável</TableHead>
-              <TableHead>Mês/Dia</TableHead>
-              <TableHead>Convidados</TableHead>
-              <TableHead>Chegou em</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leads.map((lead) => (
-              <TableRow
-                key={lead.id}
-                className={selectedIds.has(lead.id) ? "bg-muted/50" : ""}
-              >
+      {/* Desktop: Table View with always-visible scrollbar */}
+      <div className="hidden sm:flex flex-col flex-1 min-h-0">
+        <div className="overflow-auto flex-1 min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/50">
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {isAdmin && (
-                  <TableCell>
+                  <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedIds.has(lead.id)}
-                      onCheckedChange={() => toggleSelect(lead.id)}
-                      aria-label={`Selecionar ${lead.name}`}
+                      checked={selectedIds.size === leads.length && leads.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Selecionar todos"
                     />
-                  </TableCell>
+                  </TableHead>
                 )}
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{lead.name}</span>
-                    {lead.observacoes && (
-                      <MessageSquare className="w-3 h-3 text-primary" />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-muted-foreground" />
-                    {lead.whatsapp}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {lead.unit ? (
-                    <Badge variant="default" className="flex items-center gap-1 w-fit">
-                      <MapPin className="w-3 h-3" />
-                      {lead.unit}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {canEdit ? (
-                    <Select
-                      value={lead.status}
-                      onValueChange={(v) =>
-                        handleStatusChangeInline(lead, v as LeadStatus)
-                      }
-                    >
-                      <SelectTrigger className="w-40 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(LEAD_STATUS_LABELS).map(
-                          ([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={`w-2 h-2 rounded-full ${
-                                    LEAD_STATUS_COLORS[value as LeadStatus]
-                                  }`}
-                                />
-                                {label}
-                              </div>
-                            </SelectItem>
-                          )
-                        )}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          LEAD_STATUS_COLORS[lead.status]
-                        }`}
-                      />
-                      {LEAD_STATUS_LABELS[lead.status]}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {getResponsavelName(lead.responsavel_id) || (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {lead.month ? (
-                    <Badge variant="secondary">
-                      {lead.day_of_month || lead.day_preference || "-"}/{lead.month}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {lead.guests ? (
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      {lead.guests}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                    <Calendar className="w-4 h-4 shrink-0" />
-                    <span className="whitespace-nowrap">
-                      {format(new Date(lead.created_at), "dd/MM/yy 'às' HH:mm", {
-                        locale: ptBR,
-                      })}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onLeadClick(lead)}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <a
-                        href={formatWhatsAppLink(lead.whatsapp)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </Button>
-
-                    {isAdmin && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja excluir o lead de{" "}
-                              <strong>{lead.name}</strong>? Esta ação não pode ser
-                              desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteSingle(lead.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </TableCell>
+                <TableHead>Nome</TableHead>
+                <TableHead>WhatsApp</TableHead>
+                <TableHead>Unidade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Responsável</TableHead>
+                <TableHead>Mês/Dia</TableHead>
+                <TableHead>Convidados</TableHead>
+                <TableHead>Chegou em</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {leads.map((lead) => (
+                <TableRow
+                  key={lead.id}
+                  className={selectedIds.has(lead.id) ? "bg-muted/50" : ""}
+                >
+                  {isAdmin && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(lead.id)}
+                        onCheckedChange={() => toggleSelect(lead.id)}
+                        aria-label={`Selecionar ${lead.name}`}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{lead.name}</span>
+                      {lead.observacoes && (
+                        <MessageSquare className="w-3 h-3 text-primary" />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-muted-foreground" />
+                      {lead.whatsapp}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {lead.unit ? (
+                      <Badge variant="default" className="flex items-center gap-1 w-fit">
+                        <MapPin className="w-3 h-3" />
+                        {lead.unit}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {canEdit ? (
+                      <Select
+                        value={lead.status}
+                        onValueChange={(v) =>
+                          handleStatusChangeInline(lead, v as LeadStatus)
+                        }
+                      >
+                        <SelectTrigger className="w-40 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(LEAD_STATUS_LABELS).map(
+                            ([value, label]) => (
+                              <SelectItem key={value} value={value}>
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className={`w-2 h-2 rounded-full ${
+                                      LEAD_STATUS_COLORS[value as LeadStatus]
+                                    }`}
+                                  />
+                                  {label}
+                                </div>
+                              </SelectItem>
+                            )
+                          )}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            LEAD_STATUS_COLORS[lead.status]
+                          }`}
+                        />
+                        {LEAD_STATUS_LABELS[lead.status]}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {getResponsavelName(lead.responsavel_id) || (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {lead.month ? (
+                      <Badge variant="secondary">
+                        {lead.day_of_month || lead.day_preference || "-"}/{lead.month}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {lead.guests ? (
+                      <div className="flex items-center gap-1">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        {lead.guests}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                      <Calendar className="w-4 h-4 shrink-0" />
+                      <span className="whitespace-nowrap">
+                        {format(new Date(lead.created_at), "dd/MM/yy 'às' HH:mm", {
+                          locale: ptBR,
+                        })}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onLeadClick(lead)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" asChild>
+                        <a
+                          href={formatWhatsAppLink(lead.whatsapp)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </Button>
+
+                      {isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir o lead de{" "}
+                                <strong>{lead.name}</strong>? Esta ação não pode ser
+                                desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteSingle(lead.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
