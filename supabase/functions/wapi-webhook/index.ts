@@ -368,13 +368,20 @@ async function downloadAndStoreMedia(
       return null;
     }
     
-    // Get public URL
-    const { data: publicUrl } = supabase.storage
+    // Create signed URL (1 week expiry for stored media)
+    // The bucket is now private, so we use signed URLs
+    const { data: signedUrl, error: signError } = await supabase.storage
       .from('whatsapp-media')
-      .getPublicUrl(storagePath);
+      .createSignedUrl(storagePath, 604800); // 7 days in seconds
     
-    console.log(`Media stored successfully: ${publicUrl.publicUrl}`);
-    return publicUrl.publicUrl;
+    if (signError) {
+      console.error('Failed to create signed URL:', signError);
+      // Fallback: return the storage path for later URL generation
+      return `storage://whatsapp-media/${storagePath}`;
+    }
+    
+    console.log(`Media stored successfully with signed URL`);
+    return signedUrl.signedUrl;
   } catch (err) {
     console.error('Error downloading/storing media:', err);
     return null;
