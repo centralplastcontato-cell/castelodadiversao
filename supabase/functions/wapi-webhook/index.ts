@@ -95,31 +95,101 @@ function getExt(mime: string, fn?: string): string {
 
 async function downloadMedia(supabase: SupabaseClient, iId: string, iToken: string, msgId: string, type: string, fn?: string, mKey?: string | null, dPath?: string | null, mUrl?: string | null, mime?: string | null): Promise<{ url: string; fileName: string } | null> {
   try {
-    if (!mKey || !dPath) return null;
+    if (!mKey || !dPath) {
+      console.log(`[${msgId}] Skipping download - missing mediaKey or directPath`);
+      return null;
+    }
+    
+    console.log(`[${msgId}] Starting download for type: ${type}`);
     const defMime = type === 'image' ? 'image/jpeg' : type === 'video' ? 'video/mp4' : type === 'audio' ? 'audio/ogg' : mime || 'application/pdf';
     const body = { messageId: msgId, type, mimetype: defMime, mediaKey: mKey, directPath: dPath, ...(mUrl && !mUrl.includes('supabase.co') ? { url: mUrl } : {}) };
-    const res = await fetch(`${WAPI_BASE_URL}/message/download-media?instanceId=${iId}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${iToken}` }, body: JSON.stringify(body) });
-    if (!res.ok) return null;
-    const r = await res.json();
-    let b64 = r.base64 || r.data || r.media, rMime = r.mimetype || r.mimeType || defMime;
-    const link = r.fileLink || r.file_link || r.url || r.link;
-    if (!b64 && link) {
-      const fr = await fetch(link); if (!fr.ok) return null;
-      const ct = fr.headers.get('content-type'); if (ct) rMime = ct.split(';')[0].trim();
-      const ab = await fr.arrayBuffer(), bytes = new Uint8Array(ab);
-      if (type === 'document' && rMime === 'application/pdf' && !isPdfContent(bytes)) return null;
-      let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]); b64 = btoa(bin);
+    
+    const res = await fetch(`${WAPI_BASE_URL}/message/download-media?instanceId=${iId}`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${iToken}` }, 
+      body: JSON.stringify(body) 
+    });
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[${msgId}] W-API download failed: ${res.status} - ${errText.substring(0, 200)}`);
+      return null;
     }
-    if (!b64) return null;
-    const bs = atob(b64), bytes = new Uint8Array(bs.length); for (let i = 0; i < bs.length; i++) bytes[i] = bs.charCodeAt(i);
-    if (type === 'document' && (rMime === 'application/pdf' || fn?.toLowerCase().endsWith('.pdf')) && !isPdfContent(bytes)) return null;
+    
+    const r = await res.json();
+    console.log(`[${msgId}] W-API response keys: ${Object.keys(r).join(', ')}`);
+    
+    let b64 = r.base64 || r.data || r.media;
+    let rMime = r.mimetype || r.mimeType || defMime;
+    const link = r.fileLink || r.file_link || r.url || r.link;
+    
+    // If W-API returns a fileLink instead of base64, fetch it
+    if (!b64 && link) {
+      console.log(`[${msgId}] Fetching from fileLink: ${link.substring(0, 50)}...`);
+      const fr = await fetch(link);
+      if (!fr.ok) {
+        console.error(`[${msgId}] Failed to fetch fileLink: ${fr.status}`);
+        return null;
+      }
+      const ct = fr.headers.get('content-type');
+      if (ct) rMime = ct.split(';')[0].trim();
+      
+      const ab = await fr.arrayBuffer();
+      const bytes = new Uint8Array(ab);
+      console.log(`[${msgId}] Downloaded ${bytes.length} bytes from fileLink`);
+      
+      // PDF validation
+      if (type === 'document' && rMime === 'application/pdf' && !isPdfContent(bytes)) {
+        console.log(`[${msgId}] Invalid PDF content, skipping`);
+        return null;
+      }
+      
+      // Convert to base64 in chunks to avoid memory issues
+      const CHUNK_SIZE = 32768;
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+        const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.length));
+        bin += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      b64 = btoa(bin);
+    }
+    
+    if (!b64) {
+      console.log(`[${msgId}] No base64 data received from W-API`);
+      return null;
+    }
+    
+    console.log(`[${msgId}] Got base64 data, length: ${b64.length}`);
+    
+    // Decode base64 in chunks
+    const bs = atob(b64);
+    const bytes = new Uint8Array(bs.length);
+    for (let i = 0; i < bs.length; i++) bytes[i] = bs.charCodeAt(i);
+    
+    // PDF validation
+    if (type === 'document' && (rMime === 'application/pdf' || fn?.toLowerCase().endsWith('.pdf')) && !isPdfContent(bytes)) {
+      console.log(`[${msgId}] Invalid PDF content after decode, skipping`);
+      return null;
+    }
+    
     const ext = getExt(rMime, fn);
     const path = type === 'document' && fn ? `received/documents/${msgId}_${fn.replace(/[^a-zA-Z0-9\-_\.]/g, '_').substring(0, 100)}` : `received/${type}s/${msgId}.${ext}`;
+    
+    console.log(`[${msgId}] Uploading ${bytes.length} bytes to ${path}`);
     const { error } = await supabase.storage.from('whatsapp-media').upload(path, bytes, { contentType: rMime, upsert: true });
-    if (error) return null;
+    
+    if (error) {
+      console.error(`[${msgId}] Storage upload error:`, error.message);
+      return null;
+    }
+    
     const { data: pu } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+    console.log(`[${msgId}] Upload successful, URL: ${pu?.publicUrl?.substring(0, 60)}...`);
     return pu?.publicUrl ? { url: pu.publicUrl, fileName: fn || `${msgId}.${ext}` } : null;
-  } catch { return null; }
+  } catch (err) {
+    console.error(`[${msgId}] Download error:`, err instanceof Error ? err.message : String(err));
+    return null;
+  }
 }
 
 function extractMsgContent(mc: Record<string, unknown>, msg: Record<string, unknown>) {
