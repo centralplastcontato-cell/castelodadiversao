@@ -854,13 +854,13 @@ Deixe o prospect falar. Anote objeções.
                  </Card>
                </TabsContent>
 
-               <TabsContent value="objections" className="space-y-6">
-               {/* Proposals Tab */}
-               <TabsContent value="proposals">
-                 <ProposalGenerator />
-               </TabsContent>
+                {/* Proposals Tab */}
+                <TabsContent value="proposals">
+                  <ProposalGenerator />
+                </TabsContent>
 
-               {/* Objections Tab */}
+                {/* Objections Tab */}
+                <TabsContent value="objections" className="space-y-6">
                  <Card>
                    <CardHeader>
                      <CardTitle>🛡️ Quebrando Objeções</CardTitle>
