@@ -931,6 +931,16 @@ Deno.serve(async (req) => {
           shouldDownloadMedia = true;
           // Extract mime type for documents
           const docMimeType = msgContent.documentMessage.mimetype || 'application/pdf';
+          // Debug log - capture all documentMessage fields to understand W-API format
+          console.log('[DOCUMENT] Raw documentMessage fields:', JSON.stringify({
+            keys: Object.keys(msgContent.documentMessage),
+            fileName: msgContent.documentMessage.fileName,
+            mimetype: msgContent.documentMessage.mimetype,
+            hasUrl: !!msgContent.documentMessage.url,
+            hasMediaKey: !!msgContent.documentMessage.mediaKey,
+            hasDirectPath: !!msgContent.documentMessage.directPath,
+            hasFileLength: !!msgContent.documentMessage.fileLength,
+          }));
         } else if (message.body || message.text) {
           content = message.body || message.text;
         } else {
