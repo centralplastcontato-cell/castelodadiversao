@@ -1688,7 +1688,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     conversations={conversations}
                     closedLeadCount={closedLeadConversationIds.size}
                     orcamentoEnviadoCount={orcamentoEnviadoConversationIds.size}
-                    collapsible={false}
+                    collapsible={true}
+                    defaultOpen={true}
                   />
                 </div>
                 
