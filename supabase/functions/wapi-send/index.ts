@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,8 +7,101 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
+// Helper to get instance credentials
+async function getInstanceCredentials(
+  supabase: ReturnType<typeof createClient>,
+  req: Request,
+  body: { instanceId?: string; instanceToken?: string; unit?: string }
+): Promise<{ instance_id: string; instance_token: string } | Response> {
+  const { instanceId, instanceToken, unit } = body;
+  
+  // Direct credentials provided
+  if (instanceId && instanceToken) {
+    return { instance_id: instanceId, instance_token: instanceToken };
+  }
+  
+  // Fetch by unit (public chatbot flow)
+  if (unit) {
+    const { data: instance, error } = await supabase
+      .from('wapi_instances')
+      .select('instance_id, instance_token')
+      .eq('unit', unit)
+      .eq('status', 'connected')
+      .single();
+    
+    if (error || !instance) {
+      return new Response(JSON.stringify({ error: `Instância não encontrada para unidade ${unit}` }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    return { instance_id: instance.instance_id, instance_token: instance.instance_token };
+  }
+  
+  // Authenticated user flow
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  
+  if (authError || !user) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  
+  const { data: instance } = await supabase
+    .from('wapi_instances')
+    .select('instance_id, instance_token')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  
+  if (!instance) {
+    return new Response(JSON.stringify({ error: 'No W-API instance configured' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  
+  return { instance_id: instance.instance_id, instance_token: instance.instance_token };
+}
+
+// Helper for W-API calls with error handling
+async function wapiRequest(url: string, token: string, method: string, body?: unknown): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    
+    const contentType = res.headers.get('content-type');
+    if (contentType?.includes('text/html')) {
+      return { ok: false, error: 'Instância W-API indisponível' };
+    }
+    
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      return { ok: false, error: data.message || 'Erro na W-API' };
+    }
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erro de comunicação' };
+  }
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -19,135 +112,50 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { action, phone, message, conversationId, instanceId, instanceToken, unit } = body;
+    const { action, phone, message, conversationId } = body;
 
-    // Use provided instanceId/token or fallback to fetching from database
-    let instance_id = instanceId;
-    let instance_token = instanceToken;
+    const creds = await getInstanceCredentials(supabase, req, body);
+    if (creds instanceof Response) return creds;
+    const { instance_id, instance_token } = creds;
 
-    // If instance credentials are provided directly, allow public access (e.g., from landing page chatbot)
-    const isPublicCall = !!(instanceId && instanceToken);
-    
-    // If unit is provided without credentials, fetch instance by unit (public chatbot flow)
-    const isPublicUnitCall = !!(unit && !instanceId && !instanceToken);
-
-    if (isPublicUnitCall) {
-      // Fetch instance by unit using service role (bypasses RLS)
-      console.log('Fetching instance for unit:', unit);
-      const { data: instance, error: instanceError } = await supabase
-        .from('wapi_instances')
-        .select('instance_id, instance_token')
-        .eq('unit', unit)
-        .eq('status', 'connected')
-        .single();
-
-      if (instanceError || !instance) {
-        console.error('No connected instance found for unit:', unit, instanceError);
-        return new Response(JSON.stringify({ error: `Instância não encontrada para unidade ${unit}` }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      instance_id = instance.instance_id;
-      instance_token = instance.instance_token;
-      console.log('Found instance for unit:', unit, 'instanceId:', instance_id);
-    } else if (!isPublicCall) {
-      // If no instance credentials provided and no unit, require authentication
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
-        return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-      if (authError || !user) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Fetch instance from database for authenticated user
-      const { data: instance } = await supabase
-        .from('wapi_instances')
-        .select('*')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single();
-
-      if (!instance) {
-        return new Response(JSON.stringify({ error: 'No W-API instance configured' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      instance_id = instance.instance_id;
-      instance_token = instance.instance_token;
-    }
-
-    console.log('wapi-send called with action:', action, 'phone:', phone, 'isPublicCall:', isPublicCall, 'isPublicUnitCall:', isPublicUnitCall);
+    console.log('wapi-send:', action, phone ? `phone:${phone}` : '');
 
     switch (action) {
       case 'send-text': {
-        const textEncoder = new TextEncoder();
-        const encodedMessage = textEncoder.encode(message);
-        const decodedMessage = new TextDecoder('utf-8').decode(encodedMessage);
-        
-        const response = await fetch(
+        const res = await wapiRequest(
           `${WAPI_BASE_URL}/message/send-text?instanceId=${instance_id}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json; charset=utf-8',
-              'Authorization': `Bearer ${instance_token}`,
-            },
-            body: JSON.stringify({
-              phone: phone,
-              message: decodedMessage,
-            }),
-          }
+          instance_token,
+          'POST',
+          { phone, message }
         );
-
-        const result = await response.json();
-        console.log('W-API send-text response:', result);
-
-        if (!response.ok || result.error) {
-          return new Response(JSON.stringify({ error: result.message || 'Failed to send message' }), {
+        
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: res.error }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
+        const messageId = (res.data as { messageId?: string })?.messageId;
+        
         if (conversationId) {
-          await supabase
-            .from('wapi_messages')
-            .insert({
-              conversation_id: conversationId,
-              message_id: result.messageId,
-              from_me: true,
-              message_type: 'text',
-              content: message,
-              status: 'sent',
-              timestamp: new Date().toISOString(),
-            });
-
-          await supabase
-            .from('wapi_conversations')
-            .update({ 
-              last_message_at: new Date().toISOString(),
-              last_message_content: message.substring(0, 100),
-              last_message_from_me: true,
-            })
-            .eq('id', conversationId);
+          await supabase.from('wapi_messages').insert({
+            conversation_id: conversationId,
+            message_id: messageId,
+            from_me: true,
+            message_type: 'text',
+            content: message,
+            status: 'sent',
+            timestamp: new Date().toISOString(),
+          });
+          await supabase.from('wapi_conversations').update({ 
+            last_message_at: new Date().toISOString(),
+            last_message_content: message.substring(0, 100),
+            last_message_from_me: true,
+          }).eq('id', conversationId);
         }
 
-        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
+        return new Response(JSON.stringify({ success: true, messageId }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -157,1196 +165,538 @@ Deno.serve(async (req) => {
         const { base64, caption, mediaUrl } = body;
         
         let imageBase64 = base64;
-        
-        // Validate that we have image data
-        if (!base64 && !mediaUrl) {
-          console.error('send-image: No base64 or mediaUrl provided');
-          return new Response(JSON.stringify({ error: 'Imagem é obrigatória. Forneça base64 ou mediaUrl.' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        
-        // If base64 is provided directly (fast path - frontend already converted)
-        if (base64) {
-          imageBase64 = base64;
-          // Ensure it has data URI prefix
-          if (!imageBase64.startsWith('data:')) {
-            imageBase64 = `data:image/jpeg;base64,${imageBase64}`;
-          }
-          console.log('Using provided base64, length:', imageBase64.length);
-        } else if (mediaUrl) {
-          // Fallback: fetch from URL (slower path)
-          try {
-            console.log('Fetching image from URL:', mediaUrl);
-            const imageResponse = await fetch(mediaUrl);
-            
-            if (!imageResponse.ok) {
-              console.error('Failed to fetch image, status:', imageResponse.status);
-              return new Response(JSON.stringify({ error: 'Falha ao baixar imagem da URL' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-            
-            const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-            const arrayBuffer = await imageResponse.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            
-            if (bytes.length === 0) {
-              console.error('Image fetch returned empty data');
-              return new Response(JSON.stringify({ error: 'Imagem vazia ou inválida' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-            
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            const rawBase64 = btoa(binary);
-            imageBase64 = `data:${contentType};base64,${rawBase64}`;
-            console.log('Image converted to data URI, total length:', imageBase64.length);
-          } catch (err) {
-            console.error('Error fetching image from URL:', err);
-            return new Response(JSON.stringify({ error: 'Falha ao processar imagem: ' + (err instanceof Error ? err.message : String(err)) }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        if (!imageBase64 && mediaUrl) {
+          const imgRes = await fetch(mediaUrl);
+          if (!imgRes.ok) {
+            return new Response(JSON.stringify({ error: 'Falha ao baixar imagem' }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
+          const buf = await imgRes.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let bin = '';
+          for (let i = 0; i < bytes.length; i += 32768) {
+            const chunk = bytes.subarray(i, Math.min(i + 32768, bytes.length));
+            bin += String.fromCharCode.apply(null, Array.from(chunk));
+          }
+          const ct = imgRes.headers.get('content-type') || 'image/jpeg';
+          imageBase64 = `data:${ct};base64,${btoa(bin)}`;
         }
         
-        // Final validation
         if (!imageBase64) {
-          console.error('send-image: imageBase64 is empty after processing');
-          return new Response(JSON.stringify({ error: 'Dados da imagem não puderam ser processados' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          return new Response(JSON.stringify({ error: 'Imagem é obrigatória' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-
-        console.log('Sending image to W-API, phone:', phone, 'data URI length:', imageBase64.length);
         
-        const response = await fetch(
+        if (!imageBase64.startsWith('data:')) {
+          imageBase64 = `data:image/jpeg;base64,${imageBase64}`;
+        }
+
+        const res = await wapiRequest(
           `${WAPI_BASE_URL}/message/send-image?instanceId=${instance_id}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${instance_token}`,
-            },
-            body: JSON.stringify({
-              phone: phone,
-              image: imageBase64,
-              caption: caption || '',
-            }),
-          }
+          instance_token,
+          'POST',
+          { phone, image: imageBase64, caption: caption || '' }
         );
-
-        // Handle non-JSON responses (HTML error pages)
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('text/html')) {
-          const htmlText = await response.text();
-          console.error('W-API send-image returned HTML:', htmlText.substring(0, 200));
-          return new Response(JSON.stringify({ 
-            error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis.' 
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        let result;
-        try {
-          result = await response.json();
-        } catch (parseErr) {
-          console.error('Failed to parse W-API response:', parseErr);
-          return new Response(JSON.stringify({ error: 'Resposta inválida da W-API' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
         
-        console.log('W-API send-image response:', result);
-
-        if (!response.ok || result.error) {
-          console.error('W-API send-image failed:', result);
-          return new Response(JSON.stringify({ error: result.message || 'Falha ao enviar imagem' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: res.error }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
+        const messageId = (res.data as { messageId?: string })?.messageId;
+        
         if (conversationId) {
-          await supabase
-            .from('wapi_messages')
-            .insert({
-              conversation_id: conversationId,
-              message_id: result.messageId,
-              from_me: true,
-              message_type: 'image',
-              content: caption || '[Imagem]',
-              media_url: mediaUrl || null,
-              status: 'sent',
-              timestamp: new Date().toISOString(),
-            });
-
-          await supabase
-            .from('wapi_conversations')
-            .update({ 
-              last_message_at: new Date().toISOString(),
-              last_message_content: caption ? `📷 ${caption.substring(0, 90)}` : '📷 Imagem',
-              last_message_from_me: true,
-            })
-            .eq('id', conversationId);
+          await supabase.from('wapi_messages').insert({
+            conversation_id: conversationId,
+            message_id: messageId,
+            from_me: true,
+            message_type: 'image',
+            content: caption || '[Imagem]',
+            media_url: mediaUrl || null,
+            status: 'sent',
+            timestamp: new Date().toISOString(),
+          });
+          await supabase.from('wapi_conversations').update({ 
+            last_message_at: new Date().toISOString(),
+            last_message_content: caption ? `📷 ${caption.substring(0, 90)}` : '📷 Imagem',
+            last_message_from_me: true,
+          }).eq('id', conversationId);
         }
 
-        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({ success: true, messageId }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'send-audio': {
         const { base64: audioBase64, mediaUrl: audioMediaUrl } = body;
         
-        let finalAudioBase64 = audioBase64;
-        
-        if (audioMediaUrl && !audioBase64) {
-          try {
-            const audioResponse = await fetch(audioMediaUrl);
-            const arrayBuffer = await audioResponse.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            finalAudioBase64 = btoa(binary);
-          } catch (err) {
-            console.error('Error fetching audio from URL:', err);
-            return new Response(JSON.stringify({ error: 'Failed to fetch audio' }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+        let finalAudio = audioBase64;
+        if (!finalAudio && audioMediaUrl) {
+          const audioRes = await fetch(audioMediaUrl);
+          const buf = await audioRes.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let bin = '';
+          for (let i = 0; i < bytes.length; i += 32768) {
+            const chunk = bytes.subarray(i, Math.min(i + 32768, bytes.length));
+            bin += String.fromCharCode.apply(null, Array.from(chunk));
           }
+          finalAudio = btoa(bin);
         }
 
-        const response = await fetch(
+        const res = await wapiRequest(
           `${WAPI_BASE_URL}/message/send-audio?instanceId=${instance_id}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${instance_token}`,
-            },
-            body: JSON.stringify({
-              phone: phone,
-              base64: finalAudioBase64,
-            }),
-          }
+          instance_token,
+          'POST',
+          { phone, base64: finalAudio }
         );
-
-        // Handle non-JSON responses (HTML error pages)
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('text/html')) {
-          const htmlText = await response.text();
-          console.error('W-API send-audio returned HTML:', htmlText.substring(0, 200));
-          return new Response(JSON.stringify({ 
-            error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis.' 
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        let result;
-        try {
-          result = await response.json();
-        } catch (parseErr) {
-          console.error('Failed to parse W-API send-audio response:', parseErr);
-          return new Response(JSON.stringify({ error: 'Resposta inválida da W-API' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
         
-        console.log('W-API send-audio response:', result);
-
-        if (!response.ok || result.error) {
-          return new Response(JSON.stringify({ error: result.message || 'Failed to send audio' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: res.error }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
+        const messageId = (res.data as { messageId?: string })?.messageId;
+        
         if (conversationId) {
-          await supabase
-            .from('wapi_messages')
-            .insert({
-              conversation_id: conversationId,
-              message_id: result.messageId,
-              from_me: true,
-              message_type: 'audio',
-              content: '[Áudio]',
-              media_url: audioMediaUrl || null,
-              status: 'sent',
-              timestamp: new Date().toISOString(),
-            });
-
-          await supabase
-            .from('wapi_conversations')
-            .update({ 
-              last_message_at: new Date().toISOString(),
-              last_message_content: '🎤 Áudio',
-              last_message_from_me: true,
-            })
-            .eq('id', conversationId);
+          await supabase.from('wapi_messages').insert({
+            conversation_id: conversationId,
+            message_id: messageId,
+            from_me: true,
+            message_type: 'audio',
+            content: '[Áudio]',
+            media_url: audioMediaUrl || null,
+            status: 'sent',
+            timestamp: new Date().toISOString(),
+          });
+          await supabase.from('wapi_conversations').update({ 
+            last_message_at: new Date().toISOString(),
+            last_message_content: '🎤 Áudio',
+            last_message_from_me: true,
+          }).eq('id', conversationId);
         }
 
-        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({ success: true, messageId }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'send-document': {
-        const { fileName: docFileName, mediaUrl: docMediaUrl } = body;
+        const { fileName, mediaUrl: docUrl } = body;
         
-        // W-API requires a URL for documents, not base64
-        if (!docMediaUrl) {
-          console.error('send-document: No mediaUrl provided');
-          return new Response(JSON.stringify({ error: 'URL do documento é obrigatória.' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        if (!docUrl) {
+          return new Response(JSON.stringify({ error: 'URL do documento é obrigatória' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        // Extract file extension from fileName or URL
-        let fileExtension = '';
-        if (docFileName) {
-          const parts = docFileName.split('.');
-          if (parts.length > 1) {
-            fileExtension = parts[parts.length - 1].toLowerCase();
-          }
-        }
-        
-        // Fallback: try to extract from URL if no extension found
-        if (!fileExtension && docMediaUrl) {
-          const urlParts = docMediaUrl.split('.');
-          if (urlParts.length > 1) {
-            const lastPart = urlParts[urlParts.length - 1].split('?')[0]; // Remove query params
-            if (lastPart.length <= 5) { // Reasonable extension length
-              fileExtension = lastPart.toLowerCase();
-            }
-          }
-        }
+        const ext = fileName?.split('.').pop()?.toLowerCase() || 
+                    docUrl.split('.').pop()?.split('?')[0]?.toLowerCase() || 'pdf';
 
-        console.log('Sending document to W-API, phone:', phone, 'url:', docMediaUrl, 'fileName:', docFileName, 'extension:', fileExtension);
-
-        const response = await fetch(
+        const res = await wapiRequest(
           `${WAPI_BASE_URL}/message/send-document?instanceId=${instance_id}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${instance_token}`,
-            },
-            body: JSON.stringify({
-              phone: phone,
-              document: docMediaUrl,
-              fileName: docFileName || 'document',
-              extension: fileExtension || 'pdf', // W-API requires extension field
-            }),
-          }
+          instance_token,
+          'POST',
+          { phone, document: docUrl, fileName: fileName || 'document', extension: ext }
         );
-
-        // Handle non-JSON responses (HTML error pages)
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('text/html')) {
-          const htmlText = await response.text();
-          console.error('W-API send-document returned HTML:', htmlText.substring(0, 200));
-          return new Response(JSON.stringify({ 
-            error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis.' 
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        let result;
-        try {
-          result = await response.json();
-        } catch (parseErr) {
-          console.error('Failed to parse W-API response:', parseErr);
-          return new Response(JSON.stringify({ error: 'Resposta inválida da W-API' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
         
-        console.log('W-API send-document response:', result);
-
-        if (!response.ok || result.error) {
-          return new Response(JSON.stringify({ error: result.message || 'Failed to send document' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: res.error }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
+        const messageId = (res.data as { messageId?: string })?.messageId;
+        
         if (conversationId) {
-          await supabase
-            .from('wapi_messages')
-            .insert({
-              conversation_id: conversationId,
-              message_id: result.messageId,
-              from_me: true,
-              message_type: 'document',
-              content: docFileName || '[Documento]',
-              media_url: docMediaUrl,
-              status: 'sent',
-              timestamp: new Date().toISOString(),
-            });
-
-          await supabase
-            .from('wapi_conversations')
-            .update({ 
-              last_message_at: new Date().toISOString(),
-              last_message_content: `📄 ${docFileName || 'Documento'}`,
-              last_message_from_me: true,
-            })
-            .eq('id', conversationId);
+          await supabase.from('wapi_messages').insert({
+            conversation_id: conversationId,
+            message_id: messageId,
+            from_me: true,
+            message_type: 'document',
+            content: fileName || '[Documento]',
+            media_url: docUrl,
+            status: 'sent',
+            timestamp: new Date().toISOString(),
+          });
+          await supabase.from('wapi_conversations').update({ 
+            last_message_at: new Date().toISOString(),
+            last_message_content: `📄 ${fileName || 'Documento'}`,
+            last_message_from_me: true,
+          }).eq('id', conversationId);
         }
 
-        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({ success: true, messageId }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'send-video': {
-        const { mediaUrl: videoMediaUrl, caption: videoCaption } = body;
+        const { mediaUrl: videoUrl, caption } = body;
         
-        // W-API requires a URL for videos
-        if (!videoMediaUrl) {
-          console.error('send-video: No mediaUrl provided');
-          return new Response(JSON.stringify({ error: 'URL do vídeo é obrigatória.' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        if (!videoUrl) {
+          return new Response(JSON.stringify({ error: 'URL do vídeo é obrigatória' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        console.log('Sending video to W-API, phone:', phone, 'url:', videoMediaUrl);
-
-        const response = await fetch(
+        const res = await wapiRequest(
           `${WAPI_BASE_URL}/message/send-video?instanceId=${instance_id}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${instance_token}`,
-            },
-            body: JSON.stringify({
-              phone: phone,
-              video: videoMediaUrl,
-              caption: videoCaption || '',
-            }),
-          }
+          instance_token,
+          'POST',
+          { phone, video: videoUrl, caption: caption || '' }
         );
-
-        // Handle non-JSON responses (HTML error pages)
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('text/html')) {
-          const htmlText = await response.text();
-          console.error('W-API send-video returned HTML:', htmlText.substring(0, 200));
-          return new Response(JSON.stringify({ 
-            error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis.' 
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        let result;
-        try {
-          result = await response.json();
-        } catch (parseErr) {
-          console.error('Failed to parse W-API send-video response:', parseErr);
-          return new Response(JSON.stringify({ error: 'Resposta inválida da W-API' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
         
-        console.log('W-API send-video response:', result);
-
-        if (!response.ok || result.error) {
-          return new Response(JSON.stringify({ error: result.message || 'Failed to send video' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: res.error }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
+        const messageId = (res.data as { messageId?: string })?.messageId;
+        
         if (conversationId) {
-          await supabase
-            .from('wapi_messages')
-            .insert({
-              conversation_id: conversationId,
-              message_id: result.messageId,
-              from_me: true,
-              message_type: 'video',
-              content: videoCaption || '[Vídeo]',
-              media_url: videoMediaUrl,
-              status: 'sent',
-              timestamp: new Date().toISOString(),
-            });
-
-          await supabase
-            .from('wapi_conversations')
-            .update({ 
-              last_message_at: new Date().toISOString(),
-              last_message_content: videoCaption ? `🎬 ${videoCaption.substring(0, 90)}` : '🎬 Vídeo',
-              last_message_from_me: true,
-            })
-            .eq('id', conversationId);
+          await supabase.from('wapi_messages').insert({
+            conversation_id: conversationId,
+            message_id: messageId,
+            from_me: true,
+            message_type: 'video',
+            content: caption || '[Vídeo]',
+            media_url: videoUrl,
+            status: 'sent',
+            timestamp: new Date().toISOString(),
+          });
+          await supabase.from('wapi_conversations').update({ 
+            last_message_at: new Date().toISOString(),
+            last_message_content: caption ? `🎬 ${caption.substring(0, 90)}` : '🎬 Vídeo',
+            last_message_from_me: true,
+          }).eq('id', conversationId);
         }
 
-        return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({ success: true, messageId }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'get-status': {
         try {
-          // W-API uses the qr-code endpoint to check connection status
-          // When connected, it returns { connected: true, phone: "..." }
-          // When disconnected, it returns QR code data
-          console.log(`Checking status for instance: ${instance_id}`);
-          
-          const response = await fetch(
-            `${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}`,
-            {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${instance_token}`,
-              },
-            }
-          );
-
-          const contentType = response.headers.get('content-type');
-          console.log(`Get-status qr-code response: status=${response.status}, content-type=${contentType}`);
-
-          if (contentType?.includes('text/html')) {
-            const htmlText = await response.text();
-            console.error('W-API returned HTML instead of JSON:', htmlText.substring(0, 200));
-            
-            return new Response(JSON.stringify({ 
-              error: 'Instância W-API indisponível. Verifique se a instância está ativa e os créditos disponíveis no painel w-api.app',
-              status: 'disconnected',
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('W-API get-status failed:', response.status, errorText);
-            
-            // Return disconnected status instead of error
-            return new Response(JSON.stringify({ 
-              status: 'disconnected',
-              error: `W-API retornou erro: ${response.status}`,
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-
-          const result = await response.json();
-          console.log('W-API qr-code response for status:', JSON.stringify(result));
-
-          // W-API qr-code endpoint returns:
-          // - { connected: true, phone: "5511999999999" } when connected
-          // - { qrcode: "...", base64: "..." } when disconnected and waiting for scan
-          let status = 'disconnected';
-          let phoneNumber = null;
-          
-          if (result.connected === true) {
-            status = 'connected';
-            phoneNumber = result.phone || result.phoneNumber || null;
-          } else if (result.qrcode || result.base64 || result.qr) {
-            // Has QR code means waiting for connection
-            status = 'disconnected';
-          }
-          
-          return new Response(JSON.stringify({ 
-            status,
-            phoneNumber,
-            connected: result.connected === true,
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          const res = await fetch(`${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}`, {
+            headers: { 'Authorization': `Bearer ${instance_token}` },
           });
-        } catch (err) {
-          console.error('Error getting status:', err);
+          
+          const ct = res.headers.get('content-type');
+          if (ct?.includes('text/html') || !res.ok) {
+            return new Response(JSON.stringify({ status: 'disconnected' }), {
+              status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          const data = await res.json();
           return new Response(JSON.stringify({ 
-            error: 'Erro ao comunicar com W-API.',
-            status: 'disconnected',
+            status: data.connected ? 'connected' : 'disconnected',
+            phoneNumber: data.phone || null,
+            connected: data.connected === true,
           }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch {
+          return new Response(JSON.stringify({ status: 'disconnected' }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
       }
 
       case 'get-qr': {
-        const qrEndpoint = `${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}&image=enable`;
-        
-        console.log(`Fetching QR code from: ${qrEndpoint}`);
-        
         try {
-          const response = await fetch(qrEndpoint, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${instance_token}`,
-            },
-          });
-
-          const contentType = response.headers.get('content-type');
-          console.log(`Response content-type: ${contentType}, status: ${response.status}`);
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.log(`QR endpoint failed: ${response.status} - ${errorText}`);
-            return new Response(JSON.stringify({ 
-              error: `W-API retornou erro: ${response.status}`,
-              details: errorText
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-
-          if (contentType?.includes('application/json')) {
-            const result = await response.json();
-            console.log('W-API QR response:', JSON.stringify(result));
-            
-            // Check if instance is already connected
-            if (result.connected === true) {
-              return new Response(JSON.stringify({ 
-                connected: true,
-                message: 'Instância já está conectada',
-                success: true
-              }), {
-                status: 200,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-            
-            if (result.error) {
-              return new Response(JSON.stringify({ 
-                error: result.message || 'Erro ao obter QR Code',
-                details: result
-              }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-            
-            const qrCode = result.qrcode || result.qrCode || result.qr || result.base64;
-            
-            if (qrCode) {
-              return new Response(JSON.stringify({ 
-                qrCode: qrCode,
-                success: true
-              }), {
-                status: 200,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-            
-            return new Response(JSON.stringify({ 
-              error: 'QR Code não disponível. A instância pode já estar conectada.',
-              details: result
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          } else if (contentType?.includes('image')) {
-            const arrayBuffer = await response.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            const base64 = btoa(binary);
-            const mimeType = contentType || 'image/png';
-            const qrCode = `data:${mimeType};base64,${base64}`;
-            
-            return new Response(JSON.stringify({ 
-              qrCode: qrCode,
-              success: true
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          const res = await fetch(
+            `${WAPI_BASE_URL}/instance/qr-code?instanceId=${instance_id}&image=enable`,
+            { headers: { 'Authorization': `Bearer ${instance_token}` } }
+          );
+          
+          if (!res.ok) {
+            return new Response(JSON.stringify({ error: `Erro: ${res.status}` }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
           
-          const text = await response.text();
-          console.log('Unexpected response format:', text.substring(0, 200));
+          const ct = res.headers.get('content-type');
+          if (ct?.includes('application/json')) {
+            const data = await res.json();
+            if (data.connected) {
+              return new Response(JSON.stringify({ connected: true, success: true }), {
+                status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            const qr = data.qrcode || data.qrCode || data.qr || data.base64;
+            if (qr) {
+              return new Response(JSON.stringify({ qrCode: qr, success: true }), {
+                status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            return new Response(JSON.stringify({ error: 'QR não disponível' }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          } else if (ct?.includes('image')) {
+            const buf = await res.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            let bin = '';
+            for (let i = 0; i < bytes.length; i += 32768) {
+              const chunk = bytes.subarray(i, Math.min(i + 32768, bytes.length));
+              bin += String.fromCharCode.apply(null, Array.from(chunk));
+            }
+            return new Response(JSON.stringify({ qrCode: `data:${ct};base64,${btoa(bin)}`, success: true }), {
+              status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
           
-          return new Response(JSON.stringify({ 
-            error: 'Formato de resposta inesperado da W-API',
-            details: text.substring(0, 200)
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          return new Response(JSON.stringify({ error: 'Formato inesperado' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
-          
-        } catch (err) {
-          console.error('Error fetching QR code:', err);
-          return new Response(JSON.stringify({ 
-            error: 'Erro ao comunicar com W-API',
-            details: err instanceof Error ? err.message : 'Unknown error'
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Erro' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
       }
 
       case 'request-pairing-code': {
         const { phoneNumber } = body;
-        
         if (!phoneNumber) {
-          return new Response(JSON.stringify({ 
-            error: 'Número de telefone é obrigatório',
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          return new Response(JSON.stringify({ error: 'Número obrigatório' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-
-        // Clean phone - must include country code (55 for Brazil)
+        
         let cleanPhone = phoneNumber.replace(/\D/g, '');
-        
-        // Add Brazil country code if not present
-        if (!cleanPhone.startsWith('55')) {
-          cleanPhone = '55' + cleanPhone;
-        }
-        
-        console.log(`Requesting pairing code for phone: ${cleanPhone}, instance: ${instance_id}`);
+        if (!cleanPhone.startsWith('55')) cleanPhone = '55' + cleanPhone;
         
         try {
-          // W-API expects phoneNumber as query parameter
-          const response = await fetch(
+          const res = await fetch(
             `${WAPI_BASE_URL}/instance/pairing-code?instanceId=${instance_id}&phoneNumber=${cleanPhone}`,
-            {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${instance_token}`,
-              },
-            }
+            { headers: { 'Authorization': `Bearer ${instance_token}` } }
           );
-
-          const contentType = response.headers.get('content-type');
-          console.log(`Pairing code response: status=${response.status}, content-type=${contentType}`);
-
-          if (contentType?.includes('text/html')) {
-            const htmlText = await response.text();
-            console.error('W-API returned HTML instead of JSON:', htmlText.substring(0, 200));
-            return new Response(JSON.stringify({ 
-              error: 'Serviço W-API indisponível. Tente novamente em alguns minutos.',
-            }), {
-              status: 503,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('W-API pairing-code failed:', response.status, errorText);
-            
-            try {
-              const errorJson = JSON.parse(errorText);
-              return new Response(JSON.stringify({ 
-                error: errorJson.message || `Erro ao solicitar código: ${response.status}`,
-                details: errorJson
-              }), {
-                status: response.status,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            } catch {
-              return new Response(JSON.stringify({ 
-                error: `Erro ao solicitar código de pareamento: ${response.status}`,
-                details: errorText
-              }), {
-                status: response.status,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-          }
-
-          const result = await response.json();
-          console.log('W-API pairing code response:', JSON.stringify(result));
-
-          const pairingCode = result.pairingCode || result.code || result.pairing_code;
           
-          if (pairingCode) {
-            return new Response(JSON.stringify({ 
-              success: true,
-              pairingCode: pairingCode,
-              message: 'Código de pareamento gerado.',
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          if (!res.ok) {
+            const txt = await res.text();
+            return new Response(JSON.stringify({ error: `Erro: ${res.status}`, details: txt }), {
+              status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
           
-          if (result.connected) {
-            return new Response(JSON.stringify({ 
-              error: 'Esta instância já está conectada.',
-              connected: true
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          const data = await res.json();
+          const code = data.pairingCode || data.code || data.pairing_code;
+          if (code) {
+            return new Response(JSON.stringify({ success: true, pairingCode: code }), {
+              status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
-
-          return new Response(JSON.stringify({ 
-            error: 'Não foi possível gerar o código de pareamento.',
-            details: result
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          if (data.connected) {
+            return new Response(JSON.stringify({ error: 'Instância já conectada', connected: true }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          return new Response(JSON.stringify({ error: 'Código não disponível' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
-          
-        } catch (err) {
-          console.error('Error requesting pairing code:', err);
-          return new Response(JSON.stringify({ 
-            error: 'Erro ao comunicar com W-API',
-            details: err instanceof Error ? err.message : 'Unknown error'
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Erro' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
       }
 
       case 'configure-webhooks': {
-        const webhookUrl = body.webhookUrl;
-        
-        const webhookConfig = {
+        const { webhookUrl } = body;
+        const config = {
           onConnect: webhookUrl,
           onDisconnect: webhookUrl,
           onMessageSent: webhookUrl,
           onMessageReceived: webhookUrl,
           onMessageStatus: webhookUrl,
         };
-
-        const response = await fetch(
-          `${WAPI_BASE_URL}/instance/webhooks?instanceId=${instance_id}`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${instance_token}`,
-            },
-            body: JSON.stringify(webhookConfig),
-          }
-        );
-
-        const result = await response.json();
-        console.log('W-API webhooks config response:', result);
-
-        return new Response(JSON.stringify({ success: !result.error, result }), {
-          status: response.ok ? 200 : 400,
+        
+        const res = await fetch(`${WAPI_BASE_URL}/instance/webhooks?instanceId=${instance_id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${instance_token}` },
+          body: JSON.stringify(config),
+        });
+        
+        const data = await res.json();
+        return new Response(JSON.stringify({ success: !data.error, result: data }), {
+          status: res.ok ? 200 : 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'download-media': {
-        const { messageId: downloadMsgId } = body;
-        
-        if (!downloadMsgId) {
-          return new Response(JSON.stringify({ error: 'messageId é obrigatório' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        const { messageId: msgId } = body;
+        if (!msgId) {
+          return new Response(JSON.stringify({ error: 'messageId obrigatório' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        console.log(`Downloading media for message: ${downloadMsgId}`);
+        // Get message with instance info
+        const { data: msg, error: msgErr } = await supabase
+          .from('wapi_messages')
+          .select(`media_key, media_direct_path, media_url, message_type,
+            conversation:wapi_conversations!inner(instance:wapi_instances!inner(instance_id, instance_token))`)
+          .eq('message_id', msgId)
+          .single();
         
-        try {
-          // First, get message details AND the correct instance for this message
-          const { data: msgData, error: msgError } = await supabase
-            .from('wapi_messages')
-            .select(`
-              media_key, 
-              media_direct_path, 
-              media_url, 
-              message_type,
-              conversation:wapi_conversations!inner(
-                instance:wapi_instances!inner(
-                  instance_id,
-                  instance_token
-                )
-              )
-            `)
-            .eq('message_id', downloadMsgId)
-            .single();
-          
-          if (msgError || !msgData) {
-            console.error('Message not found:', msgError);
-            return new Response(JSON.stringify({ error: 'Mensagem não encontrada' }), {
-              status: 404,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-          
-          // Get the correct instance for this specific message
-          const msgInstance = (msgData.conversation as any)?.instance;
-          const msgInstanceId = msgInstance?.instance_id || instance_id;
-          const msgInstanceToken = msgInstance?.instance_token || instance_token;
-          
-          const mediaKey = msgData?.media_key;
-          const directPath = msgData?.media_direct_path;
-          const originalUrl = msgData?.media_url;
-          const messageType = msgData?.message_type || 'image';
-          
-          console.log(`Message found - instance: ${msgInstanceId}, hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}`);
-          
-          console.log(`Message lookup - hasMediaKey: ${!!mediaKey}, hasDirectPath: ${!!directPath}, type: ${messageType}`);
-          
-          // Check if we have the required data for W-API download
-          // W-API requires BOTH mediaKey AND directPath for the download-media endpoint
-          if (!mediaKey && !directPath) {
-            console.log('Missing both mediaKey and directPath - media cannot be downloaded');
-            return new Response(JSON.stringify({ 
-              error: 'Mídia não disponível para download',
-              details: 'Os dados necessários (mediaKey e directPath) não foram salvos no momento do recebimento.',
-              hint: 'Esta mídia pode ter expirado ou foi recebida antes da implementação do salvamento de metadados.',
-              canRetry: false,
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-          
-          if (!mediaKey) {
-            console.log('Missing mediaKey - cannot download');
-            return new Response(JSON.stringify({ 
-              error: 'Chave de mídia não disponível',
-              details: 'O mediaKey não foi salvo para esta mensagem.',
-              hint: 'A mídia pode ter expirado ou foi recebida antes da implementação do salvamento.',
-              canRetry: false,
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-          
-          if (!directPath) {
-            console.log('Missing directPath - cannot download');
-            return new Response(JSON.stringify({ 
-              error: 'Caminho de mídia não disponível',
-              details: 'O directPath não foi salvo para esta mensagem.',
-              hint: 'A mídia pode ter sido recebida antes da implementação do salvamento de directPath.',
-              canRetry: false,
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-          
-          // Map message type to mimetype
-          const getMimetypeFromType = (type: string): string => {
-            switch (type) {
-              case 'image': return 'image/jpeg';
-              case 'video': return 'video/mp4';
-              case 'audio': return 'audio/ogg';
-              case 'document': return 'application/pdf';
-              default: return 'application/octet-stream';
-            }
-          };
-          
-          // Build request body - W-API requires type, mimetype, mediaKey AND directPath for download
-          const requestBody: Record<string, unknown> = {
-            messageId: downloadMsgId,
-            type: messageType,
-            mimetype: getMimetypeFromType(messageType),
-            mediaKey: mediaKey,
-            directPath: directPath,
-          };
-          
-          // Include original URL if available and not already a Supabase URL
-          if (originalUrl && !originalUrl.includes('supabase.co')) {
-            requestBody.url = originalUrl;
-          }
-          
-          console.log('W-API download request:', JSON.stringify(requestBody));
-          
-          const downloadResponse = await fetch(
-            `${WAPI_BASE_URL}/message/download-media?instanceId=${msgInstanceId}`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${msgInstanceToken}`,
-              },
-              body: JSON.stringify(requestBody),
-            }
-          );
+        if (msgErr || !msg) {
+          return new Response(JSON.stringify({ error: 'Mensagem não encontrada' }), {
+            status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        if (!msg.media_key || !msg.media_direct_path) {
+          return new Response(JSON.stringify({ error: 'Dados de mídia não disponíveis', canRetry: false }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
 
-          if (!downloadResponse.ok) {
-            const errorText = await downloadResponse.text();
-            console.error(`W-API download failed: ${downloadResponse.status} - ${errorText}`);
-            
-            // Parse the error to give better feedback
-            let errorDetail = errorText.substring(0, 200);
-            let hint = 'Tente novamente mais tarde';
-            let canRetry = true;
-            
-            try {
-              const parsedError = JSON.parse(errorText);
-              if (parsedError.message?.includes('expirado') || parsedError.message?.includes('expired')) {
-                hint = 'A mídia expirou no servidor do WhatsApp';
-                canRetry = false;
-              }
-            } catch (_) {
-              // Not JSON, use raw text
-            }
-            
-            return new Response(JSON.stringify({ 
-              error: 'Falha ao baixar mídia da W-API',
-              details: errorDetail,
-              hint,
-              canRetry,
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
+        const inst = (msg.conversation as { instance?: { instance_id: string; instance_token: string } })?.instance;
+        const iId = inst?.instance_id || instance_id;
+        const iToken = inst?.instance_token || instance_token;
+        const msgType = msg.message_type || 'image';
 
-          const result = await downloadResponse.json();
-          console.log('W-API download response keys:', Object.keys(result));
-          
-          let base64Data = result.base64 || result.data || result.media;
-          let mimeType = result.mimetype || result.mimeType || getMimetypeFromType(messageType);
-          
-          // W-API may return a fileLink URL instead of base64 - we need to fetch it
-          const fileLink = result.fileLink || result.file_link || result.url || result.link;
-          
-          if (!base64Data && fileLink) {
-            console.log('W-API returned fileLink, fetching:', fileLink);
-            try {
-              const fileResponse = await fetch(fileLink);
-              if (!fileResponse.ok) {
-                console.error('Failed to fetch fileLink:', fileResponse.status);
-                return new Response(JSON.stringify({ 
-                  error: 'Falha ao baixar mídia do fileLink',
-                  details: `HTTP ${fileResponse.status}`,
-                  canRetry: true,
-                }), {
-                  status: 400,
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                });
-              }
-              
-              // Get content type from response
-              const contentType = fileResponse.headers.get('content-type');
-              if (contentType) {
-                mimeType = contentType.split(';')[0].trim();
-              }
-              
-              // Convert to base64 using chunked approach to avoid memory issues with large files
-              const arrayBuffer = await fileResponse.arrayBuffer();
-              const bytes = new Uint8Array(arrayBuffer);
-              
-              // Check file size - if too large (>15MB), skip base64 conversion and use streaming upload
-              const MAX_SIZE_FOR_BASE64 = 15 * 1024 * 1024; // 15MB
-              
-              if (bytes.length > MAX_SIZE_FOR_BASE64) {
-                console.log(`File too large for base64 (${bytes.length} bytes), using direct upload`);
-                
-                // Upload directly to storage without base64 conversion
-                const extensionMap: Record<string, string> = {
-                  'image/jpeg': 'jpg',
-                  'image/png': 'png',
-                  'image/webp': 'webp',
-                  'audio/ogg': 'ogg',
-                  'audio/mpeg': 'mp3',
-                  'video/mp4': 'mp4',
-                  'application/pdf': 'pdf',
-                };
-                const ext = extensionMap[mimeType] || 'bin';
-                const path = `received/downloads/${downloadMsgId}.${ext}`;
-                
-                const { error: directUploadError } = await supabase.storage
-                  .from('whatsapp-media')
-                  .upload(path, bytes, {
-                    contentType: mimeType,
-                    upsert: true,
-                  });
+        const mimeMap: Record<string, string> = { image: 'image/jpeg', video: 'video/mp4', audio: 'audio/ogg', document: 'application/pdf' };
+        const extMap: Record<string, string> = { 'image/jpeg': 'jpg', 'video/mp4': 'mp4', 'audio/ogg': 'ogg', 'application/pdf': 'pdf' };
 
-                if (directUploadError) {
-                  console.error('Direct storage upload error:', directUploadError);
-                  return new Response(JSON.stringify({ 
-                    error: 'Falha ao salvar mídia grande no storage',
-                    details: directUploadError.message,
-                  }), {
-                    status: 400,
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                  });
-                }
-                
-                const { data: directPublicUrl } = supabase.storage
-                  .from('whatsapp-media')
-                  .getPublicUrl(path);
-                
-                await supabase
-                  .from('wapi_messages')
-                  .update({ 
-                    media_key: null, 
-                    media_direct_path: null,
-                    media_url: directPublicUrl.publicUrl 
-                  })
-                  .eq('message_id', downloadMsgId);
-                
-                return new Response(JSON.stringify({ 
-                  success: true,
-                  url: directPublicUrl.publicUrl,
-                  mimeType,
-                }), {
-                  status: 200,
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                });
-              }
-              
-              // For smaller files, use chunked base64 conversion
-              const CHUNK_SIZE = 32768;
-              let binary = '';
-              for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
-                const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.length));
-                binary += String.fromCharCode.apply(null, Array.from(chunk));
-              }
-              base64Data = btoa(binary);
-              console.log('FileLink fetched successfully, size:', bytes.length);
-            } catch (fetchErr) {
-              console.error('Error fetching fileLink:', fetchErr);
-              return new Response(JSON.stringify({ 
-                error: 'Erro ao baixar mídia do link temporário',
-                details: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
-                canRetry: true,
-              }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-          }
-          
-          if (!base64Data) {
-            console.error('No media data found in response:', JSON.stringify(result).substring(0, 500));
-            return new Response(JSON.stringify({ 
-              error: 'Nenhum dado de mídia recebido',
-              responseKeys: Object.keys(result),
-              hint: 'A W-API não retornou dados válidos',
-              canRetry: false,
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        // Call W-API download
+        const dlRes = await fetch(`${WAPI_BASE_URL}/message/download-media?instanceId=${iId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${iToken}` },
+          body: JSON.stringify({
+            messageId: msgId,
+            type: msgType,
+            mimetype: mimeMap[msgType] || 'application/octet-stream',
+            mediaKey: msg.media_key,
+            directPath: msg.media_direct_path,
+          }),
+        });
+
+        if (!dlRes.ok) {
+          const txt = await dlRes.text();
+          console.error('W-API download failed:', txt.substring(0, 200));
+          return new Response(JSON.stringify({ error: 'Falha no download', details: txt.substring(0, 100), canRetry: true }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const dlData = await dlRes.json();
+        const fileLink = dlData.fileLink || dlData.url || dlData.link;
+        let base64 = dlData.base64 || dlData.data || dlData.media;
+        let mimeType = dlData.mimetype || mimeMap[msgType] || 'application/octet-stream';
+
+        // If fileLink, fetch it (with size limit to avoid memory issues)
+        if (!base64 && fileLink) {
+          console.log('Fetching fileLink:', fileLink);
+          const fileRes = await fetch(fileLink);
+          if (!fileRes.ok) {
+            return new Response(JSON.stringify({ error: 'Falha ao baixar do fileLink', canRetry: true }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
           
-          // Generate filename and store
-          const extensionMap: Record<string, string> = {
-            'image/jpeg': 'jpg',
-            'image/png': 'png',
-            'image/webp': 'webp',
-            'audio/ogg': 'ogg',
-            'audio/mpeg': 'mp3',
-            'video/mp4': 'mp4',
-            'application/pdf': 'pdf',
-          };
-          const extension = extensionMap[mimeType] || 'bin';
-          const storagePath = `received/downloads/${downloadMsgId}.${extension}`;
+          const ct = fileRes.headers.get('content-type');
+          if (ct) mimeType = ct.split(';')[0].trim();
           
-          // Convert base64 to binary
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
+          const buf = await fileRes.arrayBuffer();
           
-          // Upload to Supabase Storage
-          const { error: uploadError } = await supabase.storage
-            .from('whatsapp-media')
-            .upload(storagePath, bytes, {
+          // For large files (>10MB), upload directly without base64
+          if (buf.byteLength > 10 * 1024 * 1024) {
+            const ext = extMap[mimeType] || 'bin';
+            const path = `received/downloads/${msgId}.${ext}`;
+            
+            const { error: upErr } = await supabase.storage.from('whatsapp-media').upload(path, buf, {
               contentType: mimeType,
               upsert: true,
             });
-
-          if (uploadError) {
-            console.error('Storage upload error:', uploadError);
-            return new Response(JSON.stringify({ 
-              error: 'Falha ao salvar mídia no storage',
-              details: uploadError.message,
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            
+            if (upErr) {
+              console.error('Upload error:', upErr);
+              return new Response(JSON.stringify({ error: 'Falha ao salvar mídia' }), {
+                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            
+            const { data: pubUrl } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+            
+            await supabase.from('wapi_messages').update({ 
+              media_key: null, 
+              media_direct_path: null,
+              media_url: pubUrl.publicUrl 
+            }).eq('message_id', msgId);
+            
+            return new Response(JSON.stringify({ success: true, url: pubUrl.publicUrl, mimeType }), {
+              status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
           
-          // Get public URL
-          const { data: publicUrl } = supabase.storage
-            .from('whatsapp-media')
-            .getPublicUrl(storagePath);
-          
-          // Clear media_key and media_direct_path from database since we successfully downloaded
-          await supabase
-            .from('wapi_messages')
-            .update({ 
-              media_key: null, 
-              media_direct_path: null,
-              media_url: publicUrl.publicUrl 
-            })
-            .eq('message_id', downloadMsgId);
-          
-          return new Response(JSON.stringify({ 
-            success: true,
-            url: publicUrl.publicUrl,
-            mimeType,
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        } catch (err) {
-          console.error('Error downloading media:', err);
-          return new Response(JSON.stringify({ 
-            error: 'Erro ao baixar mídia',
-            details: err instanceof Error ? err.message : String(err),
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          // Smaller files: convert to base64 in chunks
+          const bytes = new Uint8Array(buf);
+          let bin = '';
+          for (let i = 0; i < bytes.length; i += 32768) {
+            const chunk = bytes.subarray(i, Math.min(i + 32768, bytes.length));
+            bin += String.fromCharCode.apply(null, Array.from(chunk));
+          }
+          base64 = btoa(bin);
+        }
+
+        if (!base64) {
+          return new Response(JSON.stringify({ error: 'Sem dados de mídia', canRetry: false }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
+
+        // Upload to storage
+        const ext = extMap[mimeType] || 'bin';
+        const path = `received/downloads/${msgId}.${ext}`;
+        
+        const binStr = atob(base64);
+        const bytes = new Uint8Array(binStr.length);
+        for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+        
+        const { error: upErr } = await supabase.storage.from('whatsapp-media').upload(path, bytes, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+        if (upErr) {
+          console.error('Upload error:', upErr);
+          return new Response(JSON.stringify({ error: 'Falha ao salvar mídia' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        const { data: pubUrl } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+        
+        await supabase.from('wapi_messages').update({ 
+          media_key: null, 
+          media_direct_path: null,
+          media_url: pubUrl.publicUrl 
+        }).eq('message_id', msgId);
+        
+        return new Response(JSON.stringify({ success: true, url: pubUrl.publicUrl, mimeType }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       default:
-        return new Response(JSON.stringify({ error: 'Invalid action' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({ error: `Ação desconhecida: ${action}` }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }
-
-  } catch (error: unknown) {
-    console.error('W-API send error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  } catch (error) {
+    console.error('wapi-send error:', error);
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
