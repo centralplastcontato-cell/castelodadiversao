@@ -102,13 +102,13 @@ export function MediaMessage({
         },
       });
 
-      // Success case
+      // Success case - check data first
       if (data?.success && data?.url) {
         setCurrentUrl(data.url);
         setImageLoadError(false);
         
-        // Update message in database
-        await supabase
+        // Update message in database (fire and forget, don't block UI)
+        void supabase
           .from('wapi_messages')
           .update({ media_url: data.url, media_key: null })
           .eq('message_id', messageId);
@@ -117,23 +117,25 @@ export function MediaMessage({
         return;
       }
 
-      // Error case - check if we can retry
-      // Try to get canRetry from data (edge function returns it in the response body)
-      const canRetry = data?.canRetry !== false;
+      // Handle error responses - data may contain error info even on 400
+      // Check canRetry from the response body (edge function returns it)
+      const responseData = data || {};
+      const canRetry = responseData.canRetry !== false;
       
-      if (!canRetry) {
+      if (!canRetry || responseData.error?.includes('não disponível') || responseData.error?.includes('expirada')) {
         // Permanent error - media expired or missing metadata
         setDownloadError('Mídia expirada');
       } else if (error) {
-        // Transient error - can retry
-        console.warn('Download failed, can retry:', error.message);
+        // Transient error from supabase client - might be retryable
+        console.warn('Download failed:', error.message);
         setDownloadError('Erro ao baixar');
       } else {
-        // Unknown error
+        // No success, no clear error - assume expired
         setDownloadError('Mídia expirada');
       }
-    } catch {
-      // Network or unexpected error - assume expired
+    } catch (err) {
+      // Network or unexpected error - don't crash, just show error
+      console.warn('Download exception:', err);
       setDownloadError('Mídia expirada');
     } finally {
       setIsDownloading(false);
