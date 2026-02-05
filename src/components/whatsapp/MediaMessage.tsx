@@ -93,41 +93,53 @@ export function MediaMessage({
     setDownloadError(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('wapi-send', {
-        body: {
-          action: 'download-media',
-          messageId,
-          instanceId,
-          instanceToken,
-        },
-      });
+      let data: Record<string, unknown> | null = null;
+      let fetchError: Error | null = null;
+
+      try {
+        const result = await supabase.functions.invoke('wapi-send', {
+          body: {
+            action: 'download-media',
+            messageId,
+            instanceId,
+            instanceToken,
+          },
+        });
+        data = result.data;
+        fetchError = result.error;
+      } catch (invokeErr) {
+        // supabase.functions.invoke can throw on non-2xx status
+        console.warn('Download invoke failed:', invokeErr);
+        fetchError = invokeErr instanceof Error ? invokeErr : new Error('Invoke failed');
+      }
 
       // Success case - check data first
       if (data?.success && data?.url) {
-        setCurrentUrl(data.url);
+        setCurrentUrl(data.url as string);
         setImageLoadError(false);
         
         // Update message in database (fire and forget, don't block UI)
         void supabase
           .from('wapi_messages')
-          .update({ media_url: data.url, media_key: null })
+          .update({ media_url: data.url as string, media_key: null })
           .eq('message_id', messageId);
 
-        onMediaUrlUpdate?.(data.url);
+        onMediaUrlUpdate?.(data.url as string);
         return;
       }
 
       // Handle error responses - data may contain error info even on 400
       // Check canRetry from the response body (edge function returns it)
-      const responseData = data || {};
+      const responseData = (data || {}) as Record<string, unknown>;
       const canRetry = responseData.canRetry !== false;
+      const errorMsg = typeof responseData.error === 'string' ? responseData.error : '';
       
-      if (!canRetry || responseData.error?.includes('não disponível') || responseData.error?.includes('expirada')) {
+      if (!canRetry || errorMsg.includes('não disponível') || errorMsg.includes('expirada')) {
         // Permanent error - media expired or missing metadata
         setDownloadError('Mídia expirada');
-      } else if (error) {
+      } else if (fetchError) {
         // Transient error from supabase client - might be retryable
-        console.warn('Download failed:', error.message);
+        console.warn('Download failed:', fetchError.message);
         setDownloadError('Erro ao baixar');
       } else {
         // No success, no clear error - assume expired
