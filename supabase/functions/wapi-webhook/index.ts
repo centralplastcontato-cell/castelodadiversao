@@ -929,18 +929,24 @@ Deno.serve(async (req) => {
           mediaKey = msgContent.documentMessage.mediaKey || null;
           mediaDirectPath = msgContent.documentMessage.directPath || null;
           shouldDownloadMedia = true;
-          // Extract mime type for documents
-          const docMimeType = msgContent.documentMessage.mimetype || 'application/pdf';
-          // Debug log - capture all documentMessage fields to understand W-API format
-          console.log('[DOCUMENT] Raw documentMessage fields:', JSON.stringify({
-            keys: Object.keys(msgContent.documentMessage),
-            fileName: msgContent.documentMessage.fileName,
-            mimetype: msgContent.documentMessage.mimetype,
-            hasUrl: !!msgContent.documentMessage.url,
-            hasMediaKey: !!msgContent.documentMessage.mediaKey,
-            hasDirectPath: !!msgContent.documentMessage.directPath,
-            hasFileLength: !!msgContent.documentMessage.fileLength,
-          }));
+          console.log('[DOCUMENT] documentMessage received:', msgContent.documentMessage.fileName);
+        } else if (msgContent.documentWithCaptionMessage) {
+          // Document with caption - the actual documentMessage is nested inside
+          const docMsg = msgContent.documentWithCaptionMessage.message?.documentMessage;
+          if (docMsg) {
+            messageType = 'document';
+            // Use caption if available, otherwise fileName
+            const caption = docMsg.caption || '';
+            content = caption || docMsg.fileName || '[Documento]';
+            mediaFileName = docMsg.fileName;
+            mediaUrl = docMsg.url || null;
+            mediaKey = docMsg.mediaKey || null;
+            mediaDirectPath = docMsg.directPath || null;
+            shouldDownloadMedia = true;
+            console.log('[DOCUMENT] documentWithCaptionMessage received:', docMsg.fileName, 'caption:', caption);
+          } else {
+            console.log('[DOCUMENT] documentWithCaptionMessage missing nested documentMessage');
+          }
         } else if (message.body || message.text) {
           content = message.body || message.text;
         } else {
@@ -961,6 +967,9 @@ Deno.serve(async (req) => {
         if (msgContent.videoMessage) mediaMimeType = msgContent.videoMessage.mimetype || null;
         if (msgContent.audioMessage) mediaMimeType = msgContent.audioMessage.mimetype || null;
         if (msgContent.documentMessage) mediaMimeType = msgContent.documentMessage.mimetype || null;
+        if (msgContent.documentWithCaptionMessage?.message?.documentMessage) {
+          mediaMimeType = msgContent.documentWithCaptionMessage.message.documentMessage.mimetype || null;
+        }
         
         if (shouldDownloadMedia && !fromMe && messageId) {
           console.log(`Attempting to download and store media for message: ${messageId}, type: ${messageType}, mimeType: ${mediaMimeType || 'N/A'}`);
