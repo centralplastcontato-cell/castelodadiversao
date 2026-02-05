@@ -30,48 +30,61 @@
  import { ProposalGenerator } from "@/components/admin/ProposalGenerator";
  import { B2BLeadsManager } from "@/components/admin/B2BLeadsManager";
  
- const ComercialB2B = () => {
-   const navigate = useNavigate();
-   const [currentUserName, setCurrentUserName] = useState("");
-   const [role, setRole] = useState<string | null>(null);
-   const [isLoading, setIsLoading] = useState(true);
-   const [copiedText, setCopiedText] = useState<string | null>(null);
- 
-   useEffect(() => {
-     const checkAuth = async () => {
-       const { data: { session } } = await supabase.auth.getSession();
-       if (!session) {
-         navigate("/auth");
-         return;
-       }
-       
-       // Fetch profile and role in parallel
-       const [profileResult, roleResult] = await Promise.all([
-         supabase
-           .from("profiles")
-           .select("full_name")
-           .eq("user_id", session.user.id)
-           .single(),
-         supabase
-           .from("user_roles")
-           .select("role")
-           .eq("user_id", session.user.id)
-           .maybeSingle()
-       ]);
-       
-       if (profileResult.data) {
-         setCurrentUserName(profileResult.data.full_name);
-       }
-       
-       if (roleResult.data) {
-         setRole(roleResult.data.role);
-       }
-       
-       setIsLoading(false);
-     };
-     
-     checkAuth();
-   }, [navigate]);
+const ComercialB2B = () => {
+  const navigate = useNavigate();
+  const [currentUserName, setCurrentUserName] = useState("");
+  const [role, setRole] = useState<string | null>(null);
+  const [hasB2BAccess, setHasB2BAccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/auth");
+        return;
+      }
+      
+      // Fetch profile, role, and B2B permission in parallel
+      const [profileResult, roleResult, permissionResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", session.user.id)
+          .single(),
+        supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .maybeSingle(),
+        supabase
+          .from("user_permissions")
+          .select("granted")
+          .eq("user_id", session.user.id)
+          .eq("permission", "b2b.view")
+          .maybeSingle()
+      ]);
+      
+      if (profileResult.data) {
+        setCurrentUserName(profileResult.data.full_name);
+      }
+      
+      const userRole = roleResult.data?.role;
+      if (userRole) {
+        setRole(userRole);
+      }
+      
+      // Admin has access by default, others need explicit permission
+      const isAdmin = userRole === "admin";
+      const hasPermission = permissionResult.data?.granted === true;
+      setHasB2BAccess(isAdmin || hasPermission);
+      
+      setIsLoading(false);
+    };
+    
+    checkAuth();
+  }, [navigate]);
  
    const handleLogout = async () => {
      await supabase.auth.signOut();
@@ -91,13 +104,49 @@
  
    const canManageUsers = role === "admin";
  
-   if (isLoading) {
-     return (
-       <div className="min-h-screen flex items-center justify-center">
-         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-       </div>
-     );
-   }
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Check if user has access to B2B section
+  if (!hasB2BAccess) {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full bg-background">
+          <AdminSidebar
+            canManageUsers={canManageUsers}
+            currentUserName={currentUserName}
+            onRefresh={handleRefresh}
+            onLogout={handleLogout}
+          />
+          
+          <main className="flex-1 overflow-auto">
+            <div className="p-6 max-w-6xl mx-auto">
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                <Shield className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Restrito</h1>
+                <p className="text-muted-foreground max-w-md">
+                  Você não tem permissão para acessar a seção Comercial B2B. 
+                  Entre em contato com um administrador para solicitar acesso.
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-6"
+                  onClick={() => navigate("/admin")}
+                >
+                  Voltar para Gestão de Leads
+                </Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
  
    const pitchText = `🎯 Transforme visitantes em contratos fechados — sem perder nenhum lead no WhatsApp.
  

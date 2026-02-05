@@ -43,6 +43,7 @@ const PERMISSION_PRESETS = {
       'users.view': true,
       'users.manage': true,
       'permissions.manage': true,
+      'b2b.view': true,
     },
   },
   comercialManchester: {
