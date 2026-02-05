@@ -21,7 +21,8 @@
    TrendingUp,
    FileText,
    Copy,
-   Check
+   Check,
+   Phone
  } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { toast } from "sonner";
@@ -138,7 +139,7 @@
  
              {/* Tabs */}
              <Tabs defaultValue="pitch" className="space-y-6">
-               <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+               <TabsList className="grid w-full grid-cols-5 h-auto p-1">
                  <TabsTrigger value="pitch" className="flex items-center gap-2 py-3">
                    <Target className="h-4 w-4" />
                    <span className="hidden sm:inline">Pitch de Vendas</span>
@@ -153,6 +154,11 @@
                    <DollarSign className="h-4 w-4" />
                    <span className="hidden sm:inline">Precificação</span>
                    <span className="sm:hidden">Preços</span>
+                 </TabsTrigger>
+                 <TabsTrigger value="scripts" className="flex items-center gap-2 py-3">
+                   <Phone className="h-4 w-4" />
+                   <span className="hidden sm:inline">Scripts</span>
+                   <span className="sm:hidden">Scripts</span>
                  </TabsTrigger>
                  <TabsTrigger value="objections" className="flex items-center gap-2 py-3">
                    <MessageSquare className="h-4 w-4" />
@@ -440,6 +446,350 @@
                </TabsContent>
  
                {/* Objections Tab */}
+               {/* Scripts Tab */}
+               <TabsContent value="scripts" className="space-y-6">
+                 {/* Cold Call */}
+                 <Card>
+                   <CardHeader>
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <Badge className="mb-2 bg-blue-500">Primeiro Contato</Badge>
+                         <CardTitle className="flex items-center gap-2">
+                           <Phone className="h-5 w-5" />
+                           Script de Ligação Fria
+                         </CardTitle>
+                         <CardDescription>Para prospecção ativa de novos buffets</CardDescription>
+                       </div>
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => copyToClipboard(`SCRIPT: LIGAÇÃO FRIA
+
+[ABERTURA - 10 segundos]
+"Oi, [NOME]? Aqui é o [SEU NOME]. Tudo bem? Consegue falar 2 minutinhos?"
+
+[CONTEXTO - 15 segundos]
+"Ótimo! Eu trabalho com uma plataforma de gestão comercial feita especialmente para buffets infantis. Estou ligando porque vi que vocês têm um espaço muito bonito e queria entender como vocês gerenciam os leads que chegam pelo WhatsApp."
+
+[PERGUNTA DE DOR - aguarde resposta]
+"Hoje vocês usam o WhatsApp no celular mesmo? Cada vendedor no seu?"
+
+[APROFUNDAR A DOR]
+Se SIM: "Entendi. E você consegue saber quantos leads chegaram no mês e quantos viraram contrato?"
+Se NÃO: "Interessante! E como vocês controlam o funil de vendas?"
+
+[PONTE PARA SOLUÇÃO]
+"Faz sentido. A gente desenvolveu uma plataforma que centraliza todas as conversas de WhatsApp, cria um CRM visual tipo Kanban, e ainda gera landing pages de campanha prontas. Tudo pensado para buffet."
+
+[CTA]
+"Posso te mostrar em 15 minutos como funciona? Sem compromisso, só pra você ver se faz sentido pro seu negócio."
+
+[OBJEÇÕES COMUNS]
+• "Não tenho tempo agora" → "Sem problema! Qual o melhor dia e horário essa semana?"
+• "Já uso outras ferramentas" → "Perfeito! A demo serve justamente pra você comparar. 15 minutos vale a pena?"
+• "Manda por email" → "Claro! Mas o sistema é visual, funciona muito melhor ver ao vivo. Posso marcar 15 min amanhã?"`, "cold-call")}
+                       >
+                         {copiedText === "cold-call" ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                         Copiar
+                       </Button>
+                     </div>
+                   </CardHeader>
+                   <CardContent className="space-y-4">
+                     <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                       <h4 className="font-semibold text-foreground mb-2">📞 ABERTURA (10 segundos)</h4>
+                       <p className="text-muted-foreground italic">"Oi, [NOME]? Aqui é o [SEU NOME]. Tudo bem? Consegue falar 2 minutinhos?"</p>
+                     </div>
+                     
+                     <div className="bg-muted/50 p-4 rounded-lg">
+                       <h4 className="font-semibold text-foreground mb-2">🎯 CONTEXTO (15 segundos)</h4>
+                       <p className="text-muted-foreground italic">"Ótimo! Eu trabalho com uma plataforma de gestão comercial feita especialmente para buffets infantis. Estou ligando porque vi que vocês têm um espaço muito bonito e queria entender como vocês gerenciam os leads que chegam pelo WhatsApp."</p>
+                     </div>
+                     
+                     <div className="bg-destructive/10 p-4 rounded-lg border border-destructive/20">
+                       <h4 className="font-semibold text-foreground mb-2">❓ PERGUNTA DE DOR</h4>
+                       <p className="text-muted-foreground italic">"Hoje vocês usam o WhatsApp no celular mesmo? Cada vendedor no seu?"</p>
+                       <div className="mt-3 space-y-2 text-sm">
+                         <p><strong>Se SIM:</strong> "Entendi. E você consegue saber quantos leads chegaram no mês e quantos viraram contrato?"</p>
+                         <p><strong>Se NÃO:</strong> "Interessante! E como vocês controlam o funil de vendas?"</p>
+                       </div>
+                     </div>
+                     
+                     <div className="bg-accent/10 p-4 rounded-lg border border-accent/20">
+                       <h4 className="font-semibold text-foreground mb-2">🌉 PONTE PARA SOLUÇÃO</h4>
+                       <p className="text-muted-foreground italic">"Faz sentido. A gente desenvolveu uma plataforma que centraliza todas as conversas de WhatsApp, cria um CRM visual tipo Kanban, e ainda gera landing pages de campanha prontas. Tudo pensado para buffet."</p>
+                     </div>
+                     
+                     <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+                       <h4 className="font-semibold text-foreground mb-2">🎯 CALL-TO-ACTION</h4>
+                       <p className="text-muted-foreground italic">"Posso te mostrar em 15 minutos como funciona? Sem compromisso, só pra você ver se faz sentido pro seu negócio."</p>
+                     </div>
+                   </CardContent>
+                 </Card>
+
+                 {/* Follow-up Call */}
+                 <Card>
+                   <CardHeader>
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <Badge className="mb-2 bg-amber-500">Seguimento</Badge>
+                         <CardTitle className="flex items-center gap-2">
+                           <Phone className="h-5 w-5" />
+                           Script de Follow-up
+                         </CardTitle>
+                         <CardDescription>Para retomar contato após demo ou proposta</CardDescription>
+                       </div>
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => copyToClipboard(`SCRIPT: FOLLOW-UP PÓS-DEMO
+
+[ABERTURA]
+"Oi [NOME], tudo bem? Aqui é o [SEU NOME]. Estou ligando pra saber o que você achou da demonstração que fizemos [DIA]."
+
+[ESCUTA ATIVA - deixe falar]
+
+[SE POSITIVO]
+"Que bom que gostou! Você teve alguma dúvida depois? Conversou com alguém da equipe sobre?"
+
+[SE NEUTRO/INDECISO]
+"Entendo. O que ficou faltando pra você sentir que faz sentido? Posso esclarecer algum ponto?"
+
+[SE NEGATIVO]
+"Agradeço a sinceridade. Posso perguntar o que pesou na decisão? Isso me ajuda a melhorar."
+
+[CRIAR URGÊNCIA]
+"Olha, [NOME], essa semana ainda consigo manter as condições que te passei. Você consegue dar uma resposta até [DATA]?"
+
+[FECHAMENTO]
+"Perfeito! Então fico no aguardo. Qualquer dúvida, pode me chamar no WhatsApp. Até mais!"`, "follow-up")}
+                       >
+                         {copiedText === "follow-up" ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                         Copiar
+                       </Button>
+                     </div>
+                   </CardHeader>
+                   <CardContent className="space-y-4">
+                     <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                       <h4 className="font-semibold text-foreground mb-2">📞 ABERTURA</h4>
+                       <p className="text-muted-foreground italic">"Oi [NOME], tudo bem? Aqui é o [SEU NOME]. Estou ligando pra saber o que você achou da demonstração que fizemos [DIA]."</p>
+                     </div>
+                     
+                     <div className="grid md:grid-cols-3 gap-4">
+                       <div className="bg-accent/10 p-4 rounded-lg">
+                         <h4 className="font-semibold text-accent text-sm mb-2">✅ SE POSITIVO</h4>
+                         <p className="text-sm text-muted-foreground italic">"Que bom que gostou! Você teve alguma dúvida depois? Conversou com alguém da equipe sobre?"</p>
+                       </div>
+                       <div className="bg-amber-100 dark:bg-amber-900/30 p-4 rounded-lg">
+                         <h4 className="font-semibold text-amber-600 dark:text-amber-400 text-sm mb-2">🤔 SE NEUTRO</h4>
+                         <p className="text-sm text-muted-foreground italic">"Entendo. O que ficou faltando pra você sentir que faz sentido? Posso esclarecer algum ponto?"</p>
+                       </div>
+                       <div className="bg-destructive/10 p-4 rounded-lg">
+                         <h4 className="font-semibold text-destructive text-sm mb-2">❌ SE NEGATIVO</h4>
+                         <p className="text-sm text-muted-foreground italic">"Agradeço a sinceridade. Posso perguntar o que pesou na decisão? Isso me ajuda a melhorar."</p>
+                       </div>
+                     </div>
+                     
+                     <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+                       <h4 className="font-semibold text-foreground mb-2">⏰ CRIAR URGÊNCIA</h4>
+                       <p className="text-muted-foreground italic">"Olha, [NOME], essa semana ainda consigo manter as condições que te passei. Você consegue dar uma resposta até [DATA]?"</p>
+                     </div>
+                   </CardContent>
+                 </Card>
+
+                 {/* Demo Scheduling */}
+                 <Card>
+                   <CardHeader>
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <Badge className="mb-2 bg-green-500">Agendamento</Badge>
+                         <CardTitle className="flex items-center gap-2">
+                           <Phone className="h-5 w-5" />
+                           Script para Agendar Demo
+                         </CardTitle>
+                         <CardDescription>Para converter interesse em reunião agendada</CardDescription>
+                       </div>
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => copyToClipboard(`SCRIPT: AGENDAR DEMONSTRAÇÃO
+
+[ABERTURA - após qualificação inicial]
+"[NOME], pelo que você me contou, acho que nossa plataforma pode resolver exatamente esse problema de [PROBLEMA IDENTIFICADO]. Que tal marcarmos 15 minutos pra eu te mostrar na prática?"
+
+[VENCER RESISTÊNCIA]
+• "Não precisa instalar nada" → "É tudo pelo navegador, compartilho minha tela"
+• "Não tenho tempo" → "São só 15 minutos, você vê o sistema real funcionando"
+• "Manda um vídeo" → "Tenho vídeo sim, mas ao vivo você pode tirar dúvidas na hora"
+
+[OFERECER OPÇÕES]
+"Você prefere amanhã de manhã ou à tarde? Tenho horário às [HORA 1] e às [HORA 2]."
+
+[CONFIRMAR]
+"Perfeito! Vou te mandar um convite por WhatsApp com o link da reunião. Seu número é esse mesmo que está aqui?"
+
+[REFORÇAR]
+"Ótimo, [NOME]! Amanhã às [HORA] então. Te mando o link agora. Qualquer coisa me avisa por WhatsApp. Até amanhã!"
+
+[PÓS-LIGAÇÃO]
+→ Enviar link da reunião por WhatsApp
+→ Enviar lembrete no dia (manhã)
+→ Preparar demo personalizada`, "demo-scheduling")}
+                       >
+                         {copiedText === "demo-scheduling" ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                         Copiar
+                       </Button>
+                     </div>
+                   </CardHeader>
+                   <CardContent className="space-y-4">
+                     <div className="bg-green-50 dark:bg-green-950/30 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                       <h4 className="font-semibold text-foreground mb-2">📞 ABERTURA</h4>
+                       <p className="text-muted-foreground italic">"[NOME], pelo que você me contou, acho que nossa plataforma pode resolver exatamente esse problema de [PROBLEMA]. Que tal marcarmos 15 minutos pra eu te mostrar na prática?"</p>
+                     </div>
+                     
+                     <div className="bg-muted/50 p-4 rounded-lg">
+                       <h4 className="font-semibold text-foreground mb-3">🛡️ VENCER RESISTÊNCIA</h4>
+                       <div className="space-y-2 text-sm">
+                         <p><strong>"Não precisa instalar nada"</strong> → "É tudo pelo navegador, compartilho minha tela"</p>
+                         <p><strong>"Não tenho tempo"</strong> → "São só 15 minutos, você vê o sistema real funcionando"</p>
+                         <p><strong>"Manda um vídeo"</strong> → "Tenho vídeo sim, mas ao vivo você pode tirar dúvidas na hora"</p>
+                       </div>
+                     </div>
+                     
+                     <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+                       <h4 className="font-semibold text-foreground mb-2">📅 OFERECER OPÇÕES</h4>
+                       <p className="text-muted-foreground italic">"Você prefere amanhã de manhã ou à tarde? Tenho horário às [HORA 1] e às [HORA 2]."</p>
+                     </div>
+                     
+                     <div className="bg-accent/10 p-4 rounded-lg">
+                       <h4 className="font-semibold text-foreground mb-2">✅ PÓS-LIGAÇÃO</h4>
+                       <ul className="text-sm text-muted-foreground space-y-1">
+                         <li>→ Enviar link da reunião por WhatsApp</li>
+                         <li>→ Enviar lembrete no dia (manhã)</li>
+                         <li>→ Preparar demo personalizada</li>
+                       </ul>
+                     </div>
+                   </CardContent>
+                 </Card>
+
+                 {/* Closing Call */}
+                 <Card>
+                   <CardHeader>
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <Badge className="mb-2 bg-purple-500">Fechamento</Badge>
+                         <CardTitle className="flex items-center gap-2">
+                           <Phone className="h-5 w-5" />
+                           Script de Fechamento
+                         </CardTitle>
+                         <CardDescription>Para converter proposta em contrato assinado</CardDescription>
+                       </div>
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => copyToClipboard(`SCRIPT: FECHAMENTO
+
+[ABERTURA]
+"Oi [NOME]! Tudo bem? Estou ligando porque vi que você já teve a demonstração e recebeu a proposta. Queria saber se ficou alguma dúvida?"
+
+[ESCUTA ATIVA]
+Deixe o prospect falar. Anote objeções.
+
+[RESUMO DE VALOR]
+"Só pra recapitular: com a plataforma você vai ter [BENEFÍCIO 1], [BENEFÍCIO 2] e [BENEFÍCIO 3]. Tudo isso por [VALOR]/mês."
+
+[PERGUNTA DE FECHAMENTO]
+"O que você precisa pra gente começar essa semana?"
+
+[TÉCNICAS DE FECHAMENTO]
+
+1. ALTERNATIVA:
+"Você prefere começar com o plano mensal ou já aproveitar o desconto do anual?"
+
+2. URGÊNCIA:
+"Essa condição especial é válida até [DATA]. Depois volta ao preço cheio."
+
+3. REVERSÃO DE RISCO:
+"Lembra que não tem fidelidade? Se não gostar, cancela no mês seguinte. Zero risco."
+
+4. PRÓXIMO PASSO:
+"Posso te mandar o contrato agora pra você assinar digitalmente? Leva 2 minutos."
+
+[SE FECHAR]
+"Perfeito, [NOME]! Parabéns pela decisão! Vou te mandar o contrato agora e já agendo seu onboarding pra [DATA]. Bem-vindo!"
+
+[SE NÃO FECHAR]
+"Entendo. Posso te ligar [DIA] pra fecharmos? Assim você tem tempo de pensar."`, "closing")}
+                       >
+                         {copiedText === "closing" ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                         Copiar
+                       </Button>
+                     </div>
+                   </CardHeader>
+                   <CardContent className="space-y-4">
+                     <div className="bg-purple-50 dark:bg-purple-950/30 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                       <h4 className="font-semibold text-foreground mb-2">📞 ABERTURA</h4>
+                       <p className="text-muted-foreground italic">"Oi [NOME]! Tudo bem? Estou ligando porque vi que você já teve a demonstração e recebeu a proposta. Queria saber se ficou alguma dúvida?"</p>
+                     </div>
+                     
+                     <div className="bg-muted/50 p-4 rounded-lg">
+                       <h4 className="font-semibold text-foreground mb-2">💎 RESUMO DE VALOR</h4>
+                       <p className="text-muted-foreground italic">"Só pra recapitular: com a plataforma você vai ter [BENEFÍCIO 1], [BENEFÍCIO 2] e [BENEFÍCIO 3]. Tudo isso por [VALOR]/mês."</p>
+                     </div>
+                     
+                     <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+                       <h4 className="font-semibold text-foreground mb-2">🎯 PERGUNTA DE FECHAMENTO</h4>
+                       <p className="text-muted-foreground italic">"O que você precisa pra gente começar essa semana?"</p>
+                     </div>
+                     
+                     <div className="grid md:grid-cols-2 gap-4">
+                       <div className="bg-secondary/10 p-4 rounded-lg">
+                         <h4 className="font-semibold text-foreground text-sm mb-2">🔄 Alternativa</h4>
+                         <p className="text-sm text-muted-foreground italic">"Você prefere começar com o plano mensal ou já aproveitar o desconto do anual?"</p>
+                       </div>
+                       <div className="bg-destructive/10 p-4 rounded-lg">
+                         <h4 className="font-semibold text-foreground text-sm mb-2">⏰ Urgência</h4>
+                         <p className="text-sm text-muted-foreground italic">"Essa condição especial é válida até [DATA]. Depois volta ao preço cheio."</p>
+                       </div>
+                       <div className="bg-accent/10 p-4 rounded-lg">
+                         <h4 className="font-semibold text-foreground text-sm mb-2">🛡️ Reversão de Risco</h4>
+                         <p className="text-sm text-muted-foreground italic">"Lembra que não tem fidelidade? Se não gostar, cancela no mês seguinte. Zero risco."</p>
+                       </div>
+                       <div className="bg-primary/10 p-4 rounded-lg">
+                         <h4 className="font-semibold text-foreground text-sm mb-2">➡️ Próximo Passo</h4>
+                         <p className="text-sm text-muted-foreground italic">"Posso te mandar o contrato agora pra você assinar digitalmente?"</p>
+                       </div>
+                     </div>
+                   </CardContent>
+                 </Card>
+
+                 {/* Tips Card */}
+                 <Card className="border-secondary/30 bg-gradient-to-br from-secondary/5 to-transparent">
+                   <CardHeader>
+                     <CardTitle>💡 Dicas de Ouro para Ligações</CardTitle>
+                   </CardHeader>
+                   <CardContent>
+                     <div className="grid md:grid-cols-2 gap-4">
+                       {[
+                         { title: "Sorria ao telefone", desc: "O sorriso muda o tom da voz. O prospect sente." },
+                         { title: "Fale devagar", desc: "Quem fala rápido parece desesperado. Respire." },
+                         { title: "Use o nome", desc: "Chame pelo nome 3x durante a ligação. Cria conexão." },
+                         { title: "Escute mais", desc: "Regra 70/30: deixe o prospect falar 70% do tempo." },
+                         { title: "Anote tudo", desc: "Registre objeções e pontos importantes no CRM." },
+                         { title: "Próximo passo sempre", desc: "Nunca termine sem agendar o próximo contato." },
+                       ].map((tip, index) => (
+                         <div key={index} className="flex items-start gap-3">
+                           <CheckCircle2 className="h-5 w-5 text-secondary shrink-0 mt-0.5" />
+                           <div>
+                             <h4 className="font-semibold text-foreground">{tip.title}</h4>
+                             <p className="text-sm text-muted-foreground">{tip.desc}</p>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   </CardContent>
+                 </Card>
+               </TabsContent>
+
                <TabsContent value="objections" className="space-y-6">
                  <Card>
                    <CardHeader>
