@@ -282,10 +282,13 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         (r) => r.user_id === linkedLead.responsavel_id
       );
 
-      // Update the lead's responsavel
+      // Update the lead's responsavel and status
       const { error: updateError } = await supabase
         .from("campaign_leads")
-        .update({ responsavel_id: selectedTransferUserId })
+        .update({ 
+          responsavel_id: selectedTransferUserId,
+          status: "transferido" as const
+        })
         .eq("id", linkedLead.id);
 
       if (updateError) throw updateError;
