@@ -10,6 +10,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Users from "./pages/Users";
 import UserSettings from "./pages/UserSettings";
 import LandingPage from "./pages/LandingPage";
+ import ComercialB2B from "./pages/ComercialB2B";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/atendimento" element={<CentralAtendimento />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
+           <Route path="/comercial-b2b" element={<ComercialB2B />} />
           <Route path="/dashboard" element={<Index />} />
           <Route path="/users" element={<Users />} />
           <Route path="/promo" element={<LandingPage />} />
