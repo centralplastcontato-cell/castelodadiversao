@@ -11,6 +11,7 @@ import Users from "./pages/Users";
 import UserSettings from "./pages/UserSettings";
 import LandingPage from "./pages/LandingPage";
  import ComercialB2B from "./pages/ComercialB2B";
+ import ParaBuffets from "./pages/ParaBuffets";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/atendimento" element={<CentralAtendimento />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
            <Route path="/comercial-b2b" element={<ComercialB2B />} />
+           <Route path="/para-buffets" element={<ParaBuffets />} />
           <Route path="/dashboard" element={<Index />} />
           <Route path="/users" element={<Users />} />
           <Route path="/promo" element={<LandingPage />} />

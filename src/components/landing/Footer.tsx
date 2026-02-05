@@ -1,6 +1,7 @@
 import { campaignConfig } from "@/config/campaignConfig";
 import logoCastelo from "@/assets/logo-castelo.png";
-import { Instagram, Facebook, MessageCircle, MapPin } from "lucide-react";
+ import { Instagram, Facebook, MessageCircle, MapPin, Building2 } from "lucide-react";
+ import { Link } from "react-router-dom";
 
 export function Footer() {
   return (
@@ -61,6 +62,15 @@ export function Footer() {
           </div>
 
           <div className="border-t border-primary-foreground/20 pt-6">
+             <div className="mb-4">
+               <Link
+                 to="/para-buffets"
+                 className="inline-flex items-center gap-2 text-primary-foreground/70 hover:text-primary-foreground transition-colors text-sm"
+               >
+                 <Building2 size={16} />
+                 <span>Tem um buffet? Conheça nossa plataforma de gestão</span>
+               </Link>
+             </div>
             <p className="text-sm text-primary-foreground/50">
               Campanha: {campaignConfig.campaignName}
             </p>
