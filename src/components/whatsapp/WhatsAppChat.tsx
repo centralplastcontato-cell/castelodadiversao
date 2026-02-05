@@ -156,6 +156,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
+  const [oldestMessageTimestamp, setOldestMessageTimestamp] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites'>('all');
@@ -188,6 +190,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const audioInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const isLoadingMoreRef = useRef(false);
 
   // Audio recording hook
   const {
@@ -546,20 +549,68 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     }
   }, [selectedConversation?.id]);
 
+  // Scroll to bottom - only on initial load or new messages from me
+  const prevMessagesLengthRef = useRef(0);
+  const lastMessageFromMeRef = useRef(false);
+  
   useEffect(() => {
-    // Auto-scroll when new messages arrive
-    const endElement = messagesEndRefDesktop.current || messagesEndRefMobile.current;
-    if (endElement) {
-      const viewport = endElement.closest('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        requestAnimationFrame(() => {
-          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-        });
-      } else {
-        endElement.scrollIntoView({ behavior: 'smooth' });
+    const messagesLength = messages.length;
+    const lastMessage = messages[messagesLength - 1];
+    const isNewMessage = messagesLength > prevMessagesLengthRef.current;
+    const isFromMe = lastMessage?.from_me;
+    
+    // Scroll to bottom only when:
+    // 1. Initial load completed (isInitialLoad was true and now false, messages loaded)
+    // 2. New message from me
+    // 3. New message received while already at bottom
+    const shouldScrollToBottom = (
+      (isInitialLoad && messagesLength > 0) ||
+      (isNewMessage && isFromMe) ||
+      (isNewMessage && !isFromMe && !lastMessageFromMeRef.current)
+    );
+    
+    if (shouldScrollToBottom) {
+      const endElement = messagesEndRefDesktop.current || messagesEndRefMobile.current;
+      if (endElement) {
+        const viewport = endElement.closest('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          requestAnimationFrame(() => {
+            // Use instant scroll for initial load, smooth for new messages
+            const behavior = isInitialLoad ? 'instant' : 'smooth';
+            viewport.scrollTo({ top: viewport.scrollHeight, behavior: behavior as ScrollBehavior });
+          });
+        }
       }
     }
-  }, [messages]);
+    
+    prevMessagesLengthRef.current = messagesLength;
+    lastMessageFromMeRef.current = isFromMe || false;
+  }, [messages, isInitialLoad]);
+  
+  // Infinite scroll listener - load more when near top
+  useEffect(() => {
+    const desktopViewport = scrollAreaDesktopRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    const mobileViewport = scrollAreaMobileRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLDivElement;
+      const scrollTop = target.scrollTop;
+      
+      // Load more when scrolled near top (within 120px) and not during initial load
+      if (scrollTop < 120 && hasMoreMessages && !isLoadingMoreRef.current && !isInitialLoad && messages.length > 0) {
+        loadMoreMessages();
+      }
+    };
+    
+    // Add listeners to both viewports
+    desktopViewport?.addEventListener('scroll', handleScroll, { passive: true });
+    mobileViewport?.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      desktopViewport?.removeEventListener('scroll', handleScroll);
+      mobileViewport?.removeEventListener('scroll', handleScroll);
+    };
+  }, [hasMoreMessages, isInitialLoad, messages.length]);
 
   const fetchInstances = async () => {
     setIsLoading(true);
@@ -755,56 +806,100 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     }
   };
 
-  const MESSAGES_LIMIT = 100;
+  const MESSAGES_LIMIT = 50; // Reduced for faster initial load
   
   const fetchMessages = async (conversationId: string, loadMore: boolean = false) => {
+    // Prevent concurrent loads
+    if (isLoadingMoreRef.current && loadMore) return;
+    
     if (loadMore) {
+      isLoadingMoreRef.current = true;
       setIsLoadingMoreMessages(true);
     } else {
       setIsLoadingMessages(true);
-      setMessages([]); // Clear immediately for faster perceived loading
+      setMessages([]);
+      setOldestMessageTimestamp(null);
+      setHasMoreMessages(false);
+      setIsInitialLoad(true);
     }
     
     try {
-      // Get total count first to know if there are more messages
-      const { count } = await supabase
-        .from("wapi_messages")
-        .select("*", { count: 'exact', head: true })
-        .eq("conversation_id", conversationId);
-      
-      const offset = loadMore ? messages.length : 0;
-      
-      // Fetch only the last MESSAGES_LIMIT messages initially
-      // Order by timestamp DESC to get most recent, then reverse for display
-      const { data } = await supabase
+      // Build query with cursor-based pagination
+      let query = supabase
         .from("wapi_messages")
         .select("*")
         .eq("conversation_id", conversationId)
         .order("timestamp", { ascending: false })
-        .range(offset, offset + MESSAGES_LIMIT - 1);
+        .limit(MESSAGES_LIMIT);
+      
+      // For loadMore, use cursor (timestamp of oldest message we have)
+      if (loadMore && oldestMessageTimestamp) {
+        query = query.lt("timestamp", oldestMessageTimestamp);
+      }
+      
+      const { data, error } = await query;
 
-      if (data) {
+      if (error) {
+        console.error("[fetchMessages] Error:", error);
+        return;
+      }
+
+      if (data && data.length > 0) {
         // Reverse to display oldest first within the batch
         const orderedMessages = data.reverse() as Message[];
         
+        // Update cursor with oldest message timestamp
+        const oldestMsg = orderedMessages[0];
+        setOldestMessageTimestamp(oldestMsg.timestamp);
+        
+        // Check if there are more messages
+        setHasMoreMessages(data.length >= MESSAGES_LIMIT);
+        
         if (loadMore) {
-          // Prepend older messages
+          // Prepend older messages - scroll preservation handled in UI
           setMessages(prev => [...orderedMessages, ...prev]);
         } else {
           setMessages(orderedMessages);
         }
-        
-        setHasMoreMessages((count || 0) > offset + orderedMessages.length);
+      } else if (!loadMore) {
+        // No messages found
+        setMessages([]);
+        setHasMoreMessages(false);
+      } else {
+        // No more older messages
+        setHasMoreMessages(false);
       }
     } finally {
       setIsLoadingMessages(false);
       setIsLoadingMoreMessages(false);
+      isLoadingMoreRef.current = false;
+      
+      if (!loadMore) {
+        // Mark initial load complete after a brief delay for scroll
+        setTimeout(() => setIsInitialLoad(false), 100);
+      }
     }
   };
   
   const loadMoreMessages = async () => {
-    if (selectedConversation && !isLoadingMoreMessages) {
+    if (selectedConversation && !isLoadingMoreRef.current && hasMoreMessages) {
+      // Get viewport and save scroll position before loading
+      const viewport = scrollAreaDesktopRef.current?.querySelector('[data-radix-scroll-area-viewport]') 
+        || scrollAreaMobileRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      
+      const previousScrollHeight = viewport?.scrollHeight || 0;
+      const previousScrollTop = viewport?.scrollTop || 0;
+      
       await fetchMessages(selectedConversation.id, true);
+      
+      // Restore scroll position after messages are prepended
+      if (viewport) {
+        requestAnimationFrame(() => {
+          const newScrollHeight = viewport.scrollHeight;
+          const scrollDiff = newScrollHeight - previousScrollHeight;
+          viewport.scrollTop = previousScrollTop + scrollDiff;
+        });
+      }
     }
   };
 
@@ -2341,25 +2436,22 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   <div className="flex-1 relative min-h-0">
                     <ScrollArea ref={scrollAreaDesktopRef} className="h-full bg-muted/30">
                       <div className="space-y-2 sm:space-y-3 p-3 sm:p-4">
-                        {/* Load more messages button */}
-                        {hasMoreMessages && (
-                          <div className="flex justify-center pb-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={loadMoreMessages}
-                              disabled={isLoadingMoreMessages}
-                              className="text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              {isLoadingMoreMessages ? (
-                                <>
-                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                  Carregando...
-                                </>
-                              ) : (
-                                'Carregar mensagens anteriores'
-                              )}
-                            </Button>
+                        {/* Loading indicator at top */}
+                        {isLoadingMoreMessages && (
+                          <div className="flex justify-center py-2">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Carregando mensagens...
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Start of conversation indicator */}
+                        {!hasMoreMessages && messages.length > 0 && !isLoadingMessages && (
+                          <div className="flex justify-center py-2">
+                            <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                              📬 Início da conversa
+                            </span>
                           </div>
                         )}
                         
@@ -2959,25 +3051,22 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 <div className="flex-1 relative min-h-0">
                   <ScrollArea ref={scrollAreaMobileRef} className="h-full bg-muted/30">
                     <div className="space-y-2 p-3">
-                      {/* Load more messages button - mobile */}
-                      {hasMoreMessages && (
-                        <div className="flex justify-center pb-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={loadMoreMessages}
-                            disabled={isLoadingMoreMessages}
-                            className="text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            {isLoadingMoreMessages ? (
-                              <>
-                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                Carregando...
-                              </>
-                            ) : (
-                              'Carregar mais mensagens'
-                            )}
-                          </Button>
+                      {/* Loading indicator at top - mobile */}
+                      {isLoadingMoreMessages && (
+                        <div className="flex justify-center py-2">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Carregando mensagens...
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Start of conversation indicator - mobile */}
+                      {!hasMoreMessages && messages.length > 0 && !isLoadingMessages && (
+                        <div className="flex justify-center py-2">
+                          <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                            📬 Início da conversa
+                          </span>
                         </div>
                       )}
                       
