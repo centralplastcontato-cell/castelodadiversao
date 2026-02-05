@@ -10,6 +10,7 @@
  import { toast } from "sonner";
  import jsPDF from "jspdf";
  import autoTable from "jspdf-autotable";
+ import logoCastelo from "@/assets/logo-castelo.png";
  
  interface ProposalData {
    prospectName: string;
@@ -136,14 +137,21 @@
        doc.setFillColor(37, 99, 235); // Primary blue
        doc.rect(0, 0, pageWidth, 40, "F");
        
+       // Add logo
+       try {
+         doc.addImage(logoCastelo, "PNG", 15, 8, 25, 25);
+       } catch (e) {
+         console.log("Could not add logo to PDF");
+       }
+ 
        doc.setTextColor(255, 255, 255);
        doc.setFontSize(24);
        doc.setFont("helvetica", "bold");
-       doc.text("PROPOSTA COMERCIAL", pageWidth / 2, 20, { align: "center" });
+       doc.text("PROPOSTA COMERCIAL", pageWidth / 2 + 10, 20, { align: "center" });
        
        doc.setFontSize(12);
        doc.setFont("helvetica", "normal");
-       doc.text("Plataforma de Gestão para Buffets", pageWidth / 2, 30, { align: "center" });
+       doc.text("Castelo da Diversão", pageWidth / 2 + 10, 30, { align: "center" });
  
        // Reset text color
        doc.setTextColor(0, 0, 0);
