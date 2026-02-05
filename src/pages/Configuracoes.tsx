@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePermissions } from "@/hooks/usePermissions";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { WhatsAppConfig } from "@/components/whatsapp/WhatsAppConfig";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
@@ -36,6 +37,8 @@ export default function Configuracoes() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { role, isLoading: isLoadingRole, canManageUsers, isAdmin } = useUserRole(user?.id);
+  const { hasPermission } = usePermissions(user?.id);
+  const canAccessB2B = isAdmin || hasPermission('b2b.view');
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -177,7 +180,8 @@ export default function Configuracoes() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AdminSidebar 
-          canManageUsers={canManageUsers} 
+          canManageUsers={canManageUsers}
+          canAccessB2B={canAccessB2B}
           currentUserName={currentUserProfile?.full_name || user.email || ""} 
           onRefresh={handleRefresh} 
           onLogout={handleLogout} 

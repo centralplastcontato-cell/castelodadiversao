@@ -23,20 +23,21 @@ import logoCastelo from "@/assets/logo-castelo.png";
 
 interface AdminSidebarProps {
   canManageUsers: boolean;
+  canAccessB2B: boolean;
   currentUserName: string;
   onRefresh: () => void;
   onLogout: () => void;
 }
 
-const menuItems = [
+const baseMenuItems = [
   { title: "Central de Atendimento", url: "/atendimento", icon: Headset },
   { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
-   { title: "Comercial B2B", url: "/comercial-b2b", icon: Presentation },
 ];
 
 export function AdminSidebar({ 
-  canManageUsers, 
+  canManageUsers,
+  canAccessB2B,
   currentUserName, 
   onRefresh, 
   onLogout 
@@ -46,9 +47,12 @@ export function AdminSidebar({
   const location = useLocation();
   const [isPinned, setIsPinned] = useState(false);
 
-  const allItems = canManageUsers 
-    ? [...menuItems, { title: "Gerenciar Usuários", url: "/users", icon: Users }]
-    : menuItems;
+  // Build menu items dynamically based on permissions
+  const allItems = [
+    ...baseMenuItems,
+    ...(canAccessB2B ? [{ title: "Comercial B2B", url: "/comercial-b2b", icon: Presentation }] : []),
+    ...(canManageUsers ? [{ title: "Gerenciar Usuários", url: "/users", icon: Users }] : []),
+  ];
 
   // Handle hover expand/collapse only when not pinned
   const handleMouseEnter = () => {
