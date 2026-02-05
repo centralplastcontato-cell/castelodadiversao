@@ -307,7 +307,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         novo: 'Novo',
         em_contato: 'Visita',
         orcamento_enviado: 'Orçamento Enviado',
-        aguardando_resposta: 'Aguardando Resposta',
+        aguardando_resposta: 'Negociando',
         fechado: 'Fechado',
         perdido: 'Perdido',
       };
@@ -847,7 +847,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         novo: 'Novo',
         em_contato: 'Visita',
         orcamento_enviado: 'Orçamento Enviado',
-        aguardando_resposta: 'Aguardando Resposta',
+        aguardando_resposta: 'Negociando',
         fechado: 'Fechado',
         perdido: 'Perdido',
       };
@@ -2011,7 +2011,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                             novo: 'Novo',
                             em_contato: 'Visita',
                             orcamento_enviado: 'Orçamento Enviado',
-                            aguardando_resposta: 'Aguardando Resposta',
+                            aguardando_resposta: 'Negociando',
                             fechado: 'Fechado',
                             perdido: 'Perdido',
                           };
@@ -2130,7 +2130,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
                           { value: 'em_contato', label: 'Visita', color: 'bg-yellow-500' },
                           { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
-                          { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+                          { value: 'aguardando_resposta', label: 'Negociando', color: 'bg-orange-500' },
                           { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
                           { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
                         ].map((statusOption) => (
@@ -2166,7 +2166,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                                 novo: 'Novo',
                                 em_contato: 'Visita',
                                 orcamento_enviado: 'Orçamento Enviado',
-                                aguardando_resposta: 'Aguardando Resposta',
+                                aguardando_resposta: 'Negociando',
                                 fechado: 'Fechado',
                                 perdido: 'Perdido',
                               };
@@ -2199,7 +2199,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
                           { value: 'em_contato', label: 'Visita', color: 'bg-yellow-500' },
                           { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
-                          { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
+                          { value: 'aguardando_resposta', label: 'Negociando', color: 'bg-orange-500' },
                           { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
                           { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
                         ].map((statusOption) => (
@@ -2591,7 +2591,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                           novo: 'Novo',
                           em_contato: 'Visita',
                           orcamento_enviado: 'Orçamento Enviado',
-                          aguardando_resposta: 'Aguardando Resposta',
+                          aguardando_resposta: 'Negociando',
                           fechado: 'Fechado',
                           perdido: 'Perdido',
                         };
