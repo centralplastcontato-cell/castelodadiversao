@@ -289,6 +289,63 @@ export type Database = {
         }
         Relationships: []
       }
+      proposals: {
+        Row: {
+          company_name: string
+          created_at: string
+          custom_features: string[] | null
+          discount: number | null
+          discount_amount: number | null
+          email: string | null
+          id: string
+          notes: string | null
+          payment_type: string
+          phone: string | null
+          plan: string
+          prospect_name: string
+          subtotal: number
+          total: number
+          user_id: string
+          valid_days: number
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          custom_features?: string[] | null
+          discount?: number | null
+          discount_amount?: number | null
+          email?: string | null
+          id?: string
+          notes?: string | null
+          payment_type: string
+          phone?: string | null
+          plan: string
+          prospect_name: string
+          subtotal: number
+          total: number
+          user_id: string
+          valid_days?: number
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          custom_features?: string[] | null
+          discount?: number | null
+          discount_amount?: number | null
+          email?: string | null
+          id?: string
+          notes?: string | null
+          payment_type?: string
+          phone?: string | null
+          plan?: string
+          prospect_name?: string
+          subtotal?: number
+          total?: number
+          user_id?: string
+          valid_days?: number
+        }
+        Relationships: []
+      }
       user_permissions: {
         Row: {
           created_at: string | null

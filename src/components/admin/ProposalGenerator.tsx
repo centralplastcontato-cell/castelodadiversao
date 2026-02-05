@@ -11,6 +11,7 @@
  import jsPDF from "jspdf";
  import autoTable from "jspdf-autotable";
  import logoCastelo from "@/assets/logo-castelo.png";
+ import { supabase } from "@/integrations/supabase/client";
  
  interface ProposalData {
    prospectName: string;
@@ -94,6 +95,7 @@
    });
  
    const [isGenerating, setIsGenerating] = useState(false);
+   const [isSaving, setIsSaving] = useState(false);
  
    const calculateTotal = () => {
      const planPrice = planDetails[formData.plan].price;
@@ -115,6 +117,55 @@
        discountAmount,
        total: subtotal + additionalTotal - discountAmount,
      };
+   };
+ 
+   const saveProposal = async () => {
+     if (!formData.prospectName || !formData.companyName) {
+       toast.error("Preencha pelo menos o nome do prospect e da empresa");
+       return;
+     }
+ 
+     setIsSaving(true);
+     const totals = calculateTotal();
+ 
+     try {
+       const { data: { user } } = await supabase.auth.getUser();
+       if (!user) {
+         toast.error("Você precisa estar logado para salvar propostas");
+         return;
+       }
+ 
+       const { error } = await supabase.from("proposals").insert({
+         user_id: user.id,
+         prospect_name: formData.prospectName,
+         company_name: formData.companyName,
+         email: formData.email || null,
+         phone: formData.phone || null,
+         plan: formData.plan,
+         payment_type: formData.paymentType,
+         custom_features: formData.customFeatures,
+         notes: formData.notes || null,
+         valid_days: formData.validDays,
+         discount: formData.discount,
+         subtotal: totals.subtotal,
+         discount_amount: totals.discountAmount,
+         total: totals.total,
+       });
+ 
+       if (error) throw error;
+ 
+       toast.success("Proposta salva no histórico!");
+     } catch (error) {
+       console.error("Error saving proposal:", error);
+       toast.error("Erro ao salvar proposta. Tente novamente.");
+     } finally {
+       setIsSaving(false);
+     }
+   };
+ 
+   const generateAndSave = async () => {
+     await saveProposal();
+     generatePDF();
    };
  
    const generatePDF = () => {
@@ -596,21 +647,32 @@
              <Button
                className="w-full"
                size="lg"
-               onClick={generatePDF}
-               disabled={isGenerating || !formData.prospectName || !formData.companyName}
+                 onClick={generateAndSave}
+                 disabled={isGenerating || isSaving || !formData.prospectName || !formData.companyName}
              >
-               {isGenerating ? (
+                 {isGenerating || isSaving ? (
                  <>
                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                   Gerando...
+                     {isSaving ? "Salvando..." : "Gerando..."}
                  </>
                ) : (
                  <>
                    <Download className="h-4 w-4 mr-2" />
-                   Gerar Proposta PDF
+                     Gerar e Salvar Proposta
                  </>
                )}
              </Button>
+               
+               <Button
+                 variant="outline"
+                 className="w-full"
+                 size="lg"
+                 onClick={generatePDF}
+                 disabled={isGenerating || !formData.prospectName || !formData.companyName}
+               >
+                 <Eye className="h-4 w-4 mr-2" />
+                 Apenas Gerar PDF
+               </Button>
            </CardContent>
          </Card>
        </div>
