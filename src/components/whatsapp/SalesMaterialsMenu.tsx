@@ -20,17 +20,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FolderOpen, FileText, Image, Video, Loader2, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { FolderOpen, FileText, Image, Video, Loader2, Sparkles, ChevronLeft, ChevronRight, Images } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SalesMaterial {
   id: string;
   unit: string;
-  type: "pdf_package" | "photo" | "video";
+  type: "pdf_package" | "photo" | "video" | "photo_collection";
   name: string;
   guest_count: number | null;
   file_url: string;
+  photo_urls: string[] | null;
   is_active: boolean;
 }
 
@@ -52,7 +53,7 @@ interface SalesMaterialsMenuProps {
   variant?: "icon" | "full";
 }
 
-type CategoryType = "main" | "pdf_package" | "photo" | "video";
+type CategoryType = "main" | "pdf_package" | "photo" | "video" | "photo_collection";
 
 export function SalesMaterialsMenu({ 
   unit, 
@@ -106,6 +107,7 @@ export function SalesMaterialsMenu({
   const packages = materials.filter(m => m.type === "pdf_package");
   const photos = materials.filter(m => m.type === "photo");
   const videos = materials.filter(m => m.type === "video");
+  const collections = materials.filter(m => m.type === "photo_collection");
 
   const sortedPackages = [...packages].sort((a, b) => {
     if (leadGuestCount) {
@@ -120,6 +122,43 @@ export function SalesMaterialsMenu({
   const handleSendMaterial = async (material: SalesMaterial) => {
     setIsSending(material.id);
     try {
+      // Handle photo collection - send all photos in sequence
+      if (material.type === "photo_collection" && material.photo_urls && material.photo_urls.length > 0) {
+        const photoCount = material.photo_urls.length;
+        
+        // Send intro message
+        if (onSendTextMessage) {
+          const leadName = lead?.name?.split(' ')[0] || '';
+          let introMessage = '';
+          if (leadName) {
+            introMessage = `Oi ${leadName}! Seguem ${photoCount} fotos da ${material.name} da unidade ${unit}. 📸`;
+          } else {
+            introMessage = `Seguem ${photoCount} fotos da ${material.name} da unidade ${unit}. 📸`;
+          }
+          await onSendTextMessage(introMessage);
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        // Send all photos in sequence
+        for (let i = 0; i < material.photo_urls.length; i++) {
+          const photoUrl = material.photo_urls[i];
+          await onSendMedia(photoUrl, "image", `${material.name} (${i + 1}/${photoCount})`);
+          // Small delay between photos to ensure order
+          if (i < material.photo_urls.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+
+        toast({
+          title: "Coleção enviada",
+          description: `${photoCount} fotos de "${material.name}" enviadas com sucesso.`,
+        });
+        
+        setIsOpen(false);
+        setIsSending(null);
+        return;
+      }
+
       let mediaType: "document" | "image" | "video" = "document";
       let caption = material.name;
       // Use material name as the file name for documents (adds .pdf extension)
@@ -202,6 +241,7 @@ export function SalesMaterialsMenu({
     const getCategoryTitle = () => {
       switch (activeCategory) {
         case "pdf_package": return "Pacotes";
+        case "photo_collection": return "Coleções";
         case "photo": return "Fotos";
         case "video": return "Vídeos";
         default: return `Materiais - ${unit}`;
@@ -211,6 +251,7 @@ export function SalesMaterialsMenu({
     const getCurrentItems = () => {
       switch (activeCategory) {
         case "pdf_package": return sortedPackages;
+        case "photo_collection": return collections;
         case "photo": return photos;
         case "video": return videos;
         default: return [];
@@ -261,6 +302,23 @@ export function SalesMaterialsMenu({
                   </Button>
                 )}
                 
+                {collections.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between h-12 px-3"
+                    onClick={() => setActiveCategory("photo_collection")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Images className="w-5 h-5 text-green-500" />
+                      <span>Coleções</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="text-sm">{collections.length}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </Button>
+                )}
+
                 {photos.length > 0 && (
                   <Button
                     variant="ghost"
@@ -314,12 +372,18 @@ export function SalesMaterialsMenu({
                         ) : (
                           <>
                             {material.type === "pdf_package" && <FileText className="w-5 h-5 text-red-500 shrink-0" />}
+                            {material.type === "photo_collection" && <Images className="w-5 h-5 text-green-500 shrink-0" />}
                             {material.type === "photo" && <Image className="w-5 h-5 text-blue-500 shrink-0" />}
                             {material.type === "video" && <Video className="w-5 h-5 text-purple-500 shrink-0" />}
                           </>
                         )}
                         <div className="flex-1 min-w-0 text-left">
                           <p className="truncate text-sm font-medium">{material.name}</p>
+                          {material.type === "photo_collection" && material.photo_urls && (
+                            <p className="text-xs text-muted-foreground">
+                              {material.photo_urls.length} fotos
+                            </p>
+                          )}
                           {material.guest_count && (
                             <p className="text-xs text-muted-foreground">
                               {material.guest_count} pessoas
@@ -391,6 +455,40 @@ export function SalesMaterialsMenu({
                   </DropdownMenuItem>
                 );
               })}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+
+        {collections.length > 0 && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Images className="w-4 h-4 mr-2 text-green-500" />
+              Coleções ({collections.length})
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-56">
+              {collections.map((material) => (
+                <DropdownMenuItem
+                  key={material.id}
+                  onClick={() => handleSendMaterial(material)}
+                  disabled={isSending === material.id}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    {isSending === material.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Images className="w-4 h-4 text-green-500" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm">{material.name}</p>
+                      {material.photo_urls && (
+                        <p className="text-xs text-muted-foreground">
+                          {material.photo_urls.length} fotos
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
