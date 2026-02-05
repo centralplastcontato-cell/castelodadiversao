@@ -264,11 +264,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   };
 
   const fetchResponsaveis = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("user_id, full_name")
-      .eq("is_active", true);
-    if (data) {
+    // Use the security definer function to get profiles (bypasses RLS restrictions)
+    const { data, error } = await supabase.rpc('get_profiles_for_transfer');
+    if (data && !error) {
       setResponsaveis(data);
     }
   };
