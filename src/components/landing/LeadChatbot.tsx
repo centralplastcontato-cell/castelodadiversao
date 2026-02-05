@@ -245,42 +245,11 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
 
       try {
         const finalLeadData = { ...leadData, name: leadData.name, whatsapp: whatsappValue };
-        const cleanPhone = whatsappValue.replace(/\D/g, '');
-        const phoneVariants = [
-          cleanPhone,
-          cleanPhone.startsWith('55') ? cleanPhone.slice(2) : `55${cleanPhone}`,
-        ];
         
-        // Função auxiliar para criar ou atualizar lead
-        const upsertLead = async (unit: string) => {
-          // Verificar se já existe lead com este telefone para esta unidade
-          const { data: existingLead } = await supabase
-            .from("campaign_leads")
-            .select("id, whatsapp")
-            .eq("unit", unit)
-            .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
-          
-          if (existingLead) {
-            // Atualizar lead existente
-            const { error } = await supabase
-              .from("campaign_leads")
-              .update({
-                name: leadData.name,
-                month: leadData.month,
-                day_of_month: leadData.dayOfMonth,
-                guests: leadData.guests,
-                campaign_id: campaignConfig.campaignId,
-                campaign_name: campaignConfig.campaignName,
-              })
-              .eq("id", existingLead.id);
-            if (error) throw error;
-            console.log(`Lead atualizado para ${unit}:`, existingLead.id);
-          } else {
-            // Criar novo lead
-            const { error } = await supabase.from("campaign_leads").insert({
+        // Função para criar lead via edge function (com rate limiting e validação)
+        const submitLead = async (unit: string) => {
+          const { error } = await supabase.functions.invoke('submit-lead', {
+            body: {
               name: leadData.name,
               whatsapp: whatsappValue,
               unit: unit,
@@ -289,17 +258,17 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
               guests: leadData.guests,
               campaign_id: campaignConfig.campaignId,
               campaign_name: campaignConfig.campaignName,
-            });
-            if (error) throw error;
-            console.log(`Novo lead criado para ${unit}`);
-          }
+            },
+          });
+          if (error) throw error;
+          console.log(`Lead criado para ${unit}`);
         };
         
         // Se a unidade for "As duas", processar ambas as unidades
         if (leadData.unit === "As duas") {
           await Promise.all([
-            upsertLead("Manchester"),
-            upsertLead("Trujillo"),
+            submitLead("Manchester"),
+            submitLead("Trujillo"),
           ]);
 
           // Enviar mensagem para ambas as unidades
@@ -309,7 +278,7 @@ export function LeadChatbot({ isOpen, onClose }: LeadChatbotProps) {
           ]);
         } else {
           // Comportamento padrão: processar uma única unidade
-          await upsertLead(leadData.unit!);
+          await submitLead(leadData.unit!);
 
           // Enviar mensagem automática para a unidade selecionada
           if (leadData.unit) {
