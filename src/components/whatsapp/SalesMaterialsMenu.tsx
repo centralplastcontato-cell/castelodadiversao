@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,8 +19,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FolderOpen, FileText, Image, Video, Loader2, Sparkles } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { FolderOpen, FileText, Image, Video, Loader2, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SalesMaterial {
   id: string;
@@ -42,6 +51,8 @@ interface SalesMaterialsMenuProps {
   variant?: "icon" | "full";
 }
 
+type CategoryType = "main" | "pdf_package" | "photo" | "video";
+
 export function SalesMaterialsMenu({ 
   unit, 
   lead, 
@@ -52,10 +63,20 @@ export function SalesMaterialsMenu({
   const [materials, setMaterials] = useState<SalesMaterial[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<CategoryType>("main");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchMaterials();
   }, [unit]);
+
+  // Reset category when closing
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveCategory("main");
+    }
+  }, [isOpen]);
 
   const fetchMaterials = async () => {
     setIsLoading(true);
@@ -72,7 +93,6 @@ export function SalesMaterialsMenu({
     setIsLoading(false);
   };
 
-  // Parse guest count from lead data (e.g., "50 pessoas" -> 50)
   const getLeadGuestCount = (): number | null => {
     if (!lead?.guests) return null;
     const match = lead.guests.match(/\d+/);
@@ -81,12 +101,10 @@ export function SalesMaterialsMenu({
 
   const leadGuestCount = getLeadGuestCount();
 
-  // Group materials by type
   const packages = materials.filter(m => m.type === "pdf_package");
   const photos = materials.filter(m => m.type === "photo");
   const videos = materials.filter(m => m.type === "video");
 
-  // Sort packages to show suggested one first
   const sortedPackages = [...packages].sort((a, b) => {
     if (leadGuestCount) {
       const aMatch = a.guest_count === leadGuestCount;
@@ -108,7 +126,6 @@ export function SalesMaterialsMenu({
       } else if (material.type === "video") {
         mediaType = "video";
       } else if (material.type === "pdf_package") {
-        // Add context for packages
         if (material.guest_count) {
           caption = `📋 ${material.name} - Pacote para ${material.guest_count} pessoas`;
         }
@@ -120,6 +137,8 @@ export function SalesMaterialsMenu({
         title: "Material enviado",
         description: `${material.name} foi enviado com sucesso.`,
       });
+      
+      setIsOpen(false);
     } catch (error: any) {
       toast({
         title: "Erro ao enviar",
@@ -130,44 +149,180 @@ export function SalesMaterialsMenu({
     setIsSending(null);
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "pdf_package":
-        return <FileText className="w-4 h-4 text-red-500" />;
-      case "photo":
-        return <Image className="w-4 h-4 text-blue-500" />;
-      case "video":
-        return <Video className="w-4 h-4 text-purple-500" />;
-      default:
-        return <FileText className="w-4 h-4" />;
-    }
-  };
-
   const hasMaterials = materials.length > 0;
 
   if (!hasMaterials && !isLoading) {
-    return null; // Don't show button if no materials
+    return null;
   }
 
+  const triggerButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size={variant === "icon" ? "icon" : "sm"}
+      disabled={disabled || isLoading}
+      className={variant === "icon" ? "shrink-0 h-9 w-9" : "shrink-0"}
+    >
+      {isLoading ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <>
+          <FolderOpen className="w-4 h-4" />
+          {variant === "full" && <span className="ml-2">Materiais</span>}
+        </>
+      )}
+    </Button>
+  );
+
+  // Mobile: Use Sheet with internal navigation
+  if (isMobile) {
+    const getCategoryTitle = () => {
+      switch (activeCategory) {
+        case "pdf_package": return "Pacotes";
+        case "photo": return "Fotos";
+        case "video": return "Vídeos";
+        default: return `Materiais - ${unit}`;
+      }
+    };
+
+    const getCurrentItems = () => {
+      switch (activeCategory) {
+        case "pdf_package": return sortedPackages;
+        case "photo": return photos;
+        case "video": return videos;
+        default: return [];
+      }
+    };
+
+    return (
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetTrigger asChild>
+          {triggerButton}
+        </SheetTrigger>
+        <SheetContent side="bottom" className="h-[60vh] rounded-t-xl">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              {activeCategory !== "main" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 -ml-2"
+                  onClick={() => setActiveCategory("main")}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+              )}
+              <FolderOpen className="w-4 h-4" />
+              {getCategoryTitle()}
+            </SheetTitle>
+          </SheetHeader>
+
+          <ScrollArea className="h-[calc(60vh-80px)]">
+            {activeCategory === "main" ? (
+              // Main category list
+              <div className="space-y-1 py-2">
+                {sortedPackages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between h-12 px-3"
+                    onClick={() => setActiveCategory("pdf_package")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-red-500" />
+                      <span>Pacotes</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="text-sm">{sortedPackages.length}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </Button>
+                )}
+                
+                {photos.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between h-12 px-3"
+                    onClick={() => setActiveCategory("photo")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Image className="w-5 h-5 text-blue-500" />
+                      <span>Fotos</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="text-sm">{photos.length}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </Button>
+                )}
+                
+                {videos.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between h-12 px-3"
+                    onClick={() => setActiveCategory("video")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Video className="w-5 h-5 text-purple-500" />
+                      <span>Vídeos</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="text-sm">{videos.length}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </Button>
+                )}
+              </div>
+            ) : (
+              // Items list for selected category
+              <div className="space-y-1 py-2">
+                {getCurrentItems().map((material) => {
+                  const isSuggested = leadGuestCount && material.guest_count === leadGuestCount;
+                  return (
+                    <Button
+                      key={material.id}
+                      variant="ghost"
+                      className={`w-full justify-start h-auto py-3 px-3 ${isSuggested ? "bg-primary/10 border-l-2 border-primary" : ""}`}
+                      disabled={isSending === material.id}
+                      onClick={() => handleSendMaterial(material)}
+                    >
+                      <div className="flex items-center gap-3 w-full">
+                        {isSending === material.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin shrink-0" />
+                        ) : (
+                          <>
+                            {material.type === "pdf_package" && <FileText className="w-5 h-5 text-red-500 shrink-0" />}
+                            {material.type === "photo" && <Image className="w-5 h-5 text-blue-500 shrink-0" />}
+                            {material.type === "video" && <Video className="w-5 h-5 text-purple-500 shrink-0" />}
+                          </>
+                        )}
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="truncate text-sm font-medium">{material.name}</p>
+                          {material.guest_count && (
+                            <p className="text-xs text-muted-foreground">
+                              {material.guest_count} pessoas
+                            </p>
+                          )}
+                        </div>
+                        {isSuggested && (
+                          <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                        )}
+                      </div>
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: Use DropdownMenu with submenus
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size={variant === "icon" ? "icon" : "sm"}
-          disabled={disabled || isLoading}
-          className={variant === "icon" ? "shrink-0 h-9 w-9" : "shrink-0"}
-        >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <>
-              <FolderOpen className="w-4 h-4" />
-              {variant === "full" && <span className="ml-2">Materiais</span>}
-            </>
-          )}
-        </Button>
+        {triggerButton}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
         <DropdownMenuLabel className="flex items-center gap-2">
@@ -176,7 +331,6 @@ export function SalesMaterialsMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        {/* Packages submenu */}
         {sortedPackages.length > 0 && (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
@@ -218,7 +372,6 @@ export function SalesMaterialsMenu({
           </DropdownMenuSub>
         )}
 
-        {/* Photos submenu */}
         {photos.length > 0 && (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
@@ -244,7 +397,6 @@ export function SalesMaterialsMenu({
           </DropdownMenuSub>
         )}
 
-        {/* Videos submenu */}
         {videos.length > 0 && (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
