@@ -380,11 +380,18 @@
        doc.setFillColor(37, 99, 235);
        doc.rect(0, footerY - 5, pageWidth, 25, "F");
        
+       // Add logo to footer
+       try {
+         doc.addImage(logoCastelo, "PNG", 15, footerY - 2, 18, 18);
+       } catch {
+         console.log("Could not add logo to footer");
+       }
+ 
        doc.setTextColor(255, 255, 255);
        doc.setFontSize(10);
-       doc.text("Plataforma de Gestão para Buffets", pageWidth / 2, footerY + 3, { align: "center" });
+       doc.text("Castelo da Diversão", pageWidth / 2 + 10, footerY + 3, { align: "center" });
        doc.setFontSize(8);
-       doc.text("contato@suaplataforma.com.br | (11) 99999-9999", pageWidth / 2, footerY + 10, { align: "center" });
+       doc.text("contato@castelodadiversao.com.br | castelodadiversao.online", pageWidth / 2 + 10, footerY + 10, { align: "center" });
  
        // Save
        const fileName = `proposta-${formData.companyName.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.pdf`;
