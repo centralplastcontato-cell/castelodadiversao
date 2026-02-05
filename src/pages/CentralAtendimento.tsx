@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, RefreshCw, LayoutList, Columns, Menu, Users as UsersIcon, MessageSquare, Settings, Headset, Bell, BellOff } from "lucide-react";
+import { LogOut, RefreshCw, LayoutList, Columns, Menu, Users as UsersIcon, MessageSquare, Settings, Headset, Bell, BellOff, Presentation } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 
@@ -101,6 +101,7 @@ export default function CentralAtendimento() {
   const { hasPermission } = usePermissions(user?.id);
   const canEditName = isAdmin || hasPermission('leads.edit.name');
   const canEditDescription = isAdmin || hasPermission('leads.edit.description');
+  const canAccessB2B = isAdmin || hasPermission('b2b.view');
   
   // Sound notification for new leads
   useLeadNotifications();
@@ -531,6 +532,13 @@ export default function CentralAtendimento() {
                         Configurações
                       </Button>
                       
+                      {canAccessB2B && (
+                        <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/comercial-b2b"); setIsMobileMenuOpen(false); }}>
+                          <Presentation className="w-5 h-5 mr-3" />
+                          Comercial B2B
+                        </Button>
+                      )}
+                      
                       {canManageUsers && (
                         <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/users"); setIsMobileMenuOpen(false); }}>
                           <UsersIcon className="w-5 h-5 mr-3" />
@@ -713,7 +721,8 @@ export default function CentralAtendimento() {
     <SidebarProvider>
       <div className="h-dvh flex w-full overflow-hidden">
         <AdminSidebar 
-          canManageUsers={canManageUsers} 
+          canManageUsers={canManageUsers}
+          canAccessB2B={canAccessB2B}
           currentUserName={currentUserProfile?.full_name || user.email || ""} 
           onRefresh={handleRefresh} 
           onLogout={handleLogout} 

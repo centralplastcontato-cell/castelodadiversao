@@ -119,6 +119,7 @@ const ComercialB2B = () => {
         <div className="min-h-screen flex w-full bg-background">
           <AdminSidebar
             canManageUsers={canManageUsers}
+            canAccessB2B={hasB2BAccess}
             currentUserName={currentUserName}
             onRefresh={handleRefresh}
             onLogout={handleLogout}
@@ -165,12 +166,13 @@ const ComercialB2B = () => {
    return (
      <SidebarProvider defaultOpen={false}>
        <div className="min-h-screen flex w-full bg-background">
-         <AdminSidebar
-           canManageUsers={canManageUsers}
-           currentUserName={currentUserName}
-           onRefresh={handleRefresh}
-           onLogout={handleLogout}
-         />
+          <AdminSidebar
+            canManageUsers={canManageUsers}
+            canAccessB2B={hasB2BAccess}
+            currentUserName={currentUserName}
+            onRefresh={handleRefresh}
+            onLogout={handleLogout}
+          />
          
          <main className="flex-1 overflow-auto">
            <div className="p-6 max-w-6xl mx-auto">
