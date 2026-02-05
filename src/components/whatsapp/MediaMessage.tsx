@@ -18,13 +18,17 @@ interface MediaMessageProps {
 /**
  * Check if a media URL is from our persistent storage (Supabase)
  * URLs from WhatsApp CDN (mmg.whatsapp.net) expire quickly and won't work
+ * Signed URLs include a token parameter and are also valid
  */
 function isPersistedMediaUrl(url: string | null): boolean {
   if (!url) return false;
   
-  // Our Supabase storage URLs are permanent
+  // Our Supabase storage URLs (including signed URLs)
   if (url.includes('supabase.co/storage')) return true;
   if (url.includes('knyzkwgdmclcwvzhdmyk')) return true; // Our project ID
+  
+  // Check for signed URL token parameter
+  if (url.includes('token=')) return true;
   
   // WhatsApp CDN URLs expire quickly - treat as not persisted
   if (url.includes('mmg.whatsapp.net')) return false;
@@ -33,6 +37,26 @@ function isPersistedMediaUrl(url: string | null): boolean {
   
   // Other URLs (might be external) - assume they work
   return true;
+}
+
+/**
+ * Extract storage path from a Supabase URL for generating fresh signed URLs
+ */
+function extractStoragePath(url: string): string | null {
+  if (!url) return null;
+  
+  // Pattern: .../storage/v1/object/.../whatsapp-media/path
+  const storageMatch = url.match(/\/storage\/v1\/object\/(?:public|sign)\/whatsapp-media\/(.+?)(?:\?|$)/);
+  if (storageMatch) {
+    return storageMatch[1];
+  }
+  
+  // Pattern: storage://whatsapp-media/path (internal format)
+  if (url.startsWith('storage://whatsapp-media/')) {
+    return url.replace('storage://whatsapp-media/', '');
+  }
+  
+  return null;
 }
 
 /**
