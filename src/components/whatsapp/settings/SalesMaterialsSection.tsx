@@ -16,16 +16,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { FileText, Image, Video, Plus, Pencil, Trash2, Loader2, Upload, FolderOpen } from "lucide-react";
+import { FileText, Image, Video, Plus, Pencil, Trash2, Loader2, Upload, FolderOpen, Images, X } from "lucide-react";
 
 interface SalesMaterial {
   id: string;
   unit: string;
-  type: "pdf_package" | "photo" | "video";
+  type: "pdf_package" | "photo" | "video" | "photo_collection";
   name: string;
   guest_count: number | null;
   file_url: string;
   file_path: string | null;
+  photo_urls: string[] | null;
   sort_order: number;
   is_active: boolean;
 }
@@ -37,6 +38,8 @@ interface SalesMaterialsSectionProps {
 
 const GUEST_OPTIONS = [50, 60, 70, 80, 90, 100];
 const UNITS = ["Manchester", "Trujillo"];
+const MAX_PHOTOS_PER_COLLECTION = 10;
+const MAX_COLLECTIONS_PER_UNIT = 5;
 
 export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSectionProps) {
   const [materials, setMaterials] = useState<SalesMaterial[]>([]);
@@ -44,17 +47,20 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [editingMaterial, setEditingMaterial] = useState<SalesMaterial | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<string>("Manchester");
   const [selectedType, setSelectedType] = useState<string>("pdf_package");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const multiFileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     name: "",
-    type: "pdf_package" as "pdf_package" | "photo" | "video",
+    type: "pdf_package" as "pdf_package" | "photo" | "video" | "photo_collection",
     guest_count: null as number | null,
     file_url: "",
     file_path: null as string | null,
+    photo_urls: [] as string[],
     is_active: true,
     unit: null as string | null,
   });
@@ -136,10 +142,10 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
         title: "Upload concluído",
         description: "Arquivo enviado com sucesso!",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro no upload",
-        description: error.message || "Erro ao enviar arquivo.",
+        description: error instanceof Error ? error.message : "Erro ao enviar arquivo.",
         variant: "destructive",
       });
     }
@@ -150,11 +156,117 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
     }
   };
 
+  const handleMultiFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const remainingSlots = MAX_PHOTOS_PER_COLLECTION - formData.photo_urls.length;
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+
+    if (files.length > remainingSlots) {
+      toast({
+        title: "Limite de fotos",
+        description: `Apenas ${remainingSlots} foto(s) podem ser adicionadas. Máximo de ${MAX_PHOTOS_PER_COLLECTION} por coleção.`,
+        variant: "destructive",
+      });
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    const uploadedUrls: string[] = [];
+
+    try {
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
+        
+        // Validate file type
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+          continue;
+        }
+
+        // Max size: 50MB
+        if (file.size > 50 * 1024 * 1024) {
+          continue;
+        }
+
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${selectedUnit.toLowerCase()}/collections/${Date.now()}_${i}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("sales-materials")
+          .upload(fileName, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("sales-materials")
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(urlData.publicUrl);
+        setUploadProgress(Math.round(((i + 1) / filesToUpload.length) * 100));
+      }
+
+      if (uploadedUrls.length > 0) {
+        setFormData({
+          ...formData,
+          photo_urls: [...formData.photo_urls, ...uploadedUrls],
+        });
+
+        toast({
+          title: "Upload concluído",
+          description: `${uploadedUrls.length} foto(s) enviada(s) com sucesso!`,
+        });
+      }
+    } catch (error: unknown) {
+      toast({
+        title: "Erro no upload",
+        description: error instanceof Error ? error.message : "Erro ao enviar arquivos.",
+        variant: "destructive",
+      });
+    }
+
+    setIsUploading(false);
+    setUploadProgress(0);
+    if (multiFileInputRef.current) {
+      multiFileInputRef.current.value = "";
+    }
+  };
+
+  const removePhotoFromCollection = (index: number) => {
+    const newUrls = [...formData.photo_urls];
+    newUrls.splice(index, 1);
+    setFormData({ ...formData, photo_urls: newUrls });
+  };
+
   const handleSaveMaterial = async () => {
-    if (!formData.name || !formData.file_url) {
+    if (!formData.name) {
       toast({
         title: "Erro",
-        description: "Preencha o nome e faça upload do arquivo.",
+        description: "Preencha o nome do material.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.type === "photo_collection") {
+      if (formData.photo_urls.length === 0) {
+        toast({
+          title: "Erro",
+          description: "Adicione pelo menos uma foto à coleção.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (!formData.file_url) {
+      toast({
+        title: "Erro",
+        description: "Faça upload do arquivo.",
         variant: "destructive",
       });
       return;
@@ -169,6 +281,21 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
       return;
     }
 
+    // Check collection limit per unit
+    if (formData.type === "photo_collection" && !editingMaterial) {
+      const existingCollections = materials.filter(
+        m => m.unit === selectedUnit && m.type === "photo_collection"
+      );
+      if (existingCollections.length >= MAX_COLLECTIONS_PER_UNIT) {
+        toast({
+          title: "Limite de coleções",
+          description: `Máximo de ${MAX_COLLECTIONS_PER_UNIT} coleções por unidade.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     try {
@@ -179,8 +306,9 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
             name: formData.name,
             type: formData.type,
             guest_count: formData.type === "pdf_package" ? formData.guest_count : null,
-            file_url: formData.file_url,
+            file_url: formData.type === "photo_collection" ? formData.photo_urls[0] || "" : formData.file_url,
             file_path: formData.file_path,
+            photo_urls: formData.type === "photo_collection" ? formData.photo_urls : [],
             is_active: formData.is_active,
             unit: formData.unit || editingMaterial.unit,
           })
@@ -205,8 +333,9 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
             name: formData.name,
             type: formData.type,
             guest_count: formData.type === "pdf_package" ? formData.guest_count : null,
-            file_url: formData.file_url,
+            file_url: formData.type === "photo_collection" ? formData.photo_urls[0] || "" : formData.file_url,
             file_path: formData.file_path,
+            photo_urls: formData.type === "photo_collection" ? formData.photo_urls : [],
             is_active: formData.is_active,
             sort_order: maxOrder,
           });
@@ -222,10 +351,10 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
       setIsDialogOpen(false);
       resetForm();
       fetchMaterials();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao salvar material.",
+        description: error instanceof Error ? error.message : "Erro ao salvar material.",
         variant: "destructive",
       });
     }
@@ -259,10 +388,10 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
       });
 
       fetchMaterials();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao excluir material.",
+        description: error instanceof Error ? error.message : "Erro ao excluir material.",
         variant: "destructive",
       });
     }
@@ -280,10 +409,10 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
       setMaterials(materials.map(m => 
         m.id === material.id ? { ...m, is_active: !m.is_active } : m
       ));
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao atualizar material.",
+        description: error instanceof Error ? error.message : "Erro ao atualizar material.",
         variant: "destructive",
       });
     }
@@ -299,6 +428,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
         guest_count: material.guest_count,
         file_url: material.file_url,
         file_path: material.file_path,
+        photo_urls: material.photo_urls || [],
         is_active: material.is_active,
         unit: material.unit,
       });
@@ -316,6 +446,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
       guest_count: null,
       file_url: "",
       file_path: null,
+      photo_urls: [],
       is_active: true,
       unit: null,
     });
@@ -327,6 +458,8 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
         return <FileText className="w-5 h-5 text-red-500" />;
       case "photo":
         return <Image className="w-5 h-5 text-blue-500" />;
+      case "photo_collection":
+        return <Images className="w-5 h-5 text-green-500" />;
       case "video":
         return <Video className="w-5 h-5 text-purple-500" />;
       default:
@@ -340,6 +473,8 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
         return "PDF de Pacote";
       case "photo":
         return "Foto";
+      case "photo_collection":
+        return "Coleção";
       case "video":
         return "Vídeo";
       default:
@@ -350,6 +485,10 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
   const filteredMaterials = materials.filter(
     m => m.unit === selectedUnit && m.type === selectedType
   );
+
+  const collectionsCount = materials.filter(
+    m => m.unit === selectedUnit && m.type === "photo_collection"
+  ).length;
 
   if (isLoading) {
     return (
@@ -368,7 +507,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
               <FolderOpen className="w-5 h-5 shrink-0 text-primary" />
               <div className="min-w-0">
                 <CardTitle className="text-base">Materiais</CardTitle>
-                <CardDescription className="text-xs">PDFs, fotos e vídeos</CardDescription>
+                <CardDescription className="text-xs">PDFs, coleções, fotos e vídeos</CardDescription>
               </div>
             </div>
             {isAdmin && (
@@ -395,18 +534,22 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
 
           {/* Type tabs */}
           <Tabs value={selectedType} onValueChange={setSelectedType}>
-            <TabsList className="grid w-full grid-cols-3 mb-3 h-9">
-              <TabsTrigger value="pdf_package" className="text-xs px-2">
-                <FileText className="w-3.5 h-3.5 mr-1" />
-                PDFs
+            <TabsList className="grid w-full grid-cols-4 mb-3 h-9">
+              <TabsTrigger value="pdf_package" className="text-xs px-1">
+                <FileText className="w-3.5 h-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">PDFs</span>
               </TabsTrigger>
-              <TabsTrigger value="photo" className="text-xs px-2">
-                <Image className="w-3.5 h-3.5 mr-1" />
-                Fotos
+              <TabsTrigger value="photo_collection" className="text-xs px-1">
+                <Images className="w-3.5 h-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Coleções</span>
               </TabsTrigger>
-              <TabsTrigger value="video" className="text-xs px-2">
-                <Video className="w-3.5 h-3.5 mr-1" />
-                Vídeos
+              <TabsTrigger value="photo" className="text-xs px-1">
+                <Image className="w-3.5 h-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Fotos</span>
+              </TabsTrigger>
+              <TabsTrigger value="video" className="text-xs px-1">
+                <Video className="w-3.5 h-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Vídeos</span>
               </TabsTrigger>
             </TabsList>
 
@@ -416,11 +559,16 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
                   <div className="bg-muted rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2">
                     {getTypeIcon(selectedType)}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">Nenhum material</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {selectedType === "photo_collection" 
+                      ? "Nenhuma coleção" 
+                      : "Nenhum material"
+                    }
+                  </p>
                   {isAdmin && (
                     <Button size="sm" variant="outline" onClick={() => handleOpenDialog()}>
                       <Plus className="w-4 h-4 mr-1" />
-                      Adicionar
+                      {selectedType === "photo_collection" ? "Nova Coleção" : "Adicionar"}
                     </Button>
                   )}
                 </div>
@@ -434,6 +582,11 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
                       {getTypeIcon(material.type)}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{material.name}</p>
+                        {material.type === "photo_collection" && material.photo_urls && (
+                          <p className="text-xs text-muted-foreground">
+                            {material.photo_urls.length} foto{material.photo_urls.length !== 1 ? 's' : ''}
+                          </p>
+                        )}
                         {material.guest_count && (
                           <p className="text-xs text-muted-foreground">
                             {material.guest_count} pessoas
@@ -476,6 +629,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
           <div className="mt-4 pt-3 border-t">
             <p className="text-xs text-muted-foreground">
               {materials.filter(m => m.unit === selectedUnit && m.type === "pdf_package" && m.is_active).length} PDFs · {" "}
+              {materials.filter(m => m.unit === selectedUnit && m.type === "photo_collection" && m.is_active).length} coleções · {" "}
               {materials.filter(m => m.unit === selectedUnit && m.type === "photo" && m.is_active).length} fotos · {" "}
               {materials.filter(m => m.unit === selectedUnit && m.type === "video" && m.is_active).length} vídeos
             </p>
@@ -485,7 +639,7 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
 
       {/* Dialog para criar/editar material */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingMaterial ? "Editar Material" : "Novo Material"}
@@ -527,8 +681,8 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
                 <Label>Tipo de Material *</Label>
                 <Select 
                   value={formData.type} 
-                  onValueChange={(value: "pdf_package" | "photo" | "video") => 
-                    setFormData({ ...formData, type: value, guest_count: null })
+                  onValueChange={(value: "pdf_package" | "photo" | "video" | "photo_collection") => 
+                    setFormData({ ...formData, type: value, guest_count: null, photo_urls: [], file_url: "", file_path: null })
                   }
                 >
                   <SelectTrigger>
@@ -541,10 +695,16 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
                         PDF de Pacote
                       </div>
                     </SelectItem>
+                    <SelectItem value="photo_collection" disabled={collectionsCount >= MAX_COLLECTIONS_PER_UNIT}>
+                      <div className="flex items-center gap-2">
+                        <Images className="w-4 h-4 text-green-500" />
+                        Coleção de Fotos ({collectionsCount}/{MAX_COLLECTIONS_PER_UNIT})
+                      </div>
+                    </SelectItem>
                     <SelectItem value="photo">
                       <div className="flex items-center gap-2">
                         <Image className="w-4 h-4 text-blue-500" />
-                        Foto do Salão
+                        Foto Avulsa
                       </div>
                     </SelectItem>
                     <SelectItem value="video">
@@ -580,71 +740,147 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">Nome do Material *</Label>
+              <Label htmlFor="name">
+                {formData.type === "photo_collection" ? "Nome da Coleção *" : "Nome do Material *"}
+              </Label>
               <Input
                 id="name"
                 placeholder={
                   formData.type === "pdf_package" 
                     ? "Ex: Pacote Premium 50 pessoas" 
-                    : formData.type === "photo" 
-                      ? "Ex: Salão Principal"
-                      : "Ex: Tour Virtual"
+                    : formData.type === "photo_collection"
+                      ? "Ex: Área do Buffet"
+                      : formData.type === "photo" 
+                        ? "Ex: Salão Principal"
+                        : "Ex: Tour Virtual"
                 }
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Arquivo *</Label>
-              {formData.file_url ? (
-                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                  {getTypeIcon(formData.type)}
-                  <span className="flex-1 truncate text-sm">
-                    {formData.file_path?.split("/").pop() || "Arquivo selecionado"}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, file_url: "", file_path: null })}
+            {/* Photo Collection Upload */}
+            {formData.type === "photo_collection" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Fotos da Coleção * ({formData.photo_urls.length}/{MAX_PHOTOS_PER_COLLECTION})</Label>
+                </div>
+                
+                {/* Photo thumbnails grid */}
+                {formData.photo_urls.length > 0 && (
+                  <div className="grid grid-cols-5 gap-2">
+                    {formData.photo_urls.map((url, index) => (
+                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group">
+                        <img 
+                          src={url} 
+                          alt={`Foto ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePhotoFromCollection(index)}
+                          className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-0.5">
+                          {index + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {formData.photo_urls.length < MAX_PHOTOS_PER_COLLECTION && (
+                  <div 
+                    className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => multiFileInputRef.current?.click()}
                   >
-                    Trocar
-                  </Button>
-                </div>
-              ) : (
-                <div 
-                  className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {isUploading ? (
-                    <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin text-primary" />
-                  ) : (
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {isUploading ? "Enviando..." : "Clique para fazer upload"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formData.type === "pdf_package" && "Apenas PDF (máx. 50MB)"}
-                    {formData.type === "photo" && "JPG, PNG ou WebP (máx. 50MB)"}
-                    {formData.type === "video" && "MP4, MOV ou WebM (máx. 50MB)"}
-                  </p>
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept={
-                  formData.type === "pdf_package" 
-                    ? ".pdf" 
-                    : formData.type === "photo" 
-                      ? "image/jpeg,image/png,image/webp"
-                      : "video/mp4,video/quicktime,video/webm"
-                }
-                onChange={handleFileUpload}
-              />
-            </div>
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">
+                          Enviando... {uploadProgress}%
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Clique para adicionar fotos
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          JPG, PNG ou WebP (máx. 50MB cada)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <input
+                  ref={multiFileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={handleMultiFileUpload}
+                />
+              </div>
+            )}
+
+            {/* Single file upload for other types */}
+            {formData.type !== "photo_collection" && (
+              <div className="space-y-2">
+                <Label>Arquivo *</Label>
+                {formData.file_url ? (
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                    {getTypeIcon(formData.type)}
+                    <span className="flex-1 truncate text-sm">
+                      {formData.file_path?.split("/").pop() || "Arquivo selecionado"}
+                    </span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setFormData({ ...formData, file_url: "", file_path: null })}
+                    >
+                      Trocar
+                    </Button>
+                  </div>
+                ) : (
+                  <div 
+                    className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin text-primary" />
+                    ) : (
+                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {isUploading ? "Enviando..." : "Clique para fazer upload"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formData.type === "pdf_package" && "Apenas PDF (máx. 50MB)"}
+                      {formData.type === "photo" && "JPG, PNG ou WebP (máx. 50MB)"}
+                      {formData.type === "video" && "MP4, MOV ou WebM (máx. 50MB)"}
+                    </p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept={
+                    formData.type === "pdf_package" 
+                      ? ".pdf" 
+                      : formData.type === "photo" 
+                        ? "image/jpeg,image/png,image/webp"
+                        : "video/mp4,video/quicktime,video/webm"
+                  }
+                  onChange={handleFileUpload}
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <Label htmlFor="is_active">Material ativo</Label>
