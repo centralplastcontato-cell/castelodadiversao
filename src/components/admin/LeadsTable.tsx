@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -300,8 +300,111 @@ export function LeadsTable({
         ))}
       </div>
 
-      {/* Desktop: Table View */}
-     <div className="hidden sm:block overflow-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent flex-1 min-h-0">
+      {/* Desktop: Table View with dual scrollbars */}
+      <DesktopTableWithDualScroll
+        leads={leads}
+        selectedIds={selectedIds}
+        isAdmin={isAdmin}
+        canEdit={canEdit}
+        responsaveis={responsaveis}
+        toggleSelectAll={toggleSelectAll}
+        toggleSelect={toggleSelect}
+        handleStatusChangeInline={handleStatusChangeInline}
+        getResponsavelName={getResponsavelName}
+        onLeadClick={onLeadClick}
+        formatWhatsAppLink={formatWhatsAppLink}
+        handleDeleteSingle={handleDeleteSingle}
+      />
+    </div>
+  );
+}
+
+// Extracted component for desktop table with dual scrollbars
+interface DesktopTableProps {
+  leads: Lead[];
+  selectedIds: Set<string>;
+  isAdmin: boolean;
+  canEdit: boolean;
+  responsaveis: UserWithRole[];
+  toggleSelectAll: () => void;
+  toggleSelect: (id: string) => void;
+  handleStatusChangeInline: (lead: Lead, newStatus: LeadStatus) => void;
+  getResponsavelName: (responsavelId: string | null) => string | null;
+  onLeadClick: (lead: Lead) => void;
+  formatWhatsAppLink: (phone: string) => string;
+  handleDeleteSingle: (id: string) => Promise<void>;
+}
+
+function DesktopTableWithDualScroll({
+  leads,
+  selectedIds,
+  isAdmin,
+  canEdit,
+  responsaveis,
+  toggleSelectAll,
+  toggleSelect,
+  handleStatusChangeInline,
+  getResponsavelName,
+  onLeadClick,
+  formatWhatsAppLink,
+  handleDeleteSingle,
+}: DesktopTableProps) {
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [scrollWidth, setScrollWidth] = useState(0);
+  const isSyncing = useRef(false);
+
+  // Sync scroll positions between top scrollbar and table
+  const handleTopScroll = useCallback(() => {
+    if (isSyncing.current) return;
+    isSyncing.current = true;
+    if (topScrollRef.current && tableScrollRef.current) {
+      tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+    requestAnimationFrame(() => { isSyncing.current = false; });
+  }, []);
+
+  const handleTableScroll = useCallback(() => {
+    if (isSyncing.current) return;
+    isSyncing.current = true;
+    if (topScrollRef.current && tableScrollRef.current) {
+      topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+    }
+    requestAnimationFrame(() => { isSyncing.current = false; });
+  }, []);
+
+  // Update scroll width when table content changes
+  useEffect(() => {
+    const updateScrollWidth = () => {
+      if (tableScrollRef.current) {
+        setScrollWidth(tableScrollRef.current.scrollWidth);
+      }
+    };
+    updateScrollWidth();
+    const resizeObserver = new ResizeObserver(updateScrollWidth);
+    if (tableScrollRef.current) {
+      resizeObserver.observe(tableScrollRef.current);
+    }
+    return () => resizeObserver.disconnect();
+  }, [leads]);
+
+  return (
+    <div className="hidden sm:flex flex-col flex-1 min-h-0">
+      {/* Top scrollbar */}
+      <div
+        ref={topScrollRef}
+        onScroll={handleTopScroll}
+        className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent shrink-0"
+      >
+        <div style={{ width: scrollWidth, height: 1 }} />
+      </div>
+      
+      {/* Table container */}
+      <div
+        ref={tableScrollRef}
+        onScroll={handleTableScroll}
+        className="overflow-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent flex-1 min-h-0"
+      >
         <Table>
           <TableHeader>
             <TableRow>
