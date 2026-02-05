@@ -110,6 +110,7 @@ interface Lead {
   observacoes: string | null;
   created_at: string;
   responsavel_id: string | null;
+  campaign_name: string | null;
 }
 
 interface MessageTemplate {
@@ -669,7 +670,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         // Fetch all linked leads for the conversation cards
         const { data: allLeads } = await supabase
           .from("campaign_leads")
-          .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id")
+          .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id, campaign_name")
           .in("id", leadIds);
         
         if (allLeads) {
@@ -908,7 +909,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       // Lead already linked, just fetch it
       const { data } = await supabase
         .from("campaign_leads")
-        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id")
+        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id, campaign_name")
         .eq("id", leadId)
         .single();
 
@@ -932,7 +933,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       // Search for a lead matching this phone number in the same unit
       const { data: matchingLead } = await supabase
         .from("campaign_leads")
-        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id")
+        .select("id, name, whatsapp, unit, status, month, day_of_month, day_preference, guests, observacoes, created_at, responsavel_id, campaign_name")
         .or(phoneVariants.map(p => `whatsapp.ilike.%${p}%`).join(','))
         .eq("unit", selectedInstance.unit)
         .limit(1)
@@ -1148,11 +1149,22 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const applyTemplate = (template: MessageTemplate) => {
     let message = template.template;
     
-    // Replace placeholders with conversation data
+    // Replace placeholders with conversation/lead data
     if (selectedConversation) {
+      const leadName = conversationLeadsMap[selectedConversation.id]?.name || selectedConversation.contact_name || '';
+      const leadMonth = conversationLeadsMap[selectedConversation.id]?.month || '';
+      const leadGuests = conversationLeadsMap[selectedConversation.id]?.guests || '';
+      const leadCampaign = conversationLeadsMap[selectedConversation.id]?.campaign_name || '';
+      const leadUnit = conversationLeadsMap[selectedConversation.id]?.unit || '';
+      
+      // Support both single braces {nome} and double braces {{nome}}
       message = message
-        .replace(/\{nome\}/gi, selectedConversation.contact_name || '')
-        .replace(/\{telefone\}/gi, selectedConversation.contact_phone || '');
+        .replace(/\{\{?nome\}?\}/gi, leadName)
+        .replace(/\{\{?telefone\}?\}/gi, selectedConversation.contact_phone || '')
+        .replace(/\{\{?mes\}?\}/gi, leadMonth)
+        .replace(/\{\{?convidados\}?\}/gi, leadGuests)
+        .replace(/\{\{?campanha\}?\}/gi, leadCampaign)
+        .replace(/\{\{?unidade\}?\}/gi, leadUnit);
     }
     
     setNewMessage(message);
