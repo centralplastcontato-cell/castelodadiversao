@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.wapi-send]
 verify_jwt = false
+
+[functions.submit-lead]
+verify_jwt = false
+
+[functions.submit-b2b-lead]
+verify_jwt = false

@@ -211,25 +211,28 @@
          setInputType(null);
          setIsSaving(true);
  
-         try {
-           const finalData = {
-             ...leadData,
-             city: currentValue,
-           };
- 
-           const { error } = await supabase.from("b2b_leads").insert({
-             company_name: finalData.company_name || "",
-             contact_name: finalData.contact_name || "",
-             email: finalData.email || "",
-             phone: finalData.phone || null,
-             city: finalData.city || null,
-             monthly_parties: finalData.monthly_parties ? parseInt(finalData.monthly_parties.replace(/\D/g, "") || "0") : null,
-             current_tools: finalData.current_tools || null,
-             main_challenges: finalData.main_challenges || null,
-             how_found_us: finalData.how_found_us || null,
-           });
- 
-           if (error) throw error;
+          try {
+            const finalData = {
+              ...leadData,
+              city: currentValue,
+            };
+
+            // Use edge function for secure lead submission with rate limiting
+            const { error } = await supabase.functions.invoke('submit-b2b-lead', {
+              body: {
+                company_name: finalData.company_name || "",
+                contact_name: finalData.contact_name || "",
+                email: finalData.email || "",
+                phone: finalData.phone || null,
+                city: finalData.city || null,
+                monthly_parties: finalData.monthly_parties ? parseInt(finalData.monthly_parties.replace(/\D/g, "") || "0") : null,
+                current_tools: finalData.current_tools || null,
+                main_challenges: finalData.main_challenges || null,
+                how_found_us: finalData.how_found_us || null,
+              },
+            });
+
+            if (error) throw error;
  
            setMessages((prev) => [
              ...prev,
