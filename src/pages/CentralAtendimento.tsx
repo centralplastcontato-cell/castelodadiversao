@@ -816,8 +816,8 @@ export default function CentralAtendimento() {
               </TabsContent>
 
               <TabsContent value="leads" className="flex-1 overflow-auto min-h-0 mt-0">
-                {/* View mode toggle - positioned at top like mobile */}
-                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")}>
+               {/* View mode toggle - positioned at top like mobile. Using flex layout to contain table scroll */}
+               <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="h-full flex flex-col">
                   <div className="mb-4">
                     <TabsList>
                       <TabsTrigger value="list" className="flex items-center gap-2">
@@ -832,9 +832,9 @@ export default function CentralAtendimento() {
                   </div>
 
                   <MetricsCards leads={leads} isLoading={isLoadingLeads} />
-                  <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
+                 <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
 
-                  <TabsContent value="list" className="mt-4">
+                 <TabsContent value="list" className="mt-4 flex-1 min-h-0 overflow-hidden">
                     <LeadsTable
                       leads={leads}
                       isLoading={isLoadingLeads}
@@ -850,7 +850,7 @@ export default function CentralAtendimento() {
                     />
                   </TabsContent>
 
-                  <TabsContent value="kanban" className="mt-4">
+                 <TabsContent value="kanban" className="mt-4 flex-1 min-h-0 overflow-hidden">
                     <LeadsKanban
                       leads={leads}
                       responsaveis={responsaveis}

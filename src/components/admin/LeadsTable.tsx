@@ -233,9 +233,9 @@ export function LeadsTable({
   }
 
   return (
-   <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col max-h-[calc(100vh-320px)]">
+  <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col h-full">
       {/* Header */}
-      <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between gap-2">
+     <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-primary" />
           <span className="font-medium text-foreground text-sm sm:text-base">
