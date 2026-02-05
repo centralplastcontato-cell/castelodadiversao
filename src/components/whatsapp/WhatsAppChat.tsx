@@ -14,8 +14,8 @@ import {
   Send, Search, MessageSquare, Check, CheckCheck, Clock, WifiOff, 
   ArrowLeft, Building2, Star, StarOff, Link2, FileText, Smile,
   Image as ImageIcon, Mic, Paperclip, Loader2, Square, X, Pause, Play,
-  Users, Calendar, MapPin, ArrowRightLeft, Info, Bot, Trash2,
-  CheckCircle, CalendarCheck, Briefcase, FileCheck, ArrowDown
+  Users, ArrowRightLeft, Trash2,
+  CalendarCheck, Briefcase, FileCheck, ArrowDown
 } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -142,6 +142,7 @@ interface WhatsAppChatProps {
 import { MediaMessage } from "@/components/whatsapp/MediaMessage";
 import { ConversationStatusActions } from "@/components/whatsapp/ConversationStatusActions";
 import { ConversationFilters } from "@/components/whatsapp/ConversationFilters";
+import { LeadInfoPopover } from "@/components/whatsapp/LeadInfoPopover";
 
 export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
@@ -1938,205 +1939,27 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {/* Info Popover - show for all individual chats */}
-                      {!selectedConversation.remote_jid.includes('@g.us') && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              title={linkedLead ? "Ver informações do lead" : "Contato não qualificado"}
-                            >
-                              <Info className={cn(
-                                "w-4 h-4",
-                                linkedLead ? "text-primary" : "text-destructive"
-                              )} />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-80 p-3">
-                            {linkedLead ? (
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <h4 className="font-semibold text-sm">{linkedLead.name}</h4>
-                                  <Badge 
-                                    className={cn(
-                                      "text-[10px] h-5",
-                                      linkedLead.status === 'novo' && "bg-blue-500",
-                                      linkedLead.status === 'em_contato' && "bg-yellow-500 text-yellow-950",
-                                      linkedLead.status === 'orcamento_enviado' && "bg-purple-500",
-                                      linkedLead.status === 'aguardando_resposta' && "bg-orange-500",
-                                      linkedLead.status === 'fechado' && "bg-green-500",
-                                      linkedLead.status === 'perdido' && "bg-red-500"
-                                    )}
-                                  >
-                                    {linkedLead.status === 'novo' && 'Novo'}
-                                    {linkedLead.status === 'em_contato' && 'Em Contato'}
-                                    {linkedLead.status === 'orcamento_enviado' && 'Orçamento Enviado'}
-                                    {linkedLead.status === 'aguardando_resposta' && 'Aguardando'}
-                                    {linkedLead.status === 'fechado' && 'Fechado'}
-                                    {linkedLead.status === 'perdido' && 'Perdido'}
-                                  </Badge>
-                                </div>
-                                
-                                <div className="grid gap-2 text-xs">
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="truncate">{linkedLead.whatsapp}</span>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Clock className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Chegou em {format(new Date(linkedLead.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                                  </div>
-                                  
-                                  {linkedLead.unit && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                      <span>{linkedLead.unit}</span>
-                                    </div>
-                                  )}
-                                  
-                                  {(linkedLead.month || linkedLead.day_preference) && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <Calendar className="w-3.5 h-3.5 shrink-0" />
-                                      <span>
-                                        {[
-                                          linkedLead.month,
-                                          linkedLead.day_of_month && `dia ${linkedLead.day_of_month}`,
-                                          linkedLead.day_preference
-                                        ].filter(Boolean).join(' • ')}
-                                      </span>
-                                    </div>
-                                  )}
-                                  
-                                  {linkedLead.guests && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <Users className="w-3.5 h-3.5 shrink-0" />
-                                      <span>{linkedLead.guests} convidados</span>
-                                    </div>
-                                  )}
-                                  
-                                  {linkedLead.observacoes && (
-                                    <div className="pt-2 border-t">
-                                      <p className="text-muted-foreground italic line-clamp-3">{linkedLead.observacoes}</p>
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                {canTransferLeads && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full text-xs h-7 gap-2"
-                                    onClick={() => setShowTransferDialog(true)}
-                                  >
-                                    <ArrowRightLeft className="w-3 h-3" />
-                                    Transferir Lead
-                                  </Button>
-                                )}
-                                
-                                {canDeleteFromChat && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full text-xs h-7 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                                    onClick={() => setShowDeleteConfirmDialog(true)}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                    Excluir Lead
-                                  </Button>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-destructive">
-                                  <Info className="w-4 h-4" />
-                                  <h4 className="font-semibold text-sm">Contato não qualificado</h4>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                  Este contato ainda não foi classificado como lead. Clique em um status para criar e classificar.
-                                </p>
-                                <div className="grid gap-2 text-xs">
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="truncate">{selectedConversation.contact_phone}</span>
-                                  </div>
-                                  {selectedConversation.contact_name && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <Users className="w-3.5 h-3.5 shrink-0" />
-                                      <span>{selectedConversation.contact_name}</span>
-                                    </div>
-                                  )}
-                                  {selectedInstance?.unit && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                      <span>{selectedInstance.unit}</span>
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                {/* Qualification Status Buttons */}
-                                <div className="pt-2 border-t">
-                                  <span className="text-xs font-medium text-muted-foreground block mb-2">Qualificar como:</span>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {[
-                                      { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
-                                      { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
-                                      { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
-                                      { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
-                                      { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
-                                      { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
-                                    ].map((statusOption) => (
-                                      <Button
-                                        key={statusOption.value}
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-6 text-[10px] gap-1 px-2"
-                                        disabled={isCreatingLead}
-                                        onClick={() => createAndClassifyLead(statusOption.value)}
-                                      >
-                                        {isCreatingLead ? (
-                                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                                        ) : (
-                                          <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
-                                        )}
-                                        {statusOption.label}
-                                      </Button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* Bot Toggle */}
-                                <div className="pt-2 border-t flex items-center justify-between">
-                                  <span className="text-xs text-muted-foreground">Bot de qualificação:</span>
-                                  <Button
-                                    variant={selectedConversation.bot_enabled !== false ? "secondary" : "ghost"}
-                                    size="sm"
-                                    className="h-7 text-xs gap-1"
-                                    onClick={() => toggleConversationBot(selectedConversation)}
-                                  >
-                                    <Bot className="w-3 h-3" />
-                                    {selectedConversation.bot_enabled !== false ? "Ativo" : "Inativo"}
-                                  </Button>
-                                </div>
-                                
-                                {/* Delete button for unqualified contacts */}
-                                {canDeleteFromChat && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full text-xs h-7 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                                    onClick={() => setShowDeleteConfirmDialog(true)}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                    Excluir Conversa
-                                  </Button>
-                                )}
-                              </div>
-                            )}
-                          </PopoverContent>
-                        </Popover>
-                      )}
+                      <LeadInfoPopover
+                        linkedLead={linkedLead}
+                        selectedConversation={selectedConversation}
+                        selectedInstance={selectedInstance}
+                        canTransferLeads={canTransferLeads}
+                        canDeleteFromChat={canDeleteFromChat}
+                        isCreatingLead={isCreatingLead}
+                        userId={userId}
+                        currentUserName={currentUserName}
+                        onShowTransferDialog={() => setShowTransferDialog(true)}
+                        onShowDeleteDialog={() => setShowDeleteConfirmDialog(true)}
+                        onCreateAndClassifyLead={createAndClassifyLead}
+                        onToggleConversationBot={toggleConversationBot}
+                        onLeadNameChange={(newName) => {
+                          setLinkedLead(prev => prev ? { ...prev, name: newName } : null);
+                          setSelectedConversation(prev => prev ? { ...prev, contact_name: newName } : null);
+                          setConversations(prevConvs => prevConvs.map(c => 
+                            c.id === selectedConversation.id ? { ...c, contact_name: newName } : c
+                          ));
+                        }}
+                      />
                       {/* O.E. (Orçamento Enviado) button - always visible, disabled without lead */}
                       <Button
                         variant="ghost"
@@ -2691,180 +2514,28 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {/* Info Popover - show for all individual chats (mobile) */}
-                    {!selectedConversation.remote_jid.includes('@g.us') && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title={linkedLead ? "Ver informações do lead" : "Contato não qualificado"}
-                          >
-                            <Info className={cn(
-                              "w-4 h-4",
-                              linkedLead ? "text-primary" : "text-destructive"
-                            )} />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="end" className="w-72 p-3">
-                          {linkedLead ? (
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-semibold text-sm">{linkedLead.name}</h4>
-                                <Badge 
-                                  className={cn(
-                                    "text-[10px] h-5",
-                                    linkedLead.status === 'novo' && "bg-blue-500",
-                                    linkedLead.status === 'em_contato' && "bg-yellow-500 text-yellow-950",
-                                    linkedLead.status === 'orcamento_enviado' && "bg-purple-500",
-                                    linkedLead.status === 'aguardando_resposta' && "bg-orange-500",
-                                    linkedLead.status === 'fechado' && "bg-green-500",
-                                    linkedLead.status === 'perdido' && "bg-red-500"
-                                  )}
-                                >
-                                  {linkedLead.status === 'novo' && 'Novo'}
-                                  {linkedLead.status === 'em_contato' && 'Em Contato'}
-                                  {linkedLead.status === 'orcamento_enviado' && 'Orçamento Enviado'}
-                                  {linkedLead.status === 'aguardando_resposta' && 'Aguardando'}
-                                  {linkedLead.status === 'fechado' && 'Fechado'}
-                                  {linkedLead.status === 'perdido' && 'Perdido'}
-                                </Badge>
-                              </div>
-                              
-                              <div className="grid gap-2 text-xs">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                                  <span className="truncate">{linkedLead.whatsapp}</span>
-                                </div>
-                                
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <Clock className="w-3.5 h-3.5 shrink-0" />
-                                  <span>Chegou em {format(new Date(linkedLead.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                                </div>
-                                
-                                {linkedLead.unit && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{linkedLead.unit}</span>
-                                  </div>
-                                )}
-                                
-                                {(linkedLead.month || linkedLead.day_preference) && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Calendar className="w-3.5 h-3.5 shrink-0" />
-                                    <span>
-                                      {[
-                                        linkedLead.month,
-                                        linkedLead.day_of_month && `dia ${linkedLead.day_of_month}`,
-                                        linkedLead.day_preference
-                                      ].filter(Boolean).join(' • ')}
-                                    </span>
-                                  </div>
-                                )}
-                                
-                                {linkedLead.guests && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Users className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{linkedLead.guests} convidados</span>
-                                  </div>
-                                )}
-                                
-                                {linkedLead.observacoes && (
-                                  <div className="pt-2 border-t">
-                                    <p className="text-muted-foreground italic line-clamp-3">{linkedLead.observacoes}</p>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {canTransferLeads && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="w-full text-xs h-7 gap-2"
-                                  onClick={() => setShowTransferDialog(true)}
-                                >
-                                  <ArrowRightLeft className="w-3 h-3" />
-                                  Transferir Lead
-                                </Button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-2 text-destructive">
-                                <Info className="w-4 h-4" />
-                                <h4 className="font-semibold text-sm">Contato não qualificado</h4>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                Este contato ainda não foi classificado como lead. Clique em um status para criar e classificar.
-                              </p>
-                              <div className="grid gap-2 text-xs">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                                  <span className="truncate">{selectedConversation.contact_phone}</span>
-                                </div>
-                                {selectedConversation.contact_name && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Users className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{selectedConversation.contact_name}</span>
-                                  </div>
-                                )}
-                                {selectedInstance?.unit && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{selectedInstance.unit}</span>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {/* Qualification Status Buttons */}
-                              <div className="pt-2 border-t">
-                                <span className="text-xs font-medium text-muted-foreground block mb-2">Qualificar como:</span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {[
-                                    { value: 'novo', label: 'Novo', color: 'bg-blue-500' },
-                                    { value: 'em_contato', label: 'Em Contato', color: 'bg-yellow-500' },
-                                    { value: 'orcamento_enviado', label: 'Orçamento', color: 'bg-purple-500' },
-                                    { value: 'aguardando_resposta', label: 'Aguardando', color: 'bg-orange-500' },
-                                    { value: 'fechado', label: 'Fechado', color: 'bg-green-500' },
-                                    { value: 'perdido', label: 'Perdido', color: 'bg-red-500' },
-                                  ].map((statusOption) => (
-                                    <Button
-                                      key={statusOption.value}
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 text-[10px] gap-1 px-2"
-                                      disabled={isCreatingLead}
-                                      onClick={() => createAndClassifyLead(statusOption.value)}
-                                    >
-                                      {isCreatingLead ? (
-                                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                                      ) : (
-                                        <div className={cn("w-2 h-2 rounded-full", statusOption.color)} />
-                                      )}
-                                      {statusOption.label}
-                                    </Button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Bot Toggle */}
-                              <div className="pt-2 border-t flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Bot de qualificação:</span>
-                                <Button
-                                  variant={selectedConversation.bot_enabled !== false ? "secondary" : "ghost"}
-                                  size="sm"
-                                  className="h-7 text-xs gap-1"
-                                  onClick={() => toggleConversationBot(selectedConversation)}
-                                >
-                                  <Bot className="w-3 h-3" />
-                                  {selectedConversation.bot_enabled !== false ? "Ativo" : "Inativo"}
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </PopoverContent>
-                      </Popover>
-                    )}
+                    <LeadInfoPopover
+                      linkedLead={linkedLead}
+                      selectedConversation={selectedConversation}
+                      selectedInstance={selectedInstance}
+                      canTransferLeads={canTransferLeads}
+                      canDeleteFromChat={canDeleteFromChat}
+                      isCreatingLead={isCreatingLead}
+                      userId={userId}
+                      currentUserName={currentUserName}
+                      onShowTransferDialog={() => setShowTransferDialog(true)}
+                      onShowDeleteDialog={() => setShowDeleteConfirmDialog(true)}
+                      onCreateAndClassifyLead={createAndClassifyLead}
+                      onToggleConversationBot={toggleConversationBot}
+                      onLeadNameChange={(newName) => {
+                        setLinkedLead(prev => prev ? { ...prev, name: newName } : null);
+                        setSelectedConversation(prev => prev ? { ...prev, contact_name: newName } : null);
+                        setConversations(prevConvs => prevConvs.map(c => 
+                          c.id === selectedConversation.id ? { ...c, contact_name: newName } : c
+                        ));
+                      }}
+                      mobile
+                    />
                     {/* O.E. (Orçamento Enviado) button - always visible, disabled without lead */}
                     <Button
                       variant="ghost"
