@@ -179,6 +179,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [conversationLeadsMap, setConversationLeadsMap] = useState<Record<string, Lead | null>>({});
   const messagesEndRefDesktop = useRef<HTMLDivElement>(null);
   const messagesEndRefMobile = useRef<HTMLDivElement>(null);
+  const scrollAreaDesktopRef = useRef<HTMLDivElement>(null);
+  const scrollAreaMobileRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -226,23 +228,27 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Scroll to bottom of messages
-  const scrollToBottom = () => {
-    // Find the ScrollArea viewport through the appropriate ref (desktop or mobile)
-    // Try desktop first, then mobile
-    const endElement = messagesEndRefDesktop.current || messagesEndRefMobile.current;
-    if (endElement) {
-      // Find the scrollable viewport parent (Radix ScrollArea viewport)
-      const viewport = endElement.closest('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-        });
-      } else {
-        // Fallback: try scrollIntoView
-        endElement.scrollIntoView({ behavior: 'smooth' });
-      }
+  // Scroll to bottom of messages - Desktop
+  const scrollToBottomDesktop = () => {
+    const viewport = scrollAreaDesktopRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (viewport) {
+      requestAnimationFrame(() => {
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+      });
+    } else if (messagesEndRefDesktop.current) {
+      messagesEndRefDesktop.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Scroll to bottom of messages - Mobile
+  const scrollToBottomMobile = () => {
+    const viewport = scrollAreaMobileRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (viewport) {
+      requestAnimationFrame(() => {
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+      });
+    } else if (messagesEndRefMobile.current) {
+      messagesEndRefMobile.current.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -2255,7 +2261,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
                   {/* Messages */}
                   <div className="flex-1 relative min-h-0">
-                    <ScrollArea className="h-full bg-muted/30">
+                    <ScrollArea ref={scrollAreaDesktopRef} className="h-full bg-muted/30">
                       <div className="space-y-2 sm:space-y-3 p-3 sm:p-4">
                         {messages.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -2329,7 +2335,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       variant="secondary"
                       size="icon"
                       className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg opacity-90 hover:opacity-100 z-10"
-                      onClick={scrollToBottom}
+                      onClick={scrollToBottomDesktop}
                       title="Ir para última mensagem"
                     >
                       <ArrowDown className="w-5 h-5" />
@@ -2844,7 +2850,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 </div>
 
                 <div className="flex-1 relative min-h-0">
-                  <ScrollArea className="h-full bg-muted/30">
+                  <ScrollArea ref={scrollAreaMobileRef} className="h-full bg-muted/30">
                     <div className="space-y-2 p-3">
                       {messages.map((msg) => (
                         <div
@@ -2906,7 +2912,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     variant="secondary"
                     size="icon"
                     className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg opacity-90 hover:opacity-100 z-10"
-                    onClick={scrollToBottom}
+                    onClick={scrollToBottomMobile}
                     title="Ir para última mensagem"
                   >
                     <ArrowDown className="w-5 h-5" />
