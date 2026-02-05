@@ -21,8 +21,6 @@
  import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  import { Badge } from "@/components/ui/badge";
  import logoPlataforma from "@/assets/logo-plataforma-buffets.png";
- import mockupDashboard from "@/assets/mockup-dashboard.png";
- import mockupWhatsapp from "@/assets/mockup-whatsapp.png";
  import { B2BChatbot } from "@/components/b2b/B2BChatbot";
  import { FloatingB2BCTA } from "@/components/b2b/FloatingB2BCTA";
  
@@ -185,34 +183,57 @@
                transition={{ duration: 0.6, delay: 0.3 }}
                className="relative hidden lg:block"
              >
-               <div className="relative">
-                 {/* Main dashboard mockup */}
-                 <motion.img
-                   src={mockupDashboard}
-                   alt="Dashboard da plataforma"
-                   className="rounded-xl shadow-2xl shadow-black/50"
-                   whileHover={{ scale: 1.02 }}
-                   transition={{ type: "spring", stiffness: 300 }}
+               {/* Abstract visual element */}
+               <div className="relative w-full aspect-square max-w-md mx-auto">
+                 {/* Glowing orbs */}
+                 <motion.div 
+                   className="absolute top-1/4 left-1/4 w-48 h-48 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full blur-xl opacity-60"
+                   animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0.8, 0.6] }}
+                   transition={{ duration: 4, repeat: Infinity }}
+                 />
+                 <motion.div 
+                   className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full blur-xl opacity-50"
+                   animate={{ scale: [1.2, 1, 1.2], opacity: [0.5, 0.7, 0.5] }}
+                   transition={{ duration: 5, repeat: Infinity }}
                  />
                  
-                 {/* Floating WhatsApp mockup */}
-                 <motion.img
-                   src={mockupWhatsapp}
-                   alt="WhatsApp integrado"
-                   className="absolute -bottom-10 -left-10 w-40 rounded-2xl shadow-xl shadow-black/30 border-4 border-slate-800"
-                   initial={{ y: 20 }}
-                   animate={{ y: [0, -10, 0] }}
-                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                 />
-                 
-                 {/* Floating badge */}
+                 {/* Central icon card */}
                  <motion.div
-                   className="absolute -top-4 -right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg"
-                   initial={{ scale: 0 }}
-                   animate={{ scale: 1 }}
-                   transition={{ delay: 0.8, type: "spring" }}
+                   className="absolute inset-0 flex items-center justify-center"
+                   initial={{ scale: 0.8, opacity: 0 }}
+                   animate={{ scale: 1, opacity: 1 }}
+                   transition={{ delay: 0.5 }}
                  >
-                   ✓ 100% na nuvem
+                   <div className="bg-slate-800/80 backdrop-blur-lg border border-slate-700 rounded-3xl p-8 shadow-2xl">
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="bg-blue-500/20 rounded-xl p-4 flex flex-col items-center gap-2">
+                         <MessageSquare className="w-8 h-8 text-blue-400" />
+                         <span className="text-xs text-slate-400">WhatsApp</span>
+                       </div>
+                       <div className="bg-purple-500/20 rounded-xl p-4 flex flex-col items-center gap-2">
+                         <BarChart3 className="w-8 h-8 text-purple-400" />
+                         <span className="text-xs text-slate-400">CRM</span>
+                       </div>
+                       <div className="bg-green-500/20 rounded-xl p-4 flex flex-col items-center gap-2">
+                         <Zap className="w-8 h-8 text-green-400" />
+                         <span className="text-xs text-slate-400">Automação</span>
+                       </div>
+                       <div className="bg-pink-500/20 rounded-xl p-4 flex flex-col items-center gap-2">
+                         <TrendingUp className="w-8 h-8 text-pink-400" />
+                         <span className="text-xs text-slate-400">Relatórios</span>
+                       </div>
+                     </div>
+                     
+                     {/* Badge */}
+                     <motion.div
+                       className="absolute -top-3 -right-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg"
+                       initial={{ scale: 0 }}
+                       animate={{ scale: 1 }}
+                       transition={{ delay: 1, type: "spring" }}
+                     >
+                       ✓ 100% na nuvem
+                     </motion.div>
+                   </div>
                  </motion.div>
                </div>
              </motion.div>
@@ -243,119 +264,6 @@
        </section>
  
        {/* Video Demo Section */}
-       <section id="demo-video" className="py-20 bg-slate-900">
-         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-           <motion.div
-             initial={{ opacity: 0, y: 20 }}
-             whileInView={{ opacity: 1, y: 0 }}
-             viewport={{ once: true }}
-             className="text-center mb-12"
-           >
-             <Badge className="mb-4 bg-slate-800 text-slate-300 border-slate-700">Demonstração</Badge>
-             <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
-               Veja a plataforma em ação
-             </h2>
-             <p className="text-xl text-slate-400">
-               2 minutos que podem transformar seu comercial
-             </p>
-           </motion.div>
- 
-           <motion.div
-             initial={{ opacity: 0, scale: 0.95 }}
-             whileInView={{ opacity: 1, scale: 1 }}
-             viewport={{ once: true }}
-             className="relative aspect-video rounded-2xl overflow-hidden bg-slate-800 border border-slate-700 shadow-2xl"
-           >
-             {/* Video placeholder - replace with actual video */}
-             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-               <img
-                 src={mockupDashboard}
-                 alt="Preview do vídeo"
-                 className="w-full h-full object-cover opacity-50"
-               />
-               <div className="absolute inset-0 flex items-center justify-center">
-                 <motion.button
-                   whileHover={{ scale: 1.1 }}
-                   whileTap={{ scale: 0.95 }}
-                   className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30"
-                 >
-                   <span className="text-white text-3xl ml-1">▶</span>
-                 </motion.button>
-               </div>
-             </div>
-           </motion.div>
-           
-           <p className="text-center text-slate-500 mt-4 text-sm">
-             * Vídeo demonstrativo em breve. Solicite uma demo ao vivo!
-           </p>
-         </div>
-       </section>
- 
-       {/* Product Screenshots Section */}
-       <section className="py-20 bg-slate-800">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-           <motion.div
-             initial={{ opacity: 0, y: 20 }}
-             whileInView={{ opacity: 1, y: 0 }}
-             viewport={{ once: true }}
-             className="text-center mb-16"
-           >
-             <Badge className="mb-4 bg-slate-700 text-slate-300 border-slate-600">Screenshots</Badge>
-             <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
-               Interface pensada para produtividade
-             </h2>
-             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-               Design moderno que sua equipe vai adorar usar
-             </p>
-           </motion.div>
- 
-           <div className="grid lg:grid-cols-2 gap-8 items-center">
-             <motion.div
-               initial={{ opacity: 0, x: -20 }}
-               whileInView={{ opacity: 1, x: 0 }}
-               viewport={{ once: true }}
-             >
-               <img
-                 src={mockupDashboard}
-                 alt="Dashboard completo"
-                 className="rounded-xl shadow-2xl border border-slate-700"
-               />
-             </motion.div>
-             
-             <motion.div
-               initial={{ opacity: 0, x: 20 }}
-               whileInView={{ opacity: 1, x: 0 }}
-               viewport={{ once: true }}
-               className="space-y-6"
-             >
-               <h3 className="text-2xl font-bold text-white">Dashboard completo</h3>
-               <ul className="space-y-4">
-                 {[
-                   "CRM Kanban com drag-and-drop",
-                   "Métricas de conversão em tempo real",
-                   "Histórico de interações por lead",
-                   "Relatórios exportáveis",
-                 ].map((item, i) => (
-                   <li key={i} className="flex items-center gap-3">
-                     <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-                     <span className="text-slate-300">{item}</span>
-                   </li>
-                 ))}
-               </ul>
-               
-               <div className="pt-4">
-                 <a href="#form">
-                   <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0">
-                     Ver demonstração completa
-                     <ArrowRight className="ml-2 h-4 w-4" />
-                   </Button>
-                 </a>
-               </div>
-             </motion.div>
-           </div>
-         </div>
-       </section>
- 
        {/* Problem Section */}
        <section className="py-20 bg-slate-900">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
