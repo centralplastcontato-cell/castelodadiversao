@@ -15,22 +15,11 @@
    ArrowRight,
    Star,
    PartyPopper,
-   Heart,
-   Send,
-   Building2,
-   Phone,
-   Mail,
-   MapPin
+   Heart
  } from "lucide-react";
  import { Button } from "@/components/ui/button";
- import { Input } from "@/components/ui/input";
- import { Label } from "@/components/ui/label";
- import { Textarea } from "@/components/ui/textarea";
- import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
- import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  import { Badge } from "@/components/ui/badge";
- import { supabase } from "@/integrations/supabase/client";
- import { toast } from "sonner";
  import logoPlataforma from "@/assets/logo-plataforma-buffets.png";
  import mockupDashboard from "@/assets/mockup-dashboard.png";
  import mockupWhatsapp from "@/assets/mockup-whatsapp.png";
@@ -71,59 +60,7 @@
  ];
  
  export default function ParaBuffets() {
-   const [isSubmitting, setIsSubmitting] = useState(false);
-   const [submitted, setSubmitted] = useState(false);
    const [isChatOpen, setIsChatOpen] = useState(false);
-   const [formData, setFormData] = useState({
-     company_name: "",
-     contact_name: "",
-     email: "",
-     phone: "",
-     city: "",
-     state: "",
-     monthly_parties: "",
-     current_tools: "",
-     main_challenges: "",
-     how_found_us: "",
-   });
- 
-   const handleSubmit = async (e: React.FormEvent) => {
-     e.preventDefault();
-     
-     if (!formData.company_name || !formData.contact_name || !formData.email) {
-       toast.error("Preencha os campos obrigatórios");
-       return;
-     }
- 
-     setIsSubmitting(true);
- 
-     try {
-       const { error } = await supabase
-         .from("b2b_leads")
-         .insert({
-           company_name: formData.company_name,
-           contact_name: formData.contact_name,
-           email: formData.email,
-           phone: formData.phone || null,
-           city: formData.city || null,
-           state: formData.state || null,
-           monthly_parties: formData.monthly_parties ? parseInt(formData.monthly_parties) : null,
-           current_tools: formData.current_tools || null,
-           main_challenges: formData.main_challenges || null,
-           how_found_us: formData.how_found_us || null,
-         });
- 
-       if (error) throw error;
- 
-       setSubmitted(true);
-       toast.success("Solicitação enviada com sucesso!");
-     } catch (error) {
-       console.error("Error submitting B2B lead:", error);
-       toast.error("Erro ao enviar. Tente novamente.");
-     } finally {
-       setIsSubmitting(false);
-     }
-   };
  
    return (
      <div className="min-h-screen bg-background">
@@ -604,238 +541,65 @@
        </section>
  
        {/* Form Section */}
-       <section id="form" className="py-20 bg-muted/50">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-           <div className="grid lg:grid-cols-2 gap-12">
-             <motion.div
-               initial={{ opacity: 0, x: -20 }}
-               whileInView={{ opacity: 1, x: 0 }}
-               viewport={{ once: true }}
-             >
-               <Badge className="mb-4">Demonstração Gratuita</Badge>
-               <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-6">
-                 Quer ver a plataforma funcionando?
-               </h2>
-               <p className="text-lg text-muted-foreground mb-8">
-                 Preencha o formulário e nossa equipe entrará em contato para agendar 
-                 uma demonstração gratuita de 15 minutos. Sem compromisso.
-               </p>
- 
-               <div className="space-y-4">
-                 <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                     <Clock className="h-5 w-5 text-primary" />
-                   </div>
-                   <div>
-                     <p className="font-semibold">Demo de 15 minutos</p>
-                     <p className="text-sm text-muted-foreground">Direto ao ponto, sem enrolação</p>
-                   </div>
-                 </div>
-                 <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                     <Shield className="h-5 w-5 text-primary" />
-                   </div>
-                   <div>
-                     <p className="font-semibold">Sem compromisso</p>
-                     <p className="text-sm text-muted-foreground">Você decide se faz sentido</p>
-                   </div>
-                 </div>
-                 <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                     <Users className="h-5 w-5 text-primary" />
-                   </div>
-                   <div>
-                     <p className="font-semibold">Equipe especializada</p>
-                     <p className="text-sm text-muted-foreground">Quem atende entende de buffet</p>
-                   </div>
-                 </div>
+       <section id="form" className="py-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
+         {/* Background elements */}
+         <div className="absolute inset-0 overflow-hidden">
+           <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl" />
+           <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl" />
+         </div>
+         
+         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+           <motion.div
+             initial={{ opacity: 0, y: 20 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+           >
+             <Badge className="mb-6 bg-white/10 text-white border-white/20">Demonstração Gratuita</Badge>
+             <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-6">
+               Pronto para transformar seu comercial?
+             </h2>
+             <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
+               Agende uma demonstração gratuita de 15 minutos e veja como a plataforma 
+               pode aumentar suas conversões em até 40%.
+             </p>
+             
+             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+               <Button 
+                 size="lg" 
+                 onClick={() => setIsChatOpen(true)}
+                 className="text-lg px-8 py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-lg shadow-purple-500/25"
+               >
+                 <Zap className="mr-2 h-5 w-5" />
+                 Solicitar Demo Agora
+               </Button>
+               <a 
+                 href="https://wa.me/5515991336278?text=Ol%C3%A1!%20Vi%20a%20plataforma%20para%20buffets%20e%20gostaria%20de%20saber%20mais."
+                 target="_blank"
+                 rel="noopener noreferrer"
+               >
+                 <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-white/30 text-white hover:bg-white/10 w-full sm:w-auto">
+                   <MessageSquare className="mr-2 h-5 w-5" />
+                   Falar pelo WhatsApp
+                 </Button>
+               </a>
+             </div>
+             
+             {/* Trust badges */}
+             <div className="flex flex-wrap justify-center gap-8 text-white/70">
+               <div className="flex items-center gap-2">
+                 <Clock className="h-5 w-5" />
+                 <span>Demo de 15 min</span>
                </div>
-             </motion.div>
- 
-             <motion.div
-               initial={{ opacity: 0, x: 20 }}
-               whileInView={{ opacity: 1, x: 0 }}
-               viewport={{ once: true }}
-             >
-               <Card className="shadow-xl">
-                 <CardHeader>
-                   <CardTitle>Solicite sua Demonstração</CardTitle>
-                   <CardDescription>
-                     Campos com * são obrigatórios
-                   </CardDescription>
-                 </CardHeader>
-                 <CardContent>
-                   {submitted ? (
-                     <div className="text-center py-8">
-                       <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
-                         <CheckCircle2 className="h-8 w-8 text-accent" />
-                       </div>
-                       <h3 className="text-xl font-bold mb-2">Solicitação Enviada!</h3>
-                       <p className="text-muted-foreground">
-                         Nossa equipe entrará em contato em até 24 horas úteis.
-                       </p>
-                     </div>
-                   ) : (
-                     <form onSubmit={handleSubmit} className="space-y-4">
-                       <div className="grid sm:grid-cols-2 gap-4">
-                         <div className="space-y-2">
-                           <Label htmlFor="company_name">Nome do Buffet *</Label>
-                           <div className="relative">
-                             <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                             <Input
-                               id="company_name"
-                               placeholder="Buffet Alegria"
-                               className="pl-10"
-                               value={formData.company_name}
-                               onChange={(e) => setFormData(prev => ({ ...prev, company_name: e.target.value }))}
-                               required
-                             />
-                           </div>
-                         </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="contact_name">Seu Nome *</Label>
-                           <Input
-                             id="contact_name"
-                             placeholder="João Silva"
-                             value={formData.contact_name}
-                             onChange={(e) => setFormData(prev => ({ ...prev, contact_name: e.target.value }))}
-                             required
-                           />
-                         </div>
-                       </div>
- 
-                       <div className="grid sm:grid-cols-2 gap-4">
-                         <div className="space-y-2">
-                           <Label htmlFor="email">Email *</Label>
-                           <div className="relative">
-                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                             <Input
-                               id="email"
-                               type="email"
-                               placeholder="joao@buffet.com"
-                               className="pl-10"
-                               value={formData.email}
-                               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                               required
-                             />
-                           </div>
-                         </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="phone">WhatsApp</Label>
-                           <div className="relative">
-                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                             <Input
-                               id="phone"
-                               placeholder="(11) 99999-9999"
-                               className="pl-10"
-                               value={formData.phone}
-                               onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                             />
-                           </div>
-                         </div>
-                       </div>
- 
-                       <div className="grid sm:grid-cols-2 gap-4">
-                         <div className="space-y-2">
-                           <Label htmlFor="city">Cidade</Label>
-                           <div className="relative">
-                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                             <Input
-                               id="city"
-                               placeholder="São Paulo"
-                               className="pl-10"
-                               value={formData.city}
-                               onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                             />
-                           </div>
-                         </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="state">Estado</Label>
-                           <Select
-                             value={formData.state}
-                             onValueChange={(value) => setFormData(prev => ({ ...prev, state: value }))}
-                           >
-                             <SelectTrigger>
-                               <SelectValue placeholder="Selecione" />
-                             </SelectTrigger>
-                             <SelectContent>
-                               {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map(uf => (
-                                 <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-                               ))}
-                             </SelectContent>
-                           </Select>
-                         </div>
-                       </div>
- 
-                       <div className="grid sm:grid-cols-2 gap-4">
-                         <div className="space-y-2">
-                           <Label htmlFor="monthly_parties">Festas por mês</Label>
-                           <Select
-                             value={formData.monthly_parties}
-                             onValueChange={(value) => setFormData(prev => ({ ...prev, monthly_parties: value }))}
-                           >
-                             <SelectTrigger>
-                               <SelectValue placeholder="Selecione" />
-                             </SelectTrigger>
-                             <SelectContent>
-                               <SelectItem value="5">Até 5</SelectItem>
-                               <SelectItem value="10">6 a 10</SelectItem>
-                               <SelectItem value="20">11 a 20</SelectItem>
-                               <SelectItem value="30">21 a 30</SelectItem>
-                               <SelectItem value="50">Mais de 30</SelectItem>
-                             </SelectContent>
-                           </Select>
-                         </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="how_found_us">Como nos encontrou?</Label>
-                           <Select
-                             value={formData.how_found_us}
-                             onValueChange={(value) => setFormData(prev => ({ ...prev, how_found_us: value }))}
-                           >
-                             <SelectTrigger>
-                               <SelectValue placeholder="Selecione" />
-                             </SelectTrigger>
-                             <SelectContent>
-                               <SelectItem value="google">Google</SelectItem>
-                               <SelectItem value="instagram">Instagram</SelectItem>
-                               <SelectItem value="indicacao">Indicação</SelectItem>
-                               <SelectItem value="evento">Evento do setor</SelectItem>
-                               <SelectItem value="outro">Outro</SelectItem>
-                             </SelectContent>
-                           </Select>
-                         </div>
-                       </div>
- 
-                       <div className="space-y-2">
-                         <Label htmlFor="main_challenges">Qual seu maior desafio hoje?</Label>
-                         <Textarea
-                           id="main_challenges"
-                           placeholder="Ex: Perco muitos leads por falta de follow-up..."
-                           rows={3}
-                           value={formData.main_challenges}
-                           onChange={(e) => setFormData(prev => ({ ...prev, main_challenges: e.target.value }))}
-                         />
-                       </div>
- 
-                       <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-                         {isSubmitting ? (
-                           <>
-                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                             Enviando...
-                           </>
-                         ) : (
-                           <>
-                             <Send className="h-4 w-4 mr-2" />
-                             Solicitar Demonstração
-                           </>
-                         )}
-                       </Button>
-                     </form>
-                   )}
-                 </CardContent>
-               </Card>
-             </motion.div>
-           </div>
+               <div className="flex items-center gap-2">
+                 <Shield className="h-5 w-5" />
+                 <span>Sem compromisso</span>
+               </div>
+               <div className="flex items-center gap-2">
+                 <Users className="h-5 w-5" />
+                 <span>Equipe especializada</span>
+               </div>
+             </div>
+           </motion.div>
          </div>
        </section>
  
