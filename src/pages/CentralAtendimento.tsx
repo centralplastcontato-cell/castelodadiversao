@@ -16,6 +16,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { MetricsCards } from "@/components/admin/MetricsCards";
 import { NotificationBell } from "@/components/admin/NotificationBell";
+import { TransferAlertBanner } from "@/components/admin/TransferAlertBanner";
 import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
 
 import { Button } from "@/components/ui/button";
@@ -592,6 +593,28 @@ export default function CentralAtendimento() {
           </div>
         </header>
 
+        {/* Transfer Alert Banner - Mobile */}
+        <TransferAlertBanner 
+          userId={user.id} 
+          onViewLead={(leadId) => {
+            const lead = leads.find(l => l.id === leadId);
+            if (lead) {
+              setSelectedLead(lead);
+              setIsDetailOpen(true);
+              setActiveTab("leads");
+            } else {
+              // Fetch the lead if not in current list
+              supabase.from('campaign_leads').select('*').eq('id', leadId).single().then(({ data }) => {
+                if (data) {
+                  setSelectedLead(data as Lead);
+                  setIsDetailOpen(true);
+                  setActiveTab("leads");
+                }
+              });
+            }
+          }}
+        />
+
         <main className="flex-1 flex flex-col overflow-hidden min-h-0">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col overflow-hidden min-h-0">
             <TabsList className="mx-3 mt-3 grid grid-cols-2">
@@ -810,6 +833,28 @@ export default function CentralAtendimento() {
               </div>
             </div>
           </header>
+
+          {/* Transfer Alert Banner - Desktop */}
+          <TransferAlertBanner 
+            userId={user.id} 
+            onViewLead={(leadId) => {
+              const lead = leads.find(l => l.id === leadId);
+              if (lead) {
+                setSelectedLead(lead);
+                setIsDetailOpen(true);
+                setActiveTab("leads");
+              } else {
+                // Fetch the lead if not in current list
+                supabase.from('campaign_leads').select('*').eq('id', leadId).single().then(({ data }) => {
+                  if (data) {
+                    setSelectedLead(data as Lead);
+                    setIsDetailOpen(true);
+                    setActiveTab("leads");
+                  }
+                });
+              }
+            }}
+          />
 
           <main className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "leads")} className="flex-1 flex flex-col overflow-hidden min-h-0">
