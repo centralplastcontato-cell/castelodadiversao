@@ -1477,10 +1477,13 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       return updated;
     });
 
-    // Update linkedLead if it's the same lead
-    if (linkedLead?.id === leadId) {
-      setLinkedLead({ ...linkedLead, status: newStatus });
-    }
+    // Update linkedLead if it's the same lead - use functional update to avoid stale closure
+    setLinkedLead(prevLead => {
+      if (prevLead?.id === leadId) {
+        return { ...prevLead, status: newStatus };
+      }
+      return prevLead;
+    });
   };
 
   const handleInstanceChange = (instanceId: string) => {
