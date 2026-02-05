@@ -206,13 +206,13 @@ export function LeadsKanban({
       </div>
 
       {/* Desktop Layout - All columns visible with horizontal scroll */}
-      <div className="hidden md:flex gap-4 overflow-x-auto pb-4 h-full scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
+      <div className="hidden md:flex gap-4 overflow-x-auto pb-4 h-full min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/30 hover:scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
         {columns.map((status) => {
           const columnLeads = getLeadsByStatus(status);
           return (
             <div
               key={status}
-              className="flex-shrink-0 w-72 bg-muted/30 rounded-xl border border-border flex flex-col max-h-[calc(100vh-220px)]"
+              className="flex-shrink-0 w-72 bg-muted/30 rounded-xl border border-border flex flex-col h-full"
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, status)}
             >
