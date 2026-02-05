@@ -2,7 +2,7 @@
 
 export type AppRole = 'admin' | 'comercial' | 'visualizacao';
 
-export type LeadStatus = 'novo' | 'em_contato' | 'orcamento_enviado' | 'aguardando_resposta' | 'fechado' | 'perdido';
+export type LeadStatus = 'novo' | 'em_contato' | 'orcamento_enviado' | 'aguardando_resposta' | 'fechado' | 'perdido' | 'transferido';
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   novo: 'Novo',
@@ -11,6 +11,7 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   aguardando_resposta: 'Negociando',
   fechado: 'Fechado',
   perdido: 'Perdido',
+  transferido: 'Transferência',
 };
 
 export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -20,6 +21,7 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   aguardando_resposta: 'bg-orange-500',
   fechado: 'bg-green-500',
   perdido: 'bg-red-500',
+  transferido: 'bg-cyan-500',
 };
 
 export const ROLE_LABELS: Record<AppRole, string> = {
