@@ -535,6 +535,10 @@ export type Database = {
           created_at: string
           id: string
           instance_id: string
+          next_step_analyze_response: string | null
+          next_step_question: string | null
+          next_step_questions_response: string | null
+          next_step_visit_response: string | null
           qualified_lead_message: string | null
           test_mode_enabled: boolean
           test_mode_number: string | null
@@ -555,6 +559,10 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id: string
+          next_step_analyze_response?: string | null
+          next_step_question?: string | null
+          next_step_questions_response?: string | null
+          next_step_visit_response?: string | null
           qualified_lead_message?: string | null
           test_mode_enabled?: boolean
           test_mode_number?: string | null
@@ -575,6 +583,10 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id?: string
+          next_step_analyze_response?: string | null
+          next_step_question?: string | null
+          next_step_questions_response?: string | null
+          next_step_visit_response?: string | null
           qualified_lead_message?: string | null
           test_mode_enabled?: boolean
           test_mode_number?: string | null
