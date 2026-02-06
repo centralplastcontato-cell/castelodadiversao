@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, Clock, Forward, Zap, Plus, Trash2, Phone, Shield, Beaker, Power, Loader2, MessageSquare, Save, RotateCcw } from "lucide-react";
+import { Bot, Clock, Forward, Zap, Plus, Trash2, Phone, Shield, Beaker, Power, Loader2, MessageSquare, Save, RotateCcw, Images, Video, FileText, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -50,6 +50,14 @@ interface BotSettings {
   completion_message: string | null;
   transfer_message: string | null;
   qualified_lead_message: string | null;
+  // Auto-send materials settings
+  auto_send_materials: boolean;
+  auto_send_photos: boolean;
+  auto_send_presentation_video: boolean;
+  auto_send_promo_video: boolean;
+  auto_send_pdf: boolean;
+  auto_send_photos_intro: string | null;
+  auto_send_pdf_intro: string | null;
 }
 
 interface VipNumber {
@@ -715,6 +723,128 @@ export function AutomationsSection() {
                   className="min-h-[120px] text-base"
                   placeholder="Olá, {nome}! 👋 Recebemos seu interesse..."
                 />
+              </div>
+
+              {/* Auto-Send Materials Section */}
+              <div className="p-4 border rounded-lg bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/10 dark:to-purple-950/10 border-blue-500/30">
+                <Label className="text-sm font-medium flex items-center gap-2 mb-3">
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white flex items-center justify-center text-xs">
+                    <Send className="w-3 h-3" />
+                  </span>
+                  Envio Automático de Materiais
+                </Label>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Após a qualificação, o bot pode enviar automaticamente fotos, vídeos e o PDF do pacote
+                </p>
+
+                {/* Master Toggle */}
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-background/50 mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${botSettings?.auto_send_materials ? "bg-green-100 text-green-600 dark:bg-green-950/50" : "bg-muted text-muted-foreground"}`}>
+                      <Send className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Enviar Materiais Automaticamente</p>
+                      <p className="text-xs text-muted-foreground">Ativa o envio de materiais após qualificação</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={botSettings?.auto_send_materials ?? true}
+                    onCheckedChange={(checked) => updateBotSettings({ auto_send_materials: checked } as Partial<BotSettings>)}
+                    disabled={isSaving}
+                  />
+                </div>
+
+                {/* Individual Material Toggles */}
+                {botSettings?.auto_send_materials && (
+                  <div className="space-y-3 pl-2 border-l-2 border-blue-500/30 ml-3">
+                    {/* Photos */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-background/50 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <Images className="w-4 h-4 text-blue-500" />
+                        <span className="text-sm">Fotos da Unidade</span>
+                      </div>
+                      <Switch
+                        checked={botSettings?.auto_send_photos ?? true}
+                        onCheckedChange={(checked) => updateBotSettings({ auto_send_photos: checked } as Partial<BotSettings>)}
+                        disabled={isSaving}
+                      />
+                    </div>
+
+                    {/* Presentation Video */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-background/50 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <Video className="w-4 h-4 text-purple-500" />
+                        <span className="text-sm">Vídeo de Apresentação</span>
+                      </div>
+                      <Switch
+                        checked={botSettings?.auto_send_presentation_video ?? true}
+                        onCheckedChange={(checked) => updateBotSettings({ auto_send_presentation_video: checked } as Partial<BotSettings>)}
+                        disabled={isSaving}
+                      />
+                    </div>
+
+                    {/* Promo Video */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-background/50 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <Video className="w-4 h-4 text-amber-500" />
+                        <div>
+                          <span className="text-sm">Vídeo da Promoção</span>
+                          <p className="text-xs text-muted-foreground">Apenas para festas em Fev/Mar</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={botSettings?.auto_send_promo_video ?? true}
+                        onCheckedChange={(checked) => updateBotSettings({ auto_send_promo_video: checked } as Partial<BotSettings>)}
+                        disabled={isSaving}
+                      />
+                    </div>
+
+                    {/* PDF Package */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-background/50 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-red-500" />
+                        <div>
+                          <span className="text-sm">PDF do Pacote</span>
+                          <p className="text-xs text-muted-foreground">Baseado na qtde de convidados</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={botSettings?.auto_send_pdf ?? true}
+                        onCheckedChange={(checked) => updateBotSettings({ auto_send_pdf: checked } as Partial<BotSettings>)}
+                        disabled={isSaving}
+                      />
+                    </div>
+
+                    {/* Custom Messages */}
+                    <div className="space-y-3 pt-3 border-t border-border/50">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium">Mensagem antes das fotos</Label>
+                        <Input
+                          value={botSettings?.auto_send_photos_intro || "✨ Conheça nosso espaço incrível! 🏰🎉"}
+                          onChange={(e) => setBotSettings(prev => prev ? { ...prev, auto_send_photos_intro: e.target.value } : null)}
+                          onBlur={() => botSettings && updateBotSettings({ auto_send_photos_intro: botSettings.auto_send_photos_intro } as Partial<BotSettings>)}
+                          className="text-sm"
+                          placeholder="✨ Conheça nosso espaço..."
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium">Mensagem antes do PDF</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Use {`{nome}`}, {`{convidados}`} e {`{unidade}`}
+                        </p>
+                        <Textarea
+                          value={botSettings?.auto_send_pdf_intro || "📋 Oi {nome}! Segue o pacote completo para {convidados} na unidade {unidade}. Qualquer dúvida é só chamar! 💜"}
+                          onChange={(e) => setBotSettings(prev => prev ? { ...prev, auto_send_pdf_intro: e.target.value } : null)}
+                          onBlur={() => botSettings && updateBotSettings({ auto_send_pdf_intro: botSettings.auto_send_pdf_intro } as Partial<BotSettings>)}
+                          className="text-sm min-h-[60px]"
+                          placeholder="📋 Oi {nome}! Segue o pacote..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Floating Save Button for Mobile */}
