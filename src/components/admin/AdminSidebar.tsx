@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { NotificationBell } from "@/components/admin/NotificationBell";
+
 import logoCastelo from "@/assets/logo-castelo.png";
 
 interface AdminSidebarProps {
@@ -111,10 +111,6 @@ export function AdminSidebar({
                   {currentUserName}
                 </p>
               </div>
-              
-              {/* Notification Bell */}
-              <NotificationBell />
-              
               {/* Pin toggle button */}
               <Tooltip>
                 <TooltipTrigger asChild>
