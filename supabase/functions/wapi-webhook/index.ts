@@ -55,6 +55,12 @@ const DEFAULT_GUEST_OPTIONS = [
   { num: 6, value: '100 pessoas' },
 ];
 
+// Default tipo options (cliente ou orçamento)
+const TIPO_OPTIONS = [
+  { num: 1, value: 'Já sou cliente' },
+  { num: 2, value: 'Quero um orçamento' },
+];
+
 // Build menu text
 function buildMenuText(options: { num: number; value: string }[]): string {
   return options.map(opt => `*${opt.num}* - ${opt.value}`).join('\n');
@@ -111,6 +117,10 @@ function validateGuests(input: string, customOptions?: { num: number; value: str
 function validateAnswer(step: string, input: string, questionText?: string): { valid: boolean; value?: string; error?: string } {
   switch (step) {
     case 'nome': return validateName(input);
+    case 'tipo': {
+      const customOptions = questionText ? extractOptionsFromQuestion(questionText) : null;
+      return validateMenuChoice(input, customOptions || TIPO_OPTIONS, 'tipo');
+    }
     case 'mes': {
       const customOptions = questionText ? extractOptionsFromQuestion(questionText) : null;
       return validateMenuChoice(input, customOptions || MONTH_OPTIONS, 'mês');
@@ -132,7 +142,12 @@ const DEFAULT_QUESTIONS: Record<string, { question: string; confirmation: string
   nome: { 
     question: 'Para começar, me conta: qual é o seu nome? 👑', 
     confirmation: 'Muito prazer, {nome}! 👑✨', 
-    next: 'mes' 
+    next: 'tipo' 
+  },
+  tipo: {
+    question: `Você já é nosso cliente e tem uma festa agendada, ou gostaria de receber um orçamento? 🎉\n\nResponda com o *número*:\n\n${buildMenuText(TIPO_OPTIONS)}`,
+    confirmation: null,
+    next: 'mes'
   },
   mes: { 
     question: `Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Responda com o *número*:\n\n${buildMenuText(MONTH_OPTIONS)}`, 
@@ -281,6 +296,49 @@ async function processBotQualification(
       
       const currentQ = questions[step];
       const nextStepKey = currentQ.next;
+      
+      // Special handling for "tipo" step - check if already client
+      if (step === 'tipo') {
+        const isAlreadyClient = validation.value === 'Já sou cliente' || content.trim() === '1';
+        
+        if (isAlreadyClient) {
+          // User is already a client - transfer to commercial team, disable bot, don't create lead
+          console.log(`[Bot] User ${contactPhone} is already a client. Transferring to commercial team.`);
+          
+          msg = `Entendido, ${updated.nome || 'cliente'}! 🏰\n\nVou transferir sua conversa para nossa equipe comercial que vai te ajudar com sua festa.\n\nAguarde um momento, por favor! 👑`;
+          nextStep = 'transferred';
+          
+          // Send message, disable bot, and DON'T create lead
+          const msgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, msg);
+          
+          if (msgId) {
+            await supabase.from('wapi_messages').insert({
+              conversation_id: conv.id,
+              message_id: msgId,
+              from_me: true,
+              message_type: 'text',
+              content: msg,
+              status: 'sent',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+          // Mark as transferred and disable bot - DO NOT create lead
+          await supabase.from('wapi_conversations').update({
+            bot_step: 'transferred',
+            bot_data: updated,
+            bot_enabled: false,
+            last_message_at: new Date().toISOString(),
+            last_message_content: msg.substring(0, 100),
+            last_message_from_me: true
+          }).eq('id', conv.id);
+          
+          console.log(`[Bot] Conversation transferred. Bot disabled. No lead created.`);
+          return; // Exit early - don't continue with normal flow
+        }
+        // If wants quote (option 2), continue with normal flow
+        console.log(`[Bot] User ${contactPhone} wants a quote. Continuing qualification.`);
+      }
       
       if (nextStepKey === 'complete') {
         // All questions answered - create or update lead
