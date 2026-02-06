@@ -185,10 +185,20 @@ export function SalesMaterialsMenu({
         mediaType = "image";
       } else if (material.type === "video") {
         mediaType = "video";
-        // Engaging caption for videos
-        caption = unit === "Manchester"
-          ? "🎬 Veja como é incrível o nosso espaço! ✨ Unidade Manchester te espera para uma festa inesquecível! 🎉"
-          : "🎬 Dá só uma olhada no nosso espaço! ✨ Unidade Trujillo pronta para fazer a festa perfeita! 🎉";
+        // Check if it's a carnival/promotion video
+        const isCarnavalVideo = material.name.toLowerCase().includes("carnaval") || 
+                                material.name.toLowerCase().includes("promoção") ||
+                                material.name.toLowerCase().includes("promocao");
+        
+        if (isCarnavalVideo) {
+          // Special caption for Carnival promotion videos
+          caption = "🎭🎉 PROMOÇÃO ESPECIAL DE CARNAVAL! 🎊✨ Aproveite condições imperdíveis para garantir a festa dos sonhos do seu filho! Entre em contato agora e confira! 🏰💜";
+        } else {
+          // Engaging caption for regular videos
+          caption = unit === "Manchester"
+            ? "🎬 Veja como é incrível o nosso espaço! ✨ Unidade Manchester te espera para uma festa inesquecível! 🎉"
+            : "🎬 Dá só uma olhada no nosso espaço! ✨ Unidade Trujillo pronta para fazer a festa perfeita! 🎉";
+        }
       } else if (material.type === "pdf_package") {
         // Create a descriptive file name for PDFs
         fileName = `${material.name.replace(/[^a-zA-Z0-9\s]/g, '').trim()}.pdf`;
