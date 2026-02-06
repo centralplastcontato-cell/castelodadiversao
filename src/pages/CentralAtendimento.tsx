@@ -23,7 +23,6 @@ import { WhatsAppChat } from "@/components/whatsapp/WhatsAppChat";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { AnimatedBadge } from "@/components/ui/animated-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
@@ -588,7 +587,7 @@ export default function CentralAtendimento() {
                 {newLeadsCount > 0 && (
                   <AnimatedBadge 
                     value={newLeadsCount > 99 ? "99+" : newLeadsCount}
-                    className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center rounded-full bg-blue-500 text-white"
+                    className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center rounded-full bg-primary text-primary-foreground"
                   />
                 )}
               </TabsTrigger>
@@ -709,85 +708,94 @@ export default function CentralAtendimento() {
           onLogout={handleLogout} 
         />
         
-        <SidebarInset className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Desktop Header - Compact */}
-          <header className="bg-card border-b border-border shrink-0 z-10">
-            <div className="px-4 py-2 flex items-center justify-between">
+        <SidebarInset className="flex-1 flex flex-col overflow-hidden min-w-0 bg-gradient-to-br from-background to-muted/30">
+          {/* Desktop Header - Premium Glass Effect */}
+          <header className="bg-card/80 backdrop-blur-sm border-b border-border/60 shrink-0 z-10 shadow-subtle">
+            <div className="px-4 py-2.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <SidebarTrigger />
+                <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
                 <h1 className="font-display font-bold text-foreground">Central de Atendimento</h1>
                 
-                {/* Quick Tab Buttons */}
-                <div className="flex items-center gap-1 ml-2">
+                {/* Quick Tab Buttons - Premium Style */}
+                <div className="flex items-center gap-1.5 ml-3 bg-muted/50 rounded-lg p-1">
                   <Button
-                    variant={activeTab === "chat" ? "secondary" : "ghost"}
+                    variant={activeTab === "chat" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setActiveTab("chat")}
-                    className="relative h-8 px-3"
+                    className={`relative h-8 px-4 rounded-md transition-all ${
+                      activeTab === "chat" 
+                        ? "shadow-sm" 
+                        : "hover:bg-background/80"
+                    }`}
                   >
                     <MessageSquare className="w-4 h-4 mr-1.5" />
                     Chat
                     {unreadCount > 0 && (
-                      <Badge 
+                      <AnimatedBadge 
                         variant="destructive" 
-                        className="ml-1.5 h-4 min-w-4 px-1 text-[9px] flex items-center justify-center"
-                      >
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </Badge>
+                        className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px]"
+                        value={unreadCount > 99 ? "99+" : unreadCount}
+                      />
                     )}
                   </Button>
                   <Button
-                    variant={activeTab === "leads" ? "secondary" : "ghost"}
+                    variant={activeTab === "leads" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setActiveTab("leads")}
-                    className="relative h-8 px-3"
+                    className={`relative h-8 px-4 rounded-md transition-all ${
+                      activeTab === "leads" 
+                        ? "shadow-sm" 
+                        : "hover:bg-background/80"
+                    }`}
                   >
                     <LayoutList className="w-4 h-4 mr-1.5" />
                     Leads
                     {newLeadsCount > 0 && (
-                      <Badge 
-                        className="ml-1.5 h-4 min-w-4 px-1 text-[9px] flex items-center justify-center bg-blue-500 text-white"
-                      >
-                        {newLeadsCount > 99 ? "99+" : newLeadsCount}
-                      </Badge>
+                      <AnimatedBadge 
+                        className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] bg-primary text-primary-foreground"
+                        value={newLeadsCount > 99 ? "99+" : newLeadsCount}
+                      />
                     )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleNotifications}
-                    className={`relative h-8 px-3 transition-all duration-200 ${
-                      notificationsEnabled 
-                        ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50" 
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    title={notificationsEnabled ? "Notificações ativadas" : "Notificações desativadas"}
-                  >
-                    {notificationsEnabled ? (
-                      <Bell className="w-4 h-4 mr-1.5" />
-                    ) : (
-                      <BellOff className="w-4 h-4 mr-1.5" />
-                    )}
-                    <span className="hidden lg:inline">
-                      {notificationsEnabled ? "Som" : "Mudo"}
-                    </span>
                   </Button>
                 </div>
+                
+                {/* Sound Toggle - Separate */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleNotifications}
+                  className={`h-8 px-3 rounded-lg transition-all duration-200 ${
+                    notificationsEnabled 
+                      ? "bg-gradient-to-r from-amber-100 to-amber-50 text-amber-700 hover:from-amber-200 hover:to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 dark:text-amber-400" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                  title={notificationsEnabled ? "Notificações ativadas" : "Notificações desativadas"}
+                >
+                  {notificationsEnabled ? (
+                    <Bell className="w-4 h-4 mr-1.5" />
+                  ) : (
+                    <BellOff className="w-4 h-4 mr-1.5" />
+                  )}
+                  <span className="hidden lg:inline text-sm">
+                    {notificationsEnabled ? "Som" : "Mudo"}
+                  </span>
+                </Button>
               </div>
               
-              {/* Notification Bell and User Avatar Desktop */}
-              <div className="flex items-center gap-2">
-                <NotificationBell />
-                <span className="text-sm text-muted-foreground hidden lg:block">{currentUserProfile?.full_name || user.email}</span>
-                <Avatar 
-                  className="h-8 w-8 border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors" 
-                  onClick={() => navigate("/configuracoes")}
-                >
-                  <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                    {getInitials(currentUserProfile?.full_name || user.email || "U")}
-                  </AvatarFallback>
-                </Avatar>
+              {/* User Info Desktop - Premium Style */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-muted/40 rounded-full pl-3 pr-1 py-1">
+                  <span className="text-sm text-muted-foreground hidden lg:block">{currentUserProfile?.full_name || user.email}</span>
+                  <Avatar 
+                    className="h-8 w-8 border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-all hover:scale-105" 
+                    onClick={() => navigate("/configuracoes")}
+                  >
+                    <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-medium">
+                      {getInitials(currentUserProfile?.full_name || user.email || "U")}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
               </div>
             </div>
           </header>

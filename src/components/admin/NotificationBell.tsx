@@ -61,7 +61,11 @@ export function NotificationBell() {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="relative text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <div className="absolute -top-1 -right-1 flex items-center gap-0.5">
