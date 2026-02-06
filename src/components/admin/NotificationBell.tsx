@@ -74,10 +74,10 @@ export function NotificationBell() {
           variant="ghost" 
           size="icon" 
           className={cn(
-            "relative transition-all duration-300",
+            "relative transition-all duration-300 rounded-full",
             unreadCount > 0 
-              ? "bg-primary/10 text-primary hover:bg-primary/20 shadow-lg shadow-primary/20" 
-              : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+              ? "bg-primary/20 text-primary hover:bg-primary/30 shadow-lg shadow-primary/20" 
+              : "bg-muted/60 text-foreground hover:bg-muted hover:text-foreground"
           )}
         >
           <Bell className={cn("h-5 w-5", unreadCount > 0 && "animate-pulse")} />
