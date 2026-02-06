@@ -593,15 +593,10 @@ async function processBotQualification(
     last_message_from_me: true
   }).eq('id', conv.id);
 
-  // After qualification complete (final), send materials automatically
-  // Materials are sent after proximo_passo is answered (complete_final)
-  // OR if user chose "Analisar com calma" (option 3)
-  if (nextStep === 'complete_final') {
-    // Disable bot after completion
-    await supabase.from('wapi_conversations').update({
-      bot_enabled: false
-    }).eq('id', conv.id);
-    
+  // After qualification complete, send materials automatically
+  // Materials are sent IMMEDIATELY after qualification (when nextStep === 'proximo_passo')
+  // This matches the completion message that says "agora irei te enviar algumas fotos e vídeo"
+  if (nextStep === 'proximo_passo') {
     // Use background task to send materials after responding to user
     EdgeRuntime.waitUntil(
       sendQualificationMaterials(
@@ -612,6 +607,13 @@ async function processBotQualification(
         settings
       ).catch(err => console.error('[Bot] Error sending materials:', err))
     );
+  }
+  
+  // Disable bot after proximo_passo is answered
+  if (nextStep === 'complete_final') {
+    await supabase.from('wapi_conversations').update({
+      bot_enabled: false
+    }).eq('id', conv.id);
   }
 }
 
