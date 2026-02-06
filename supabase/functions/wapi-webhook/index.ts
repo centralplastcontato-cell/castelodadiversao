@@ -336,6 +336,52 @@ async function processBotQualification(
             last_message_from_me: true
           }).eq('id', conv.id);
           
+          // Create notifications for users with permission for this unit
+          try {
+            const unitLower = instance.unit?.toLowerCase() || '';
+            const unitPermission = `leads.unit.${unitLower}`;
+            
+            // Get users with permission for this unit or all units
+            const { data: userPerms } = await supabase
+              .from('user_permissions')
+              .select('user_id')
+              .eq('granted', true)
+              .in('permission', [unitPermission, 'leads.unit.all']);
+            
+            // Also get admin users
+            const { data: adminRoles } = await supabase
+              .from('user_roles')
+              .select('user_id')
+              .eq('role', 'admin');
+            
+            // Combine unique user IDs
+            const userIds = new Set<string>();
+            userPerms?.forEach(p => userIds.add(p.user_id));
+            adminRoles?.forEach(r => userIds.add(r.user_id));
+            
+            // Create notification for each user
+            const notifications = Array.from(userIds).map(userId => ({
+              user_id: userId,
+              type: 'existing_client',
+              title: 'Cliente existente precisa de atenção',
+              message: `${updated.nome || contactName || contactPhone} disse que já é cliente`,
+              data: {
+                conversation_id: conv.id,
+                contact_name: updated.nome || contactName || contactPhone,
+                contact_phone: contactPhone,
+                unit: instance.unit || 'Unknown'
+              },
+              read: false
+            }));
+            
+            if (notifications.length > 0) {
+              await supabase.from('notifications').insert(notifications);
+              console.log(`[Bot] Created ${notifications.length} notifications for existing client alert`);
+            }
+          } catch (notifErr) {
+            console.error('[Bot] Error creating client notifications:', notifErr);
+          }
+          
           console.log(`[Bot] Conversation transferred. Bot disabled. No lead created.`);
           return; // Exit early - don't continue with normal flow
         }
