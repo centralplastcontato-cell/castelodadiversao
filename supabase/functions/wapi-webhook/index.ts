@@ -197,7 +197,6 @@ function replaceVariables(text: string, data: Record<string, string>): string {
   }
   return result;
 }
-
 async function sendBotMessage(instanceId: string, instanceToken: string, remoteJid: string, message: string): Promise<string | null> {
   try {
     const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
@@ -210,6 +209,110 @@ async function sendBotMessage(instanceId: string, instanceToken: string, remoteJ
     const r = await res.json();
     return r.messageId || r.id || null;
   } catch { return null; }
+}
+
+// Send interactive list message with clickable options
+interface ListOption {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+async function sendBotListMessage(
+  instanceId: string, 
+  instanceToken: string, 
+  remoteJid: string, 
+  title: string,
+  description: string,
+  buttonText: string,
+  options: ListOption[]
+): Promise<string | null> {
+  try {
+    const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+    
+    // Build sections with rows
+    const sections = [{
+      title: 'Opções',
+      rows: options.map(opt => ({
+        rowId: opt.id,
+        title: opt.title,
+        description: opt.description || '',
+      })),
+    }];
+    
+    const res = await fetch(`${WAPI_BASE_URL}/message/send-list?instanceId=${instanceId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${instanceToken}` },
+      body: JSON.stringify({
+        phone,
+        title,
+        description,
+        buttonText,
+        sections,
+        delayTyping: 1,
+      }),
+    });
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      console.log(`[Bot] List message failed: ${res.status} - ${errText.substring(0, 100)}`);
+      return null;
+    }
+    
+    const r = await res.json();
+    console.log(`[Bot] List message sent successfully`);
+    return r.messageId || r.id || null;
+  } catch (e) {
+    console.error('[Bot] Error sending list message:', e);
+    return null;
+  }
+}
+
+// Parse options from question text for list messages
+function parseOptionsForList(questionText: string, step: string): ListOption[] | null {
+  const options = extractOptionsFromQuestion(questionText);
+  if (!options || options.length === 0) return null;
+  
+  return options.map(opt => ({
+    id: `${step}_${opt.num}`,
+    title: opt.value,
+  }));
+}
+
+// Check if message is a list selection response
+function parseListResponse(content: string, step: string): string | null {
+  // List responses come as "step_num" format from the rowId
+  const prefix = `${step}_`;
+  if (content.startsWith(prefix)) {
+    const num = parseInt(content.replace(prefix, ''));
+    if (!isNaN(num)) {
+      return num.toString();
+    }
+  }
+  return null;
+}
+
+// Steps that should use interactive lists instead of numbered menus
+const LIST_STEPS = ['mes', 'dia', 'convidados'];
+
+// Get step title for list message
+function getListTitle(step: string): string {
+  switch (step) {
+    case 'mes': return '📅 Escolha o mês';
+    case 'dia': return '🗓️ Dia da semana';
+    case 'convidados': return '👥 Convidados';
+    default: return 'Selecione';
+  }
+}
+
+// Get step description for list message (short intro text)
+function getListDescription(step: string): string {
+  switch (step) {
+    case 'mes': return 'Qual mês você prefere para a festa?';
+    case 'dia': return 'Qual dia da semana você prefere?';
+    case 'convidados': return 'Quantos convidados você pretende chamar?';
+    default: return 'Escolha uma opção';
+  }
 }
 
 async function processBotQualification(
@@ -255,24 +358,101 @@ async function processBotQualification(
 
   const step = conv.bot_step || 'welcome';
   const botData = (conv.bot_data || {}) as Record<string, string>;
-  let nextStep: string, msg: string;
+  let nextStep: string;
+  let msg: string = '';
+  let useListMessage = false;
+  let listOptions: ListOption[] = [];
   const updated = { ...botData };
 
   if (step === 'welcome') {
-    // Send welcome + first question
-    const firstQ = questions[firstStep];
-    msg = settings.welcome_message + '\n\n' + (firstQ?.question || DEFAULT_QUESTIONS.nome.question);
+    // Send welcome message first
+    msg = settings.welcome_message;
     nextStep = firstStep;
+    
+    // Check if first step should use list
+    if (LIST_STEPS.includes(firstStep)) {
+      const firstQ = questions[firstStep];
+      if (firstQ) {
+        const parsedOptions = parseOptionsForList(firstQ.question, firstStep);
+        if (parsedOptions && parsedOptions.length > 0) {
+          // Send welcome as text first, then send list
+          const welcomeMsgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, msg);
+          if (welcomeMsgId) {
+            await supabase.from('wapi_messages').insert({
+              conversation_id: conv.id,
+              message_id: welcomeMsgId,
+              from_me: true,
+              message_type: 'text',
+              content: msg,
+              status: 'sent',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+          // Now send the list message
+          useListMessage = true;
+          listOptions = parsedOptions;
+          msg = `[Lista: ${getListTitle(firstStep)}]`; // For logging
+        }
+      }
+    }
+    
+    if (!useListMessage) {
+      // Just append the first question
+      const firstQ = questions[firstStep];
+      msg = msg + '\n\n' + (firstQ?.question || DEFAULT_QUESTIONS.nome.question);
+    }
   } else if (questions[step]) {
     // Get the current question text for dynamic option extraction
     const currentQuestionText = questions[step]?.question;
-    // Validate the answer before proceeding
-    const validation = validateAnswer(step, content, currentQuestionText);
+    
+    // Check if this is a list response (selectedRowId from interactive list)
+    let userAnswer = content;
+    const listResponse = parseListResponse(content, step);
+    if (listResponse) {
+      userAnswer = listResponse;
+      console.log(`[Bot] Parsed list response for ${step}: ${listResponse}`);
+    }
+    
+    // Validate the answer
+    const validation = validateAnswer(step, userAnswer, currentQuestionText);
     
     if (!validation.valid) {
-      // Invalid answer - send error message and stay on same step
-      msg = validation.error || 'Não entendi sua resposta. Por favor, tente novamente.';
-      nextStep = step; // Stay on same step
+      // Invalid answer - for list steps, resend the list
+      if (LIST_STEPS.includes(step)) {
+        const parsedOptions = parseOptionsForList(currentQuestionText || '', step);
+        if (parsedOptions && parsedOptions.length > 0) {
+          // Send error text first
+          const errorMsgId = await sendBotMessage(
+            instance.instance_id, 
+            instance.instance_token, 
+            conv.remote_jid, 
+            'Por favor, selecione uma opção da lista 👇'
+          );
+          if (errorMsgId) {
+            await supabase.from('wapi_messages').insert({
+              conversation_id: conv.id,
+              message_id: errorMsgId,
+              from_me: true,
+              message_type: 'text',
+              content: 'Por favor, selecione uma opção da lista 👇',
+              status: 'sent',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+          useListMessage = true;
+          listOptions = parsedOptions;
+          msg = `[Lista: ${getListTitle(step)}]`;
+          nextStep = step;
+        } else {
+          msg = validation.error || 'Não entendi sua resposta. Por favor, tente novamente.';
+          nextStep = step;
+        }
+      } else {
+        msg = validation.error || 'Não entendi sua resposta. Por favor, tente novamente.';
+        nextStep = step;
+      }
       console.log(`[Bot] Invalid answer for step ${step}: "${content.substring(0, 50)}"`);
     } else {
       // Valid answer - save and proceed
@@ -326,13 +506,41 @@ async function processBotQualification(
         nextStep = nextStepKey;
         const nextQ = questions[nextStepKey];
         
-        // Build response: confirmation (if any) + next question
+        // Build confirmation message
         let confirmation = currentQ.confirmation || '';
         if (confirmation) {
           confirmation = replaceVariables(confirmation, updated);
         }
         
-        msg = confirmation ? `${confirmation}\n\n${nextQ?.question || ''}` : (nextQ?.question || '');
+        // Check if next step should use list
+        if (LIST_STEPS.includes(nextStepKey) && nextQ) {
+          const parsedOptions = parseOptionsForList(nextQ.question, nextStepKey);
+          if (parsedOptions && parsedOptions.length > 0) {
+            // Send confirmation as text first if exists
+            if (confirmation) {
+              const confMsgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, confirmation);
+              if (confMsgId) {
+                await supabase.from('wapi_messages').insert({
+                  conversation_id: conv.id,
+                  message_id: confMsgId,
+                  from_me: true,
+                  message_type: 'text',
+                  content: confirmation,
+                  status: 'sent',
+                  timestamp: new Date().toISOString()
+                });
+              }
+            }
+            
+            useListMessage = true;
+            listOptions = parsedOptions;
+            msg = `[Lista: ${getListTitle(nextStepKey)}]`;
+          } else {
+            msg = confirmation ? `${confirmation}\n\n${nextQ?.question || ''}` : (nextQ?.question || '');
+          }
+        } else {
+          msg = confirmation ? `${confirmation}\n\n${nextQ?.question || ''}` : (nextQ?.question || '');
+        }
       }
     }
   } else {
@@ -340,14 +548,41 @@ async function processBotQualification(
     return;
   }
 
-  const msgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, msg);
+  // Send the message (either text or list)
+  let msgId: string | null = null;
+  let messageContent = msg;
+  
+  if (useListMessage && listOptions.length > 0) {
+    const targetStep = nextStep === step ? step : (step === 'welcome' ? firstStep : questions[step]?.next || nextStep);
+    msgId = await sendBotListMessage(
+      instance.instance_id,
+      instance.instance_token,
+      conv.remote_jid,
+      getListTitle(targetStep),
+      getListDescription(targetStep),
+      'Ver opções',
+      listOptions
+    );
+    messageContent = `${getListTitle(targetStep)}\n${listOptions.map(o => `• ${o.title}`).join('\n')}`;
+    
+    // If list failed, fallback to text menu
+    if (!msgId) {
+      console.log('[Bot] List message failed, falling back to text menu');
+      const fallbackQuestion = questions[targetStep]?.question || '';
+      msgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, fallbackQuestion);
+      messageContent = fallbackQuestion;
+    }
+  } else {
+    msgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, msg);
+  }
+  
   if (msgId) {
     await supabase.from('wapi_messages').insert({
       conversation_id: conv.id,
       message_id: msgId,
       from_me: true,
-      message_type: 'text',
-      content: msg,
+      message_type: useListMessage ? 'list' : 'text',
+      content: messageContent,
       status: 'sent',
       timestamp: new Date().toISOString()
     });
@@ -357,7 +592,7 @@ async function processBotQualification(
     bot_step: nextStep,
     bot_data: updated,
     last_message_at: new Date().toISOString(),
-    last_message_content: msg.substring(0, 100),
+    last_message_content: messageContent.substring(0, 100),
     last_message_from_me: true
   }).eq('id', conv.id);
 }
@@ -472,6 +707,32 @@ async function downloadMedia(supabase: SupabaseClient, iId: string, iToken: stri
 function extractMsgContent(mc: Record<string, unknown>, msg: Record<string, unknown>) {
   let type = 'text', content = '', url: string | null = null, key: string | null = null, path: string | null = null, fn: string | undefined, download = false, mime: string | null = null;
   
+  // Handle list response (interactive list selection)
+  if (mc.listResponseMessage) {
+    const listResp = mc.listResponseMessage as Record<string, unknown>;
+    // The selectedRowId contains our custom ID (e.g., "mes_1", "dia_2")
+    content = (listResp.singleSelectReply as Record<string, unknown>)?.selectedRowId as string || 
+              listResp.selectedRowId as string || 
+              listResp.title as string || '';
+    console.log(`[Bot] List response received: ${content}`);
+    return { type, content, url, key, path, fn, download, mime };
+  }
+  
+  // Handle buttons response
+  if (mc.buttonsResponseMessage) {
+    const btnResp = mc.buttonsResponseMessage as Record<string, unknown>;
+    content = btnResp.selectedButtonId as string || btnResp.selectedId as string || '';
+    console.log(`[Bot] Button response received: ${content}`);
+    return { type, content, url, key, path, fn, download, mime };
+  }
+  
+  // Handle template button reply
+  if (mc.templateButtonReplyMessage) {
+    const tplResp = mc.templateButtonReplyMessage as Record<string, unknown>;
+    content = tplResp.selectedId as string || tplResp.selectedIndex as string || '';
+    return { type, content, url, key, path, fn, download, mime };
+  }
+  
   if (mc.locationMessage) { type = 'location'; const l = mc.locationMessage as Record<string, unknown>; content = `📍 Localização: ${(l.degreesLatitude as number)?.toFixed(6) || '?'}, ${(l.degreesLongitude as number)?.toFixed(6) || '?'}`; }
   else if (mc.liveLocationMessage) { type = 'location'; content = '📍 Localização ao vivo'; }
   else if (mc.contactMessage || mc.contactsArrayMessage) { type = 'contact'; content = `👤 ${(mc.contactMessage as Record<string, unknown>)?.displayName || 'Contato'}`; }
@@ -491,6 +752,16 @@ function extractMsgContent(mc: Record<string, unknown>, msg: Record<string, unkn
 }
 
 function getPreview(mc: Record<string, unknown>, msg: Record<string, unknown>): string {
+  // Handle list/button responses
+  if (mc.listResponseMessage) {
+    const listResp = mc.listResponseMessage as Record<string, unknown>;
+    return (listResp.title as string) || '✓ Selecionado';
+  }
+  if (mc.buttonsResponseMessage) {
+    const btnResp = mc.buttonsResponseMessage as Record<string, unknown>;
+    return (btnResp.selectedDisplayText as string) || '✓ Selecionado';
+  }
+  
   if ((mc as Record<string, unknown>).conversation) return (mc as Record<string, string>).conversation;
   if ((mc.extendedTextMessage as Record<string, unknown>)?.text) return ((mc.extendedTextMessage as Record<string, unknown>).text as string);
   if (mc.imageMessage) return '📷 Imagem';
