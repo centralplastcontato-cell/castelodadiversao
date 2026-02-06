@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Users, LogOut, RefreshCw, Headset, Settings, Pin, PinOff, Presentation } from "lucide-react";
+import { Users, LogOut, RefreshCw, Headset, Settings, Pin, PinOff, Presentation, ChevronLeft } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -72,13 +72,28 @@ export function AdminSidebar({
     setOpen(newPinned);
   };
 
+  // Quick close function
+  const handleQuickClose = () => {
+    setIsPinned(false);
+    setOpen(false);
+  };
+
   return (
-    <Sidebar 
-      collapsible="icon" 
-      className="border-r border-sidebar-border transition-all duration-200"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <>
+      {/* Overlay to close sidebar easily when open and not pinned */}
+      {open && !collapsed && !isPinned && (
+        <div 
+          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px] md:hidden"
+          onClick={handleQuickClose}
+        />
+      )}
+      
+      <Sidebar 
+        collapsible="icon" 
+        className="border-r border-sidebar-border transition-all duration-200 z-40"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
       <SidebarHeader className="p-3">
         <div className="flex items-center gap-3">
           <img 
@@ -118,6 +133,23 @@ export function AdminSidebar({
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={10}>
                   {isPinned ? "Desfixar sidebar" : "Fixar sidebar"}
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Quick close button - more visible */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    onClick={handleQuickClose}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>
+                  Fechar menu
                 </TooltipContent>
               </Tooltip>
             </>
@@ -212,5 +244,6 @@ export function AdminSidebar({
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+    </>
   );
 }
