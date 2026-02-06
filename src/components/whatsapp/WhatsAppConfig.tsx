@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Wifi, MessageSquare, Bell, Bot, Settings, Lock, HelpCircle, FolderOpen } from "lucide-react";
+import { Wifi, MessageSquare, Bell, Bot, Settings, Lock, HelpCircle, FolderOpen, MessageCircle } from "lucide-react";
 import { ConnectionSection } from "./settings/ConnectionSection";
 import { MessagesSection } from "./settings/MessagesSection";
 import { NotificationsSection } from "./settings/NotificationsSection";
@@ -7,6 +7,7 @@ import { AutomationsSection } from "./settings/AutomationsSection";
 import { AdvancedSection } from "./settings/AdvancedSection";
 import { VisualGuideSection } from "./settings/VisualGuideSection";
 import { SalesMaterialsSection } from "./settings/SalesMaterialsSection";
+import { CaptionsSection } from "./settings/CaptionsSection";
 import { useConfigPermissions } from "@/hooks/useConfigPermissions";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -38,6 +39,13 @@ const allConfigSections = [
     title: "Materiais",
     description: "PDFs, fotos e vídeos",
     icon: FolderOpen,
+  },
+  {
+    id: "captions",
+    permissionKey: "messages" as const,
+    title: "Legendas",
+    description: "Textos de envio",
+    icon: MessageCircle,
   },
   {
     id: "notifications",
@@ -96,6 +104,8 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
         return <MessagesSection userId={userId} isAdmin={isAdmin} />;
       case "materials":
         return <SalesMaterialsSection userId={userId} isAdmin={isAdmin} />;
+      case "captions":
+        return <CaptionsSection userId={userId} isAdmin={isAdmin} />;
       case "notifications":
         return <NotificationsSection />;
       case "automations":
