@@ -528,6 +528,7 @@ export type Database = {
           created_at: string
           id: string
           instance_id: string
+          qualified_lead_message: string | null
           test_mode_enabled: boolean
           test_mode_number: string | null
           transfer_message: string | null
@@ -540,6 +541,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id: string
+          qualified_lead_message?: string | null
           test_mode_enabled?: boolean
           test_mode_number?: string | null
           transfer_message?: string | null
@@ -552,6 +554,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_id?: string
+          qualified_lead_message?: string | null
           test_mode_enabled?: boolean
           test_mode_number?: string | null
           transfer_message?: string | null

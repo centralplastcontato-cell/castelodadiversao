@@ -176,7 +176,7 @@ async function isVipNumber(supabase: SupabaseClient, instanceId: string, phone: 
 }
 
 async function getBotSettings(supabase: SupabaseClient, instanceId: string) {
-  const { data } = await supabase.from('wapi_bot_settings').select('*, completion_message, transfer_message').eq('instance_id', instanceId).single();
+  const { data } = await supabase.from('wapi_bot_settings').select('*, completion_message, transfer_message, qualified_lead_message').eq('instance_id', instanceId).single();
   return data;
 }
 
@@ -248,16 +248,58 @@ async function processBotQualification(
   if (!shouldRun) return;
   if (await isVipNumber(supabase, instance.id, contactPhone)) return;
   
-  // Check if lead already exists and has complete data - skip bot
+  // Check if lead already exists and has complete data - send welcome message instead of bot
   if (conv.lead_id) {
     const { data: existingLead } = await supabase.from('campaign_leads')
       .select('name, month, day_preference, guests')
       .eq('id', conv.lead_id)
       .single();
     
-    // If lead already has all qualification data, skip bot
+    // If lead already has all qualification data, send welcome message for qualified leads
     if (existingLead?.name && existingLead?.month && existingLead?.day_preference && existingLead?.guests) {
-      console.log(`[Bot] Lead ${conv.lead_id} already qualified, skipping bot`);
+      console.log(`[Bot] Lead ${conv.lead_id} already qualified from LP`);
+      
+      // Only send welcome message if this is the first message from the lead (bot_step is null/welcome)
+      if (!conv.bot_step || conv.bot_step === 'welcome') {
+        const defaultQualifiedMsg = `Olá, {nome}! 👋\n\nRecebemos seu interesse pelo site e já temos seus dados aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}\n\nNossa equipe vai te responder em breve! 🏰✨`;
+        const qualifiedTemplate = settings.qualified_lead_message || defaultQualifiedMsg;
+        
+        const leadData = {
+          nome: existingLead.name,
+          mes: existingLead.month || '',
+          dia: existingLead.day_preference || '',
+          convidados: existingLead.guests || '',
+        };
+        
+        const welcomeMsg = replaceVariables(qualifiedTemplate, leadData);
+        
+        // Send welcome message
+        const msgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, welcomeMsg);
+        
+        if (msgId) {
+          // Save message to database
+          await supabase.from('wapi_messages').insert({
+            conversation_id: conv.id,
+            message_id: msgId,
+            from_me: true,
+            message_type: 'text',
+            content: welcomeMsg,
+            status: 'sent',
+            timestamp: new Date().toISOString()
+          });
+          
+          // Mark as qualified so we don't send again
+          await supabase.from('wapi_conversations').update({
+            bot_step: 'qualified_from_lp',
+            bot_enabled: false,
+            last_message_at: new Date().toISOString(),
+            last_message_content: welcomeMsg.substring(0, 100),
+            last_message_from_me: true
+          }).eq('id', conv.id);
+          
+          console.log(`[Bot] Sent qualified lead welcome message to ${contactPhone}`);
+        }
+      }
       return;
     }
   }
