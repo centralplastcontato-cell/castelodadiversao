@@ -213,16 +213,17 @@ export function KanbanCard({
       onDragStart={handleDragStart}
       onClick={() => !isEditing && onLeadClick(lead)}
       className={`
-        bg-card rounded-lg border border-border p-3 
-        cursor-pointer hover:border-primary/50 transition-colors
+        bg-card rounded-xl border border-border/60 p-3.5 
+        cursor-pointer hover:border-primary/40 hover:shadow-md transition-all duration-200
         ${canEdit && !isEditing ? "cursor-grab active:cursor-grabbing" : ""}
+        shadow-sm
       `}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
             {canEdit && !isEditing && (
-              <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              <GripVertical className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
             )}
             
             {isEditingName ? (
@@ -256,7 +257,7 @@ export function KanbanCard({
               </div>
             ) : (
               <div className="flex items-center gap-1 flex-1 min-w-0">
-                <p className="font-medium text-sm truncate flex-1 min-w-0" title={lead.name}>{lead.name}</p>
+                <p className="font-semibold text-sm truncate flex-1 min-w-0" title={lead.name}>{lead.name}</p>
                 {isIncomplete && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -283,48 +284,48 @@ export function KanbanCard({
           </div>
 
           {(lead.unit || lead.month || lead.guests) && (
-            <div className="mt-2 space-y-1">
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
               {lead.unit && (
-                <p className="text-xs text-muted-foreground">
-                  📍 {lead.unit}
-                </p>
+                <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                  <span className="text-primary/70">📍</span> {lead.unit}
+                </span>
               )}
               {lead.month && (
-                <p className="text-xs text-muted-foreground">
-                  📅 {lead.day_of_month || lead.day_preference || "-"}/
+                <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                  <span className="text-primary/70">📅</span> {lead.day_of_month || lead.day_preference || "-"}/
                   {lead.month}
-                </p>
+                </span>
               )}
               {lead.guests && (
-                <p className="text-xs text-muted-foreground">
-                  👥 {lead.guests} convidados
-                </p>
+                <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                  <span className="text-primary/70">👥</span> {lead.guests}
+                </span>
               )}
             </div>
           )}
 
           {responsavelName && (
-            <div className="mt-2 flex items-center gap-1">
-              <User className="w-3 h-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground truncate">
+            <div className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded-md w-fit">
+              <User className="w-3 h-3 text-primary/60" />
+              <span className="text-xs text-muted-foreground font-medium truncate">
                 {responsavelName}
               </span>
             </div>
           )}
 
-          {/* Description / Observações section */}
+          {/* Description / Observações section - Premium style */}
           {isEditingDescription ? (
-            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
               <Textarea
                 ref={textareaRef}
                 value={editedDescription}
                 onChange={(e) => setEditedDescription(e.target.value)}
                 onKeyDown={handleKeyDownDescription}
-                className="text-xs min-h-[60px] resize-none"
-                placeholder="Observações..."
+                className="text-xs min-h-[60px] resize-none bg-muted/30 border-muted"
+                placeholder="Adicione observações sobre este lead..."
                 disabled={isSaving}
               />
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center gap-1 mt-1.5">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -346,28 +347,41 @@ export function KanbanCard({
               </div>
             </div>
           ) : (
-            <div className="mt-2 flex items-start gap-1">
+            <div className="mt-3">
               {lead.observacoes ? (
-                <p className="text-xs text-muted-foreground line-clamp-2 flex-1">
-                  💬 {lead.observacoes}
-                </p>
+                <div className="relative bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-2.5 border border-muted/50">
+                  <div className="absolute -top-2 left-2.5 bg-card px-1.5">
+                    <MessageSquare className="w-3 h-3 text-primary/50" />
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                    {lead.observacoes}
+                  </p>
+                  {canEditDescription && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 hover:opacity-100 bg-card/80"
+                      onClick={handleStartEditDescription}
+                      title="Editar observação"
+                    >
+                      <Pencil className="w-2.5 h-2.5 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
               ) : (
                 canEditDescription && (
-                  <p className="text-xs text-muted-foreground/50 flex-1">
-                    Sem observações
-                  </p>
+                  <button
+                    onClick={handleStartEditDescription}
+                    className="w-full text-left bg-muted/20 hover:bg-muted/40 border border-dashed border-muted-foreground/20 hover:border-primary/30 rounded-lg p-2.5 transition-all duration-200 group/obs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-3.5 h-3.5 text-muted-foreground/40 group-hover/obs:text-primary/50 transition-colors" />
+                      <span className="text-xs text-muted-foreground/50 group-hover/obs:text-muted-foreground transition-colors">
+                        Adicionar observação...
+                      </span>
+                    </div>
+                  </button>
                 )
-              )}
-              {canEditDescription && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 flex-shrink-0 opacity-0 group-hover:opacity-100 hover:opacity-100"
-                  onClick={handleStartEditDescription}
-                  title="Editar descrição"
-                >
-                  <MessageSquare className="w-3 h-3" />
-                </Button>
               )}
             </div>
           )}
@@ -473,19 +487,19 @@ export function KanbanCard({
         </DropdownMenu>
       </div>
 
-      <div className="mt-2 pt-2 border-t border-border flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
+      <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between">
+        <p className="text-[11px] text-muted-foreground/70 font-medium">
           {format(new Date(lead.created_at), "dd/MM/yy 'às' HH:mm", {
             locale: ptBR,
           })}
         </p>
         
         {canEdit && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-6 w-6 hover:bg-primary/10"
               onClick={handleMoveLeft}
               disabled={!hasPrev}
               title={hasPrev ? `Mover para ${LEAD_STATUS_LABELS[getPreviousStatus(lead.status)!]}` : undefined}
@@ -495,7 +509,7 @@ export function KanbanCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-6 w-6 hover:bg-primary/10"
               onClick={handleMoveRight}
               disabled={!hasNext}
               title={hasNext ? `Mover para ${LEAD_STATUS_LABELS[getNextStatus(lead.status)!]}` : undefined}
