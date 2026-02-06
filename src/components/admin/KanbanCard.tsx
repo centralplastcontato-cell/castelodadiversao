@@ -223,8 +223,8 @@ export function KanbanCard({
       `}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-2 min-w-0">
             {canEdit && !isEditing && (
               <GripVertical className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
             )}
