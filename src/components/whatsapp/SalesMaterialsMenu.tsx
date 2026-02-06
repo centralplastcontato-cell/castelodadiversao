@@ -37,7 +37,6 @@ interface SalesMaterial {
 
 interface Caption {
   id: string;
-  unit: string;
   caption_type: "video" | "video_promo" | "photo_collection";
   caption_text: string;
 }
@@ -92,7 +91,6 @@ export function SalesMaterialsMenu({
         supabase
           .from("sales_material_captions")
           .select("*")
-          .eq("unit", unit)
           .eq("is_active", true)
       ]);
 
@@ -137,28 +135,22 @@ export function SalesMaterialsMenu({
 
   const leadGuestCount = getLeadGuestCount();
 
-  // Helper function to get caption from database or fallback to default
+  // Helper function to get caption from database and replace {unidade} variable
   const getCaption = (captionType: "video" | "video_promo" | "photo_collection"): string => {
     const caption = captions.find(c => c.caption_type === captionType);
     if (caption) {
-      return caption.caption_text;
+      // Replace {unidade} variable with actual unit name
+      return caption.caption_text.replace(/\{unidade\}/gi, unit);
     }
     
     // Fallback defaults if not found in database
-    const defaults: Record<string, Record<string, string>> = {
-      Manchester: {
-        video: "🎬 Veja como é incrível o nosso espaço! ✨ Unidade Manchester te espera para uma festa inesquecível! 🎉",
-        video_promo: "🎭🎉 PROMOÇÃO ESPECIAL DE CARNAVAL! 🎊✨ Aproveite condições imperdíveis para garantir a festa dos sonhos do seu filho! Entre em contato agora e confira! 🏰💜",
-        photo_collection: "✨ Espaço incrível para festas inesquecíveis! Venha conhecer nossa unidade Manchester e encante-se com a estrutura completa para a diversão da criançada! 🎉🏰"
-      },
-      Trujillo: {
-        video: "🎬 Dá só uma olhada no nosso espaço! ✨ Unidade Trujillo pronta para fazer a festa perfeita! 🎉",
-        video_promo: "🎭🎉 PROMOÇÃO ESPECIAL DE CARNAVAL! 🎊✨ Aproveite condições imperdíveis para garantir a festa dos sonhos do seu filho! Entre em contato agora e confira! 🏰💜",
-        photo_collection: "✨ Um mundo de diversão espera por você! Conheça nossa unidade Trujillo e surpreenda-se com tudo que preparamos para a festa perfeita! 🎉🏰"
-      }
+    const defaults: Record<string, string> = {
+      video: `🎬 Veja como é incrível o nosso espaço! ✨ Unidade ${unit} te espera para uma festa inesquecível! 🎉`,
+      video_promo: "🎭🎉 PROMOÇÃO ESPECIAL DE CARNAVAL! 🎊✨ Aproveite condições imperdíveis para garantir a festa dos sonhos do seu filho! Entre em contato agora e confira! 🏰💜",
+      photo_collection: `✨ Espaço incrível para festas inesquecíveis! Venha conhecer a unidade ${unit} e encante-se com a estrutura completa para a diversão da criançada! 🎉🏰`
     };
     
-    return defaults[unit]?.[captionType] || defaults.Manchester[captionType];
+    return defaults[captionType] || defaults.video;
   };
 
   // Use useMemo to ensure filters are recalculated when materials change

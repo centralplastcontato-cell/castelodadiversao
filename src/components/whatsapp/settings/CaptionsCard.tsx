@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Save, MessageCircle, Video, Images, Sparkles, ChevronDown } from "lucide-react";
 
 interface Caption {
   id: string;
-  unit: string;
   caption_type: "video" | "video_promo" | "photo_collection";
   caption_text: string;
   is_active: boolean;
@@ -38,14 +36,11 @@ const CAPTION_TYPES = [
   },
 ] as const;
 
-const UNITS = ["Manchester", "Trujillo"];
-
 export function CaptionsCard() {
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
   const [editedCaptions, setEditedCaptions] = useState<Record<string, string>>({});
-  const [selectedUnit, setSelectedUnit] = useState<string>("Manchester");
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -58,7 +53,7 @@ export function CaptionsCard() {
       const { data, error } = await supabase
         .from("sales_material_captions")
         .select("*")
-        .order("unit", { ascending: true });
+        .order("caption_type", { ascending: true });
 
       if (error) {
         console.error("[CaptionsCard] Error fetching captions:", error);
@@ -127,8 +122,8 @@ export function CaptionsCard() {
     }
   };
 
-  const getCaptionForType = (unit: string, type: string): Caption | undefined => {
-    return captions.find(c => c.unit === unit && c.caption_type === type);
+  const getCaptionForType = (type: string): Caption | undefined => {
+    return captions.find(c => c.caption_type === type);
   };
 
   const hasChanges = (captionId: string, originalText: string): boolean => {
@@ -161,66 +156,62 @@ export function CaptionsCard() {
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Tabs value={selectedUnit} onValueChange={setSelectedUnit}>
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  {UNITS.map(unit => (
-                    <TabsTrigger key={unit} value={unit}>
-                      {unit}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+              <div className="space-y-4">
+                {/* Variable hint */}
+                <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                  <p className="text-muted-foreground">
+                    Use <code className="bg-background px-1 py-0.5 rounded">{"{unidade}"}</code> para 
+                    inserir automaticamente o nome da unidade (Manchester ou Trujillo).
+                  </p>
+                </div>
 
-                {UNITS.map(unit => (
-                  <TabsContent key={unit} value={unit} className="space-y-4">
-                    {CAPTION_TYPES.map(({ value, label, icon: Icon, description }) => {
-                      const caption = getCaptionForType(unit, value);
-                      if (!caption) return null;
+                {CAPTION_TYPES.map(({ value, label, icon: Icon, description }) => {
+                  const caption = getCaptionForType(value);
+                  if (!caption) return null;
 
-                      const currentText = editedCaptions[caption.id] || "";
-                      const isModified = hasChanges(caption.id, caption.caption_text);
-                      const isSavingThis = isSaving === caption.id;
+                  const currentText = editedCaptions[caption.id] || "";
+                  const isModified = hasChanges(caption.id, caption.caption_text);
+                  const isSavingThis = isSaving === caption.id;
 
-                      return (
-                        <div key={value} className="space-y-2 p-3 border rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <Icon className="w-4 h-4 text-primary" />
-                            <Label className="text-sm font-medium">{label}</Label>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{description}</p>
-                          
-                          <Textarea
-                            value={currentText}
-                            onChange={(e) => setEditedCaptions({
-                              ...editedCaptions,
-                              [caption.id]: e.target.value
-                            })}
-                            placeholder="Digite a legenda..."
-                            className="min-h-[80px] resize-none text-sm"
-                          />
+                  return (
+                    <div key={value} className="space-y-2 p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4 text-primary" />
+                        <Label className="text-sm font-medium">{label}</Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{description}</p>
+                      
+                      <Textarea
+                        value={currentText}
+                        onChange={(e) => setEditedCaptions({
+                          ...editedCaptions,
+                          [caption.id]: e.target.value
+                        })}
+                        placeholder="Digite a legenda..."
+                        className="min-h-[80px] resize-none text-sm"
+                      />
 
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">
-                              {currentText.length} caracteres
-                            </span>
-                            <Button
-                              size="sm"
-                              onClick={() => handleSaveCaption(caption)}
-                              disabled={!isModified || isSavingThis}
-                            >
-                              {isSavingThis ? (
-                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                              ) : (
-                                <Save className="w-4 h-4 mr-1" />
-                              )}
-                              Salvar
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </TabsContent>
-                ))}
-              </Tabs>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          {currentText.length} caracteres
+                        </span>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveCaption(caption)}
+                          disabled={!isModified || isSavingThis}
+                        >
+                          {isSavingThis ? (
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4 mr-1" />
+                          )}
+                          Salvar
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </CollapsibleContent>
