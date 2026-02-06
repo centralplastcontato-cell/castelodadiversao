@@ -70,8 +70,34 @@ export function SalesMaterialsMenu({
   const [activeCategory, setActiveCategory] = useState<CategoryType>("main");
   const isMobile = useIsMobile();
 
+  const fetchMaterials = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("sales_materials")
+        .select("*")
+        .eq("unit", unit)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        console.error("[SalesMaterialsMenu] Error fetching materials:", error);
+        return;
+      }
+
+      if (data) {
+        console.log("[SalesMaterialsMenu] Fetched materials for unit:", unit, "Count:", data.length, "Types:", data.map(m => m.type));
+        setMaterials(data as SalesMaterial[]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchMaterials();
+    if (unit) {
+      fetchMaterials();
+    }
   }, [unit]);
 
   // Reset category when closing
@@ -80,21 +106,6 @@ export function SalesMaterialsMenu({
       setActiveCategory("main");
     }
   }, [isOpen]);
-
-  const fetchMaterials = async () => {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from("sales_materials")
-      .select("*")
-      .eq("unit", unit)
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true });
-
-    if (data) {
-      setMaterials(data as SalesMaterial[]);
-    }
-    setIsLoading(false);
-  };
 
   const getLeadGuestCount = (): number | null => {
     if (!lead?.guests) return null;
