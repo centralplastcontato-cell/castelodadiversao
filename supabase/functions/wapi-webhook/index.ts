@@ -523,6 +523,274 @@ async function processBotQualification(
     last_message_content: msg.substring(0, 100),
     last_message_from_me: true
   }).eq('id', conv.id);
+
+  // After qualification complete, send materials automatically
+  if (nextStep === 'complete') {
+    // Use background task to send materials after responding to user
+    EdgeRuntime.waitUntil(
+      sendQualificationMaterials(
+        supabase,
+        instance,
+        conv,
+        updated,
+        settings
+      ).catch(err => console.error('[Bot] Error sending materials:', err))
+    );
+  }
+}
+
+// ============= AUTO-SEND MATERIALS AFTER QUALIFICATION =============
+
+async function sendQualificationMaterials(
+  supabase: SupabaseClient,
+  instance: { id: string; instance_id: string; instance_token: string; unit: string | null },
+  conv: { id: string; remote_jid: string },
+  botData: Record<string, string>,
+  settings: { completion_message?: string | null } | null
+) {
+  const unit = instance.unit;
+  const month = botData.mes || '';
+  const guestsStr = botData.convidados || '';
+  const phone = conv.remote_jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+  
+  console.log(`[Bot Materials] Starting auto-send for ${phone}, unit: ${unit}, month: ${month}, guests: ${guestsStr}`);
+  
+  if (!unit) {
+    console.log('[Bot Materials] No unit configured, skipping');
+    return;
+  }
+  
+  // Small delay to ensure completion message is delivered first
+  await new Promise(r => setTimeout(r, 2000));
+  
+  // Fetch captions for different material types
+  const { data: captions } = await supabase
+    .from('sales_material_captions')
+    .select('caption_type, caption_text')
+    .eq('is_active', true);
+  
+  const captionMap: Record<string, string> = {};
+  captions?.forEach(c => { captionMap[c.caption_type] = c.caption_text; });
+  
+  // Fetch all active materials for this unit
+  const { data: materials, error: matError } = await supabase
+    .from('sales_materials')
+    .select('*')
+    .eq('unit', unit)
+    .eq('is_active', true)
+    .order('type', { ascending: true })
+    .order('sort_order', { ascending: true });
+  
+  if (matError || !materials?.length) {
+    console.log(`[Bot Materials] No materials found for unit ${unit}`);
+    return;
+  }
+  
+  console.log(`[Bot Materials] Found ${materials.length} materials for ${unit}`);
+  
+  // Group materials by type
+  const photoCollections = materials.filter(m => m.type === 'photo_collection');
+  const presentationVideos = materials.filter(m => m.type === 'video' && m.name?.toLowerCase().includes('apresentação'));
+  const promoVideos = materials.filter(m => m.type === 'video' && (m.name?.toLowerCase().includes('promo') || m.name?.toLowerCase().includes('carnaval')));
+  const pdfPackages = materials.filter(m => m.type === 'pdf_package');
+  
+  // Extract guest count from string (e.g., "50 pessoas" -> 50)
+  const guestMatch = guestsStr.match(/(\d+)/);
+  const guestCount = guestMatch ? parseInt(guestMatch[1]) : null;
+  
+  // Determine if promo video should be sent (Feb/March)
+  const isPromoMonth = month === 'Fevereiro' || month === 'Março';
+  
+  // Helper to send via W-API
+  const sendImage = async (url: string, caption: string) => {
+    try {
+      // Download image to base64
+      const imgRes = await fetch(url);
+      if (!imgRes.ok) return null;
+      
+      const buf = await imgRes.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += 32768) {
+        const chunk = bytes.subarray(i, Math.min(i + 32768, bytes.length));
+        bin += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      const ct = imgRes.headers.get('content-type') || 'image/jpeg';
+      const base64 = `data:${ct};base64,${btoa(bin)}`;
+      
+      const res = await fetch(`${WAPI_BASE_URL}/message/send-image?instanceId=${instance.instance_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${instance.instance_token}` },
+        body: JSON.stringify({ phone, image: base64, caption })
+      });
+      
+      if (!res.ok) return null;
+      const r = await res.json();
+      return r.messageId || null;
+    } catch (e) {
+      console.error('[Bot Materials] Error sending image:', e);
+      return null;
+    }
+  };
+  
+  const sendVideo = async (url: string, caption: string) => {
+    try {
+      const res = await fetch(`${WAPI_BASE_URL}/message/send-video?instanceId=${instance.instance_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${instance.instance_token}` },
+        body: JSON.stringify({ phone, video: url, caption })
+      });
+      
+      if (!res.ok) return null;
+      const r = await res.json();
+      return r.messageId || null;
+    } catch (e) {
+      console.error('[Bot Materials] Error sending video:', e);
+      return null;
+    }
+  };
+  
+  const sendDocument = async (url: string, fileName: string) => {
+    try {
+      const ext = url.split('.').pop()?.split('?')[0] || 'pdf';
+      const res = await fetch(`${WAPI_BASE_URL}/message/send-document?instanceId=${instance.instance_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${instance.instance_token}` },
+        body: JSON.stringify({ phone, document: url, fileName, extension: ext })
+      });
+      
+      if (!res.ok) return null;
+      const r = await res.json();
+      return r.messageId || null;
+    } catch (e) {
+      console.error('[Bot Materials] Error sending document:', e);
+      return null;
+    }
+  };
+  
+  const sendText = async (message: string) => {
+    try {
+      const res = await fetch(`${WAPI_BASE_URL}/message/send-text?instanceId=${instance.instance_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${instance.instance_token}` },
+        body: JSON.stringify({ phone, message, delayTyping: 1 })
+      });
+      
+      if (!res.ok) return null;
+      const r = await res.json();
+      return r.messageId || null;
+    } catch (e) {
+      console.error('[Bot Materials] Error sending text:', e);
+      return null;
+    }
+  };
+  
+  const saveMessage = async (msgId: string, type: string, content: string, mediaUrl?: string) => {
+    await supabase.from('wapi_messages').insert({
+      conversation_id: conv.id,
+      message_id: msgId,
+      from_me: true,
+      message_type: type,
+      content,
+      media_url: mediaUrl || null,
+      status: 'sent',
+      timestamp: new Date().toISOString()
+    });
+  };
+  
+  // 1. SEND PHOTO COLLECTION (with intro text)
+  if (photoCollections.length > 0) {
+    const collection = photoCollections[0];
+    const photos = collection.photo_urls || [];
+    
+    if (photos.length > 0) {
+      console.log(`[Bot Materials] Sending ${photos.length} photos from collection`);
+      
+      // Send intro text
+      const introCaption = captionMap['photo_collection'] || `✨ Conheça nosso espaço incrível na unidade ${unit}! 🏰🎉`;
+      const introText = introCaption.replace(/\{unidade\}/gi, unit);
+      const introMsgId = await sendText(introText);
+      if (introMsgId) await saveMessage(introMsgId, 'text', introText);
+      
+      await new Promise(r => setTimeout(r, 1000));
+      
+      // Send photos in parallel
+      await Promise.all(photos.map(async (photoUrl: string) => {
+        const msgId = await sendImage(photoUrl, '');
+        if (msgId) await saveMessage(msgId, 'image', '📷', photoUrl);
+      }));
+      
+      console.log(`[Bot Materials] Photos sent`);
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+  
+  // 2. SEND PRESENTATION VIDEO
+  if (presentationVideos.length > 0) {
+    const video = presentationVideos[0];
+    console.log(`[Bot Materials] Sending presentation video: ${video.name}`);
+    
+    const videoCaption = captionMap['video'] || `🎬 Conheça a unidade ${unit}! ✨`;
+    const caption = videoCaption.replace(/\{unidade\}/gi, unit);
+    
+    const msgId = await sendVideo(video.file_url, caption);
+    if (msgId) await saveMessage(msgId, 'video', caption, video.file_url);
+    
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  
+  // 3. SEND PROMO VIDEO (only for Feb/March)
+  if (isPromoMonth && promoVideos.length > 0) {
+    const promoVideo = promoVideos[0];
+    console.log(`[Bot Materials] Sending promo video for ${month}: ${promoVideo.name}`);
+    
+    const promoCaption = captionMap['video_promo'] || `🎭 Promoção especial! Garanta sua festa em ${month}! 🎉`;
+    const caption = promoCaption.replace(/\{unidade\}/gi, unit);
+    
+    const msgId = await sendVideo(promoVideo.file_url, caption);
+    if (msgId) await saveMessage(msgId, 'video', caption, promoVideo.file_url);
+    
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  
+  // 4. SEND PDF PACKAGE (matching guest count)
+  if (guestCount && pdfPackages.length > 0) {
+    // Find exact match or closest package
+    let matchingPdf = pdfPackages.find(p => p.guest_count === guestCount);
+    
+    if (!matchingPdf) {
+      // Find closest package (equal or greater)
+      const sortedPackages = pdfPackages.filter(p => p.guest_count).sort((a, b) => (a.guest_count || 0) - (b.guest_count || 0));
+      matchingPdf = sortedPackages.find(p => (p.guest_count || 0) >= guestCount) || sortedPackages[sortedPackages.length - 1];
+    }
+    
+    if (matchingPdf) {
+      console.log(`[Bot Materials] Sending PDF package: ${matchingPdf.name} for ${guestCount} guests`);
+      
+      // Send intro message for PDF
+      const firstName = (botData.nome || '').split(' ')[0] || 'você';
+      const pdfIntro = `📋 Oi ${firstName}! Segue o pacote completo para ${guestsStr} na unidade ${unit}. Qualquer dúvida é só chamar! 💜`;
+      const introMsgId = await sendText(pdfIntro);
+      if (introMsgId) await saveMessage(introMsgId, 'text', pdfIntro);
+      
+      await new Promise(r => setTimeout(r, 500));
+      
+      // Send PDF with proper filename
+      const fileName = matchingPdf.name?.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, ' ').trim() + '.pdf' || `Pacote ${guestCount} pessoas.pdf`;
+      const msgId = await sendDocument(matchingPdf.file_url, fileName);
+      if (msgId) await saveMessage(msgId, 'document', fileName, matchingPdf.file_url);
+    }
+  }
+  
+  // Update conversation last message
+  await supabase.from('wapi_conversations').update({
+    last_message_at: new Date().toISOString(),
+    last_message_content: '📄 Materiais enviados automaticamente',
+    last_message_from_me: true,
+    bot_enabled: false  // Disable bot after sending materials
+  }).eq('id', conv.id);
+  
+  console.log(`[Bot Materials] Auto-send complete for ${phone}`);
 }
 
 function isPdfContent(bytes: Uint8Array): boolean { return bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; }
