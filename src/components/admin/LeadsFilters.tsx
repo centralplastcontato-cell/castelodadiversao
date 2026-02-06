@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Search, X, Download } from "lucide-react";
+import { CalendarIcon, Search, X, Download, CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +73,7 @@ export function LeadsFilters({
       startDate: undefined,
       endDate: undefined,
       search: "",
+      hasScheduledVisit: false,
     });
   };
 
@@ -84,7 +85,8 @@ export function LeadsFilters({
     filters.month !== "all" ||
     filters.startDate ||
     filters.endDate ||
-    filters.search;
+    filters.search ||
+    filters.hasScheduledVisit;
 
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
@@ -132,9 +134,24 @@ export function LeadsFilters({
 
         {/* Row 2: Filters - Hidden on mobile unless expanded */}
         <div className={cn(
-          "flex-col sm:flex sm:flex-row sm:flex-wrap gap-2 sm:gap-3",
+          "flex-col sm:flex sm:flex-row sm:flex-wrap gap-2 sm:gap-3 sm:items-center",
           isFiltersExpanded ? "flex" : "hidden sm:flex"
         )}>
+          {/* Visit Filter Toggle */}
+          <Button
+            variant={filters.hasScheduledVisit ? "default" : "outline"}
+            size="sm"
+            onClick={() => onFiltersChange({ ...filters, hasScheduledVisit: !filters.hasScheduledVisit })}
+            className={cn(
+              "gap-2 transition-all",
+              filters.hasScheduledVisit 
+                ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" 
+                : "border-border/60 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:hover:bg-blue-900/20"
+            )}
+          >
+            <CalendarCheck className="w-4 h-4" />
+            <span>Visitas Agendadas</span>
+          </Button>
           {/* Status Filter */}
           <Select
             value={filters.status}

@@ -40,6 +40,7 @@ export interface LeadFilters {
   startDate: Date | undefined;
   endDate: Date | undefined;
   search: string;
+  hasScheduledVisit: boolean;
 }
 
 export default function Admin() {
@@ -57,6 +58,7 @@ export default function Admin() {
     startDate: undefined,
     endDate: undefined,
     search: "",
+    hasScheduledVisit: false,
   });
   const [refreshKey, setRefreshKey] = useState(0);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -229,17 +231,22 @@ export default function Admin() {
           
           const scheduledVisitLeadIds = new Set((convData || []).map(c => c.lead_id));
           
-          const leadsWithVisitInfo = leadsData.map(lead => ({
+          let leadsWithVisitInfo = leadsData.map(lead => ({
             ...lead,
             has_scheduled_visit: scheduledVisitLeadIds.has(lead.id)
           }));
           
+          // Apply scheduled visit filter if enabled
+          if (filters.hasScheduledVisit) {
+            leadsWithVisitInfo = leadsWithVisitInfo.filter(lead => lead.has_scheduled_visit);
+          }
+          
           setLeads(leadsWithVisitInfo);
+          setTotalCount(filters.hasScheduledVisit ? leadsWithVisitInfo.length : (count || 0));
         } else {
           setLeads(leadsData);
+          setTotalCount(count || 0);
         }
-        
-        setTotalCount(count || 0);
       }
 
       setIsLoadingLeads(false);
