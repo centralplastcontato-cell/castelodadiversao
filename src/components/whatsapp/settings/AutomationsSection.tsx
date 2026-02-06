@@ -50,6 +50,11 @@ interface BotSettings {
   completion_message: string | null;
   transfer_message: string | null;
   qualified_lead_message: string | null;
+  // Next step question settings
+  next_step_question: string | null;
+  next_step_visit_response: string | null;
+  next_step_questions_response: string | null;
+  next_step_analyze_response: string | null;
   // Auto-send materials settings
   auto_send_materials: boolean;
   auto_send_photos: boolean;
@@ -705,6 +710,55 @@ export function AutomationsSection() {
                   className="min-h-[120px] text-base"
                   placeholder="Perfeito, {nome}! 🏰✨..."
                 />
+              </div>
+
+              {/* Next Step Question */}
+              <div className="p-4 border rounded-lg bg-amber-50/50 dark:bg-amber-950/10 border-amber-500/30">
+                <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs">❓</span>
+                  Pergunta do Próximo Passo
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Após a mensagem de conclusão, o bot pergunta como o lead quer continuar. Formato de menu numerado.
+                </p>
+                <Textarea
+                  value={botSettings?.next_step_question || "E agora, como você gostaria de continuar? 🤔\n\nResponda com o *número*:\n\n*1* - Agendar visita\n*2* - Tirar dúvidas\n*3* - Analisar com calma"}
+                  onChange={(e) => setBotSettings(prev => prev ? { ...prev, next_step_question: e.target.value } : null)}
+                  onBlur={() => botSettings && updateBotSettings({ next_step_question: botSettings.next_step_question })}
+                  className="min-h-[120px] text-base"
+                  placeholder="E agora, como você gostaria de continuar? 🤔..."
+                />
+                
+                {/* Response for each option */}
+                <div className="mt-4 space-y-3 pl-3 border-l-2 border-amber-500/30">
+                  <div>
+                    <Label className="text-xs font-medium text-amber-700 dark:text-amber-400">Resposta: Agendar Visita (1)</Label>
+                    <Textarea
+                      value={botSettings?.next_step_visit_response || "Ótima escolha! 🏰✨\n\nNossa equipe vai entrar em contato para agendar sua visita ao Castelo da Diversão!\n\nAguarde um momento que já vamos te chamar! 👑"}
+                      onChange={(e) => setBotSettings(prev => prev ? { ...prev, next_step_visit_response: e.target.value } : null)}
+                      onBlur={() => botSettings && updateBotSettings({ next_step_visit_response: botSettings.next_step_visit_response })}
+                      className="min-h-[80px] text-sm mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-amber-700 dark:text-amber-400">Resposta: Tirar Dúvidas (2)</Label>
+                    <Textarea
+                      value={botSettings?.next_step_questions_response || "Claro! 💬\n\nPode mandar sua dúvida aqui que nossa equipe vai te responder rapidinho!\n\nEstamos à disposição! 👑"}
+                      onChange={(e) => setBotSettings(prev => prev ? { ...prev, next_step_questions_response: e.target.value } : null)}
+                      onBlur={() => botSettings && updateBotSettings({ next_step_questions_response: botSettings.next_step_questions_response })}
+                      className="min-h-[80px] text-sm mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-amber-700 dark:text-amber-400">Resposta: Analisar com Calma (3)</Label>
+                    <Textarea
+                      value={botSettings?.next_step_analyze_response || "Sem problemas! 📋\n\nVou enviar nossos materiais para você analisar com calma. Quando estiver pronto, é só chamar aqui!\n\nEstamos à disposição! 👑✨"}
+                      onChange={(e) => setBotSettings(prev => prev ? { ...prev, next_step_analyze_response: e.target.value } : null)}
+                      onBlur={() => botSettings && updateBotSettings({ next_step_analyze_response: botSettings.next_step_analyze_response })}
+                      className="min-h-[80px] text-sm mt-1"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Qualified Lead Welcome Message (from LP) */}

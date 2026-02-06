@@ -491,8 +491,8 @@ async function processBotQualification(
         }
         
         // Get next step question from database or use default
-        const nextStepQuestion = questions['proximo_passo']?.question || 
-          `E agora, como você gostaria de continuar? 🤔\n\nResponda com o *número*:\n\n${buildMenuText(PROXIMO_PASSO_OPTIONS)}`;
+        const defaultNextStepQuestion = `E agora, como você gostaria de continuar? 🤔\n\nResponda com o *número*:\n\n${buildMenuText(PROXIMO_PASSO_OPTIONS)}`;
+        const nextStepQuestion = settings.next_step_question || defaultNextStepQuestion;
         
         // Combine completion message with next step question
         msg = `${completionMsg}\n\n${nextStepQuestion}`;
@@ -505,23 +505,29 @@ async function processBotQualification(
         let responseMsg = '';
         let scheduleVisit = false;
         
+        // Default responses
+        const defaultVisitResponse = `Ótima escolha! 🏰✨\n\nNossa equipe vai entrar em contato para agendar sua visita ao Castelo da Diversão!\n\nAguarde um momento que já vamos te chamar! 👑`;
+        const defaultQuestionsResponse = `Claro! 💬\n\nPode mandar sua dúvida aqui que nossa equipe vai te responder rapidinho!\n\nEstamos à disposição! 👑`;
+        const defaultAnalyzeResponse = `Sem problemas! 📋\n\nVou enviar nossos materiais para você analisar com calma. Quando estiver pronto, é só chamar aqui!\n\nEstamos à disposição! 👑✨`;
+        
         if (choice === 'Agendar visita' || content.trim() === '1') {
           // User wants to schedule a visit
           scheduleVisit = true;
-          responseMsg = `Ótima escolha! 🏰✨\n\nNossa equipe vai entrar em contato para agendar sua visita ao Castelo da Diversão!\n\nAguarde um momento que já vamos te chamar! 👑`;
+          responseMsg = settings.next_step_visit_response || defaultVisitResponse;
           console.log(`[Bot] User ${contactPhone} wants to schedule a visit`);
         } else if (choice === 'Tirar dúvidas' || content.trim() === '2') {
           // User wants to ask questions
-          responseMsg = `Claro! 💬\n\nPode mandar sua dúvida aqui que nossa equipe vai te responder rapidinho!\n\nEstamos à disposição! 👑`;
+          responseMsg = settings.next_step_questions_response || defaultQuestionsResponse;
           console.log(`[Bot] User ${contactPhone} wants to ask questions`);
         } else if (choice === 'Analisar com calma' || content.trim() === '3') {
           // User wants time to think
-          responseMsg = `Sem problemas! 📋\n\nVou enviar nossos materiais para você analisar com calma. Quando estiver pronto, é só chamar aqui!\n\nEstamos à disposição! 👑✨`;
+          responseMsg = settings.next_step_analyze_response || defaultAnalyzeResponse;
           console.log(`[Bot] User ${contactPhone} wants time to analyze`);
         } else {
           // Invalid choice, re-ask
           nextStep = 'proximo_passo';
-          msg = `Por favor, responda apenas com o *número* da opção desejada (1, 2 ou 3) 👇\n\n${buildMenuText(PROXIMO_PASSO_OPTIONS)}`;
+          const defaultNextStepQuestion = `E agora, como você gostaria de continuar? 🤔\n\nResponda com o *número*:\n\n${buildMenuText(PROXIMO_PASSO_OPTIONS)}`;
+          msg = `Por favor, responda apenas com o *número* da opção desejada (1, 2 ou 3) 👇\n\n${settings.next_step_question || defaultNextStepQuestion}`;
         }
         
         if (nextStep === 'complete_final') {
