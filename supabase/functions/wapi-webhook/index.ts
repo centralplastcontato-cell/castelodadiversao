@@ -7,9 +7,41 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
-// Validation patterns
-const VALID_MONTHS = ['janeiro', 'fevereiro', 'março', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-const VALID_DAYS = ['segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado', 'domingo', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+// Menu options - numbered choices for structured input
+const MONTH_OPTIONS = [
+  { num: 1, value: 'Fevereiro' },
+  { num: 2, value: 'Março' },
+  { num: 3, value: 'Abril' },
+  { num: 4, value: 'Maio' },
+  { num: 5, value: 'Junho' },
+  { num: 6, value: 'Julho' },
+  { num: 7, value: 'Agosto' },
+  { num: 8, value: 'Setembro' },
+  { num: 9, value: 'Outubro' },
+  { num: 10, value: 'Novembro' },
+  { num: 11, value: 'Dezembro' },
+];
+
+const DAY_OPTIONS = [
+  { num: 1, value: 'Segunda a Quinta' },
+  { num: 2, value: 'Sexta' },
+  { num: 3, value: 'Sábado' },
+  { num: 4, value: 'Domingo' },
+];
+
+const GUEST_OPTIONS = [
+  { num: 1, value: '30 pessoas' },
+  { num: 2, value: '50 pessoas' },
+  { num: 3, value: '70 pessoas' },
+  { num: 4, value: '100 pessoas' },
+  { num: 5, value: '150 pessoas' },
+  { num: 6, value: '200+ pessoas' },
+];
+
+// Build menu text
+function buildMenuText(options: { num: number; value: string }[]): string {
+  return options.map(opt => `*${opt.num}* - ${opt.value}`).join('\n');
+}
 
 // Validation functions
 function validateName(input: string): { valid: boolean; value?: string; error?: string } {
@@ -24,87 +56,37 @@ function validateName(input: string): { valid: boolean; value?: string; error?: 
   return { valid: true, value: name };
 }
 
-function validateMonth(input: string): { valid: boolean; value?: string; error?: string } {
-  const normalized = input.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+function validateMenuChoice(input: string, options: { num: number; value: string }[], stepName: string): { valid: boolean; value?: string; error?: string } {
+  const normalized = input.trim();
   
-  // Check for month name match
-  for (const month of VALID_MONTHS) {
-    const monthNorm = month.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (normalized.includes(monthNorm) || monthNorm.includes(normalized)) {
-      // Return capitalized month name
-      return { valid: true, value: month.charAt(0).toUpperCase() + month.slice(1) };
-    }
-  }
-  
-  // Check for month number (2-12)
-  const numMatch = normalized.match(/\d+/);
+  // Extract number from input
+  const numMatch = normalized.match(/^\d+$/);
   if (numMatch) {
     const num = parseInt(numMatch[0]);
-    if (num >= 1 && num <= 12) {
-      const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-      return { valid: true, value: monthNames[num - 1] };
+    const option = options.find(opt => opt.num === num);
+    if (option) {
+      return { valid: true, value: option.value };
     }
   }
   
+  // Build error message with valid options
+  const validNumbers = options.map(opt => opt.num).join(', ');
   return { 
     valid: false, 
-    error: 'Não entendi o mês 😅\n\nPor favor, escolha um:\n\n📅 Fevereiro, Março, Abril, Maio, Junho, Julho, Agosto, Setembro, Outubro, Novembro ou Dezembro' 
+    error: `Por favor, responda apenas com o *número* da opção desejada (${validNumbers}) 👇\n\n${buildMenuText(options)}` 
   };
+}
+
+function validateMonth(input: string): { valid: boolean; value?: string; error?: string } {
+  return validateMenuChoice(input, MONTH_OPTIONS, 'mês');
 }
 
 function validateDay(input: string): { valid: boolean; value?: string; error?: string } {
-  const normalized = input.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  
-  // Check for day of week
-  for (const day of VALID_DAYS) {
-    const dayNorm = day.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (normalized.includes(dayNorm)) {
-      // Map abbreviations and return proper format
-      if (['segunda', 'seg'].some(d => normalized.includes(d))) return { valid: true, value: 'Segunda a Quinta' };
-      if (['terça', 'terca', 'ter'].some(d => normalized.includes(d))) return { valid: true, value: 'Segunda a Quinta' };
-      if (['quarta', 'qua'].some(d => normalized.includes(d))) return { valid: true, value: 'Segunda a Quinta' };
-      if (['quinta', 'qui'].some(d => normalized.includes(d))) return { valid: true, value: 'Segunda a Quinta' };
-      if (['sexta', 'sex'].some(d => normalized.includes(d))) return { valid: true, value: 'Sexta' };
-      if (['sábado', 'sabado', 'sab'].some(d => normalized.includes(d))) return { valid: true, value: 'Sábado' };
-      if (['domingo', 'dom'].some(d => normalized.includes(d))) return { valid: true, value: 'Domingo' };
-    }
-  }
-  
-  // Check for day number (1-31)
-  const numMatch = normalized.match(/\d+/);
-  if (numMatch) {
-    const num = parseInt(numMatch[0]);
-    if (num >= 1 && num <= 31) {
-      return { valid: true, value: `Dia ${num}` };
-    }
-  }
-  
-  return { 
-    valid: false, 
-    error: 'Não entendi a preferência de dia 🤔\n\nEscolha uma opção:\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo\n\nOu digite o dia do mês (ex: 15)' 
-  };
+  return validateMenuChoice(input, DAY_OPTIONS, 'dia');
 }
 
 function validateGuests(input: string): { valid: boolean; value?: string; error?: string } {
-  const normalized = input.trim().toLowerCase();
-  
-  // Extract number from input
-  const numMatch = normalized.match(/\d+/);
-  if (numMatch) {
-    const num = parseInt(numMatch[0]);
-    if (num >= 10 && num <= 500) {
-      return { valid: true, value: `${num} pessoas` };
-    } else if (num < 10) {
-      return { valid: false, error: 'Para festas menores que 10 pessoas, entre em contato diretamente com a gente! 🏰\n\nQuantos convidados você pretende chamar?' };
-    } else {
-      return { valid: false, error: 'Uau, que festão! 🎉 Para mais de 500 convidados, vamos precisar conversar sobre isso!\n\nDigite um número aproximado de convidados:' };
-    }
-  }
-  
-  return { 
-    valid: false, 
-    error: 'Não consegui entender a quantidade 🤔\n\nDigite apenas o número de convidados (ex: 50, 70, 100):' 
-  };
+  return validateMenuChoice(input, GUEST_OPTIONS, 'convidados');
 }
 
 // Validation router by step
@@ -118,12 +100,28 @@ function validateAnswer(step: string, input: string): { valid: boolean; value?: 
   }
 }
 
-// Default questions fallback (used if no custom questions in DB)
+// Default questions fallback with numbered menus
 const DEFAULT_QUESTIONS: Record<string, { question: string; confirmation: string | null; next: string }> = {
-  nome: { question: 'Para começar, me conta: qual é o seu nome? 👑', confirmation: 'Muito prazer, {nome}! 👑✨', next: 'mes' },
-  mes: { question: 'Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Ex: Fevereiro, Março, Abril...', confirmation: '{mes}, ótima escolha! 🎊', next: 'dia' },
-  dia: { question: 'Maravilha! Tem preferência de dia da semana? 🗓️\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo', confirmation: 'Anotado!', next: 'convidados' },
-  convidados: { question: 'E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Ex: 50, 70, 100 pessoas...', confirmation: null, next: 'complete' },
+  nome: { 
+    question: 'Para começar, me conta: qual é o seu nome? 👑', 
+    confirmation: 'Muito prazer, {nome}! 👑✨', 
+    next: 'mes' 
+  },
+  mes: { 
+    question: `Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Responda com o *número*:\n\n${buildMenuText(MONTH_OPTIONS)}`, 
+    confirmation: '{mes}, ótima escolha! 🎊', 
+    next: 'dia' 
+  },
+  dia: { 
+    question: `Maravilha! Tem preferência de dia da semana? 🗓️\n\nResponda com o *número*:\n\n${buildMenuText(DAY_OPTIONS)}`, 
+    confirmation: 'Anotado!', 
+    next: 'convidados' 
+  },
+  convidados: { 
+    question: `E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Responda com o *número*:\n\n${buildMenuText(GUEST_OPTIONS)}`, 
+    confirmation: null, 
+    next: 'complete' 
+  },
 };
 
 const normalizePhone = (phone: string) => phone.replace(/\D/g, '');
