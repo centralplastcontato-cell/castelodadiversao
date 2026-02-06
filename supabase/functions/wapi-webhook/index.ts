@@ -443,8 +443,9 @@ async function processBotQualification(
       }
       
       if (nextStepKey === 'complete') {
-        // All qualification questions answered - create or update lead, then ask about next step
-        nextStep = 'proximo_passo';
+        // All qualification questions answered - create or update lead
+        // Then: send completion msg -> send materials -> send next step question
+        nextStep = 'sending_materials'; // New intermediate step
         
         // Build completion message from settings or use default
         const defaultCompletion = `Perfeito, {nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}`;
@@ -490,12 +491,8 @@ async function processBotQualification(
           }
         }
         
-        // Get next step question from database or use default
-        const defaultNextStepQuestion = `E agora, como você gostaria de continuar? 🤔\n\nResponda com o *número*:\n\n${buildMenuText(PROXIMO_PASSO_OPTIONS)}`;
-        const nextStepQuestion = settings.next_step_question || defaultNextStepQuestion;
-        
-        // Combine completion message with next step question
-        msg = `${completionMsg}\n\n${nextStepQuestion}`;
+        // Only send completion message now - materials and next step question will follow
+        msg = completionMsg;
         
       } else if (nextStepKey === 'proximo_passo' || step === 'proximo_passo') {
         // Processing proximo_passo answer
@@ -593,18 +590,21 @@ async function processBotQualification(
     last_message_from_me: true
   }).eq('id', conv.id);
 
-  // After qualification complete, send materials automatically
-  // Materials are sent IMMEDIATELY after qualification (when nextStep === 'proximo_passo')
-  // This matches the completion message that says "agora irei te enviar algumas fotos e vídeo"
-  if (nextStep === 'proximo_passo') {
-    // Use background task to send materials after responding to user
+  // After qualification complete (sending_materials step), send materials and then the next step question
+  if (nextStep === 'sending_materials') {
+    // Get next step question from database or use default
+    const defaultNextStepQuestion = `E agora, como você gostaria de continuar? 🤔\n\nResponda com o *número*:\n\n${buildMenuText(PROXIMO_PASSO_OPTIONS)}`;
+    const nextStepQuestion = settings.next_step_question || defaultNextStepQuestion;
+    
+    // Use background task to send materials, then send the next step question
     EdgeRuntime.waitUntil(
-      sendQualificationMaterials(
+      sendQualificationMaterialsThenQuestion(
         supabase,
         instance,
         conv,
         updated,
-        settings
+        settings,
+        nextStepQuestion
       ).catch(err => console.error('[Bot] Error sending materials:', err))
     );
   }
@@ -889,12 +889,79 @@ async function sendQualificationMaterials(
   // Update conversation last message
   await supabase.from('wapi_conversations').update({
     last_message_at: new Date().toISOString(),
-    last_message_content: '📄 Materiais enviados automaticamente',
-    last_message_from_me: true,
-    bot_enabled: false  // Disable bot after sending materials
+    last_message_content: '📄 Materiais enviados',
+    last_message_from_me: true
   }).eq('id', conv.id);
   
   console.log(`[Bot Materials] Auto-send complete for ${phone}`);
+}
+
+// Wrapper function that sends materials AND THEN the next step question
+async function sendQualificationMaterialsThenQuestion(
+  supabase: SupabaseClient,
+  instance: { id: string; instance_id: string; instance_token: string; unit: string | null },
+  conv: { id: string; remote_jid: string },
+  botData: Record<string, string>,
+  settings: {
+    auto_send_materials?: boolean;
+    auto_send_photos?: boolean;
+    auto_send_presentation_video?: boolean;
+    auto_send_promo_video?: boolean;
+    auto_send_pdf?: boolean;
+    auto_send_photos_intro?: string | null;
+    auto_send_pdf_intro?: string | null;
+  } | null,
+  nextStepQuestion: string
+) {
+  const phone = conv.remote_jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+  
+  try {
+    // First, send all materials
+    await sendQualificationMaterials(supabase, instance, conv, botData, settings);
+    
+    // Small delay after materials
+    await new Promise(r => setTimeout(r, 2000));
+    
+    // Now send the next step question
+    console.log(`[Bot] Sending next step question to ${phone}`);
+    
+    const res = await fetch(`${WAPI_BASE_URL}/message/send-text?instanceId=${instance.instance_id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${instance.instance_token}` },
+      body: JSON.stringify({ phone, message: nextStepQuestion, delayTyping: 2 })
+    });
+    
+    let msgId = null;
+    if (res.ok) {
+      const r = await res.json();
+      msgId = r.messageId || null;
+    }
+    
+    if (msgId) {
+      await supabase.from('wapi_messages').insert({
+        conversation_id: conv.id,
+        message_id: msgId,
+        from_me: true,
+        message_type: 'text',
+        content: nextStepQuestion,
+        status: 'sent',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Update conversation to proximo_passo step
+    await supabase.from('wapi_conversations').update({
+      bot_step: 'proximo_passo',
+      last_message_at: new Date().toISOString(),
+      last_message_content: nextStepQuestion.substring(0, 100),
+      last_message_from_me: true
+    }).eq('id', conv.id);
+    
+    console.log(`[Bot] Next step question sent to ${phone}`);
+    
+  } catch (err) {
+    console.error(`[Bot] Error in sendQualificationMaterialsThenQuestion:`, err);
+  }
 }
 
 function isPdfContent(bytes: Uint8Array): boolean { return bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; }
