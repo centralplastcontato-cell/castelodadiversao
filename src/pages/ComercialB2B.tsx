@@ -192,44 +192,49 @@ const ComercialB2B = () => {
              </div>
  
              {/* Tabs */}
-             <Tabs defaultValue="leads" className="space-y-6">
-               <TabsList className="grid w-full grid-cols-7 h-auto p-1">
-                 <TabsTrigger value="leads" className="flex items-center gap-2 py-3">
-                   <Building2 className="h-4 w-4" />
-                   <span className="hidden sm:inline">Leads B2B</span>
-                   <span className="sm:hidden">Leads</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="pitch" className="flex items-center gap-2 py-3">
-                   <Target className="h-4 w-4" />
-                   <span className="hidden sm:inline">Pitch de Vendas</span>
-                   <span className="sm:hidden">Pitch</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="features" className="flex items-center gap-2 py-3">
-                   <Zap className="h-4 w-4" />
-                   <span className="hidden sm:inline">Funcionalidades</span>
-                   <span className="sm:hidden">Features</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="pricing" className="flex items-center gap-2 py-3">
-                   <DollarSign className="h-4 w-4" />
-                   <span className="hidden sm:inline">Precificação</span>
-                   <span className="sm:hidden">Preços</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="scripts" className="flex items-center gap-2 py-3">
-                   <Phone className="h-4 w-4" />
-                   <span className="hidden sm:inline">Scripts</span>
-                   <span className="sm:hidden">Scripts</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="proposals" className="flex items-center gap-2 py-3">
-                   <FileText className="h-4 w-4" />
-                   <span className="hidden sm:inline">Propostas</span>
-                   <span className="sm:hidden">PDF</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="objections" className="flex items-center gap-2 py-3">
-                   <MessageSquare className="h-4 w-4" />
-                   <span className="hidden sm:inline">Objeções</span>
-                   <span className="sm:hidden">FAQ</span>
-                 </TabsTrigger>
-               </TabsList>
+              <Tabs defaultValue="leads" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-8 h-auto p-1">
+                  <TabsTrigger value="leads" className="flex items-center gap-2 py-3">
+                    <Building2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Leads B2B</span>
+                    <span className="sm:hidden">Leads</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pitch" className="flex items-center gap-2 py-3">
+                    <Target className="h-4 w-4" />
+                    <span className="hidden sm:inline">Pitch de Vendas</span>
+                    <span className="sm:hidden">Pitch</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="features" className="flex items-center gap-2 py-3">
+                    <Zap className="h-4 w-4" />
+                    <span className="hidden sm:inline">Funcionalidades</span>
+                    <span className="sm:hidden">Features</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pricing" className="flex items-center gap-2 py-3">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="hidden sm:inline">Precificação</span>
+                    <span className="sm:hidden">Preços</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="scripts" className="flex items-center gap-2 py-3">
+                    <Phone className="h-4 w-4" />
+                    <span className="hidden sm:inline">Scripts</span>
+                    <span className="sm:hidden">Scripts</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="proposals" className="flex items-center gap-2 py-3">
+                    <FileText className="h-4 w-4" />
+                    <span className="hidden sm:inline">Propostas</span>
+                    <span className="sm:hidden">PDF</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="objections" className="flex items-center gap-2 py-3">
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="hidden sm:inline">Objeções</span>
+                    <span className="sm:hidden">FAQ</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="landing" className="flex items-center gap-2 py-3">
+                    <Smartphone className="h-4 w-4" />
+                    <span className="hidden sm:inline">Landing Page</span>
+                    <span className="sm:hidden">LP</span>
+                  </TabsTrigger>
+                </TabsList>
  
                {/* Pitch Tab */}
                <TabsContent value="pitch" className="space-y-6">
@@ -985,11 +990,46 @@ Deixe o prospect falar. Anote objeções.
                  </Card>
                </TabsContent>
                
-               {/* Leads B2B Tab */}
-               <TabsContent value="leads">
-                 <B2BLeadsManager />
-               </TabsContent>
-             </Tabs>
+                {/* Leads B2B Tab */}
+                <TabsContent value="leads">
+                  <B2BLeadsManager />
+                </TabsContent>
+
+                {/* Landing Page Tab */}
+                <TabsContent value="landing" className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Smartphone className="h-5 w-5" />
+                            Preview da Landing Page B2B
+                          </CardTitle>
+                          <CardDescription>
+                            Visualize a página que seus clientes B2B vão ver
+                          </CardDescription>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open('/para-buffets', '_blank')}
+                        >
+                          Abrir em Nova Aba
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="border rounded-lg overflow-hidden bg-muted">
+                        <iframe
+                          src="/para-buffets"
+                          className="w-full h-[700px] border-0"
+                          title="Landing Page B2B"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
            </div>
          </main>
        </div>
