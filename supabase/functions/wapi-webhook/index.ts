@@ -291,24 +291,33 @@ async function processBotQualification(
         const completionTemplate = settings.completion_message || defaultCompletion;
         const completionMsg = replaceVariables(completionTemplate, updated);
         
+        console.log(`[Bot] Qualification complete for ${contactPhone}. Data:`, JSON.stringify(updated));
+        
         if (conv.lead_id) {
-          // Update existing lead
-          await supabase.from('campaign_leads').update({
+          // Update existing lead with bot data
+          console.log(`[Bot] Updating existing lead ${conv.lead_id}`);
+          const { error: updateErr } = await supabase.from('campaign_leads').update({
             name: updated.nome || contactName || contactPhone,
             month: updated.mes || null,
             day_preference: updated.dia || null,
             guests: updated.convidados || null,
           }).eq('id', conv.lead_id);
           
+          if (updateErr) {
+            console.error(`[Bot] Error updating lead:`, updateErr.message);
+          } else {
+            console.log(`[Bot] Lead ${conv.lead_id} updated successfully`);
+          }
           msg = completionMsg;
         } else {
-          // Create new lead
+          // Create new lead in CRM
+          console.log(`[Bot] Creating new lead for phone ${n}, unit ${instance.unit}`);
           const { data: newLead, error } = await supabase.from('campaign_leads').insert({
             name: updated.nome || contactName || contactPhone,
             whatsapp: n,
             unit: instance.unit,
             campaign_id: 'whatsapp-bot',
-            campaign_name: 'WhatsApp Bot',
+            campaign_name: 'WhatsApp (Bot)',
             status: 'novo',
             month: updated.mes || null,
             day_preference: updated.dia || null,
@@ -316,8 +325,10 @@ async function processBotQualification(
           }).select('id').single();
           
           if (error) {
+            console.error(`[Bot] Error creating lead:`, error.message);
             msg = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato!';
           } else {
+            console.log(`[Bot] Lead created successfully: ${newLead.id}`);
             await supabase.from('wapi_conversations').update({ lead_id: newLead.id }).eq('id', conv.id);
             msg = completionMsg;
           }
