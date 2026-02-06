@@ -213,12 +213,13 @@ export function KanbanCard({
       onDragStart={handleDragStart}
       onClick={() => !isEditing && onLeadClick(lead)}
       className={`
-        bg-card rounded-xl border border-border/50 p-3.5 
-        cursor-pointer transition-all duration-200
-        hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5
-        ${canEdit && !isEditing ? "cursor-grab active:cursor-grabbing active:shadow-xl" : ""}
-        shadow-sm relative overflow-hidden
-        before:absolute before:inset-0 before:bg-gradient-to-br before:from-primary/[0.02] before:to-transparent before:pointer-events-none
+        bg-gradient-to-br from-card via-card to-muted/10 rounded-xl border border-border/40 p-3.5 
+        cursor-pointer transition-all duration-300 ease-out
+        hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1
+        ${canEdit && !isEditing ? "cursor-grab active:cursor-grabbing active:shadow-2xl active:scale-[1.02]" : ""}
+        shadow-md relative overflow-hidden backdrop-blur-sm
+        before:absolute before:inset-0 before:bg-gradient-to-br before:from-primary/[0.03] before:via-transparent before:to-secondary/[0.02] before:pointer-events-none
+        after:absolute after:inset-0 after:rounded-xl after:ring-1 after:ring-inset after:ring-white/5 after:pointer-events-none
       `}
     >
       <div className="flex items-start justify-between gap-2">
@@ -286,30 +287,32 @@ export function KanbanCard({
           </div>
 
           {(lead.unit || lead.month || lead.guests) && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               {lead.unit && (
-                <span className="text-xs text-muted-foreground inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md">
-                  <span className="text-primary/80">📍</span> {lead.unit}
+                <span className="text-xs text-foreground/80 inline-flex items-center gap-1.5 bg-gradient-to-r from-primary/15 to-primary/5 px-2.5 py-1 rounded-lg border border-primary/20 font-medium shadow-sm">
+                  <span className="text-primary">📍</span> {lead.unit}
                 </span>
               )}
               {lead.month && (
-                <span className="text-xs text-muted-foreground inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md">
-                  <span className="text-primary/80">📅</span> {lead.day_of_month || lead.day_preference || "-"}/
+                <span className="text-xs text-foreground/80 inline-flex items-center gap-1.5 bg-gradient-to-r from-secondary/20 to-secondary/5 px-2.5 py-1 rounded-lg border border-secondary/20 font-medium shadow-sm">
+                  <span className="text-secondary-foreground">📅</span> {lead.day_of_month || lead.day_preference || "-"}/
                   {lead.month}
                 </span>
               )}
               {lead.guests && (
-                <span className="text-xs text-muted-foreground inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md">
-                  <span className="text-primary/80">👥</span> {lead.guests}
+                <span className="text-xs text-foreground/80 inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-medium shadow-sm">
+                  <span>👥</span> {lead.guests}
                 </span>
               )}
             </div>
           )}
 
           {responsavelName && (
-            <div className="mt-2.5 flex items-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg w-fit border border-primary/10">
-              <User className="w-3 h-3 text-primary/70" />
-              <span className="text-xs text-primary/90 font-medium truncate">
+            <div className="mt-2.5 flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-primary/15 via-primary/10 to-primary/5 rounded-lg w-fit border border-primary/20 shadow-sm">
+              <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                <User className="w-3 h-3 text-primary" />
+              </div>
+              <span className="text-xs text-primary font-semibold truncate">
                 {responsavelName}
               </span>
             </div>
@@ -351,18 +354,21 @@ export function KanbanCard({
           ) : (
             <div className="mt-3">
               {lead.observacoes ? (
-                <div className="relative bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-2.5 border border-muted/50">
-                  <div className="absolute -top-2 left-2.5 bg-card px-1.5">
-                    <MessageSquare className="w-3 h-3 text-primary/50" />
+                <div className="relative bg-gradient-to-br from-amber-500/10 via-muted/30 to-muted/10 rounded-lg p-3 border border-amber-500/20 shadow-inner">
+                  <div className="absolute -top-2 left-3 bg-card px-2 py-0.5 rounded-full border border-amber-500/20 shadow-sm">
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3 text-amber-600" />
+                      <span className="text-[10px] font-medium text-amber-600">Nota</span>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-foreground/80 line-clamp-2 leading-relaxed mt-1">
                     {lead.observacoes}
                   </p>
                   {canEditDescription && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 hover:opacity-100 bg-card/80"
+                      className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 hover:opacity-100 bg-card/90 hover:bg-card shadow-sm"
                       onClick={handleStartEditDescription}
                       title="Editar observação"
                     >
@@ -489,19 +495,19 @@ export function KanbanCard({
         </DropdownMenu>
       </div>
 
-      <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between">
-        <p className="text-[11px] text-muted-foreground/70 font-medium">
+      <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between">
+        <p className="text-[11px] text-muted-foreground font-medium px-2 py-0.5 bg-muted/30 rounded-md">
           {format(new Date(lead.created_at), "dd/MM/yy 'às' HH:mm", {
             locale: ptBR,
           })}
         </p>
         
         {canEdit && (
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-0.5">
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 hover:bg-primary/10"
+              className="h-6 w-6 hover:bg-primary/20 hover:text-primary rounded-md transition-colors"
               onClick={handleMoveLeft}
               disabled={!hasPrev}
               title={hasPrev ? `Mover para ${LEAD_STATUS_LABELS[getPreviousStatus(lead.status)!]}` : undefined}
@@ -511,7 +517,7 @@ export function KanbanCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 hover:bg-primary/10"
+              className="h-6 w-6 hover:bg-primary/20 hover:text-primary rounded-md transition-colors"
               onClick={handleMoveRight}
               disabled={!hasNext}
               title={hasNext ? `Mover para ${LEAD_STATUS_LABELS[getNextStatus(lead.status)!]}` : undefined}
