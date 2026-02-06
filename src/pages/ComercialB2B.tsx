@@ -460,10 +460,15 @@ const ComercialB2B = () => {
                         </Card>
 
                         {/* Premium */}
-                        <Card className="border-2 border-secondary">
-                          <CardHeader className="text-center pb-2">
+                        <Card className="border-2 border-secondary relative bg-gradient-to-b from-secondary/5 to-transparent shadow-lg">
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                            <Badge className="bg-secondary text-secondary-foreground">
+                              <span className="mr-1">⭐</span> Melhor Custo-Benefício
+                            </Badge>
+                          </div>
+                          <CardHeader className="text-center pb-2 pt-6">
                             <Badge variant="outline" className="w-fit mx-auto mb-2 border-secondary text-secondary">Premium</Badge>
-                            <CardTitle className="text-3xl">R$ 899</CardTitle>
+                            <CardTitle className="text-3xl text-secondary">R$ 899</CardTitle>
                             <CardDescription>/mês</CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-3">
