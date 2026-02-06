@@ -1,11 +1,12 @@
 import { useCallback, useRef, useEffect } from "react";
 
-type SoundType = "message" | "lead" | "generic";
+type SoundType = "message" | "lead" | "client" | "generic";
 
 interface SoundConfig {
   frequency: number;
   duration: number;
   pattern?: number[]; // Array of [on, off, on, off...] durations in ms
+  secondFrequency?: number; // For two-tone sounds
 }
 
 const SOUND_CONFIGS: Record<SoundType, SoundConfig> = {
@@ -17,6 +18,12 @@ const SOUND_CONFIGS: Record<SoundType, SoundConfig> = {
     frequency: 523.25, // C5 - lower, more pleasant tone for leads
     duration: 0.3,
     pattern: [150, 100, 150], // Two-tone chime
+  },
+  client: {
+    frequency: 440, // A4 - attention-grabbing urgent tone
+    duration: 0.25,
+    pattern: [200, 80, 200, 80, 200], // Triple chime for urgency
+    secondFrequency: 554.37, // C#5 - creates a more distinctive alert
   },
   generic: {
     frequency: 660, // E5
@@ -96,12 +103,19 @@ export function useNotificationSounds() {
 
     try {
       if (config.pattern) {
-        // Play pattern (for lead notifications - two-tone chime)
+        // Play pattern (for lead/client notifications - multi-tone chime)
         let timeOffset = 0;
         config.pattern.forEach((ms, index) => {
           if (index % 2 === 0) {
-            // Play tone
-            const freq = index === 0 ? config.frequency : config.frequency * 1.25; // Second tone slightly higher
+            // Play tone - alternate between frequencies for more distinctive sound
+            let freq = config.frequency;
+            if (config.secondFrequency) {
+              // Alternate between frequencies for client alerts
+              freq = index === 0 ? config.frequency : (index === 2 ? config.secondFrequency : config.frequency);
+            } else {
+              // Original behavior for leads - second tone slightly higher
+              freq = index === 0 ? config.frequency : config.frequency * 1.25;
+            }
             playTone(freq, ms / 1000, timeOffset / 1000);
           }
           timeOffset += ms;
@@ -123,6 +137,10 @@ export function useNotificationSounds() {
     playSound("lead");
   }, [playSound]);
 
+  const playClientSound = useCallback(() => {
+    playSound("client");
+  }, [playSound]);
+
   const setSoundEnabled = useCallback((enabled: boolean) => {
     soundEnabledRef.current = enabled;
   }, []);
@@ -131,6 +149,7 @@ export function useNotificationSounds() {
     playSound,
     playMessageSound,
     playLeadSound,
+    playClientSound,
     setSoundEnabled,
   };
 }
