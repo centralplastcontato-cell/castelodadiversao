@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.migrate-sales-materials]
 verify_jwt = false
+
+[functions.follow-up-check]
+verify_jwt = false
