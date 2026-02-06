@@ -533,6 +533,9 @@ export type Database = {
           bot_enabled: boolean
           completion_message: string | null
           created_at: string
+          follow_up_delay_hours: number | null
+          follow_up_enabled: boolean | null
+          follow_up_message: string | null
           id: string
           instance_id: string
           next_step_analyze_response: string | null
@@ -557,6 +560,9 @@ export type Database = {
           bot_enabled?: boolean
           completion_message?: string | null
           created_at?: string
+          follow_up_delay_hours?: number | null
+          follow_up_enabled?: boolean | null
+          follow_up_message?: string | null
           id?: string
           instance_id: string
           next_step_analyze_response?: string | null
@@ -581,6 +587,9 @@ export type Database = {
           bot_enabled?: boolean
           completion_message?: string | null
           created_at?: string
+          follow_up_delay_hours?: number | null
+          follow_up_enabled?: boolean | null
+          follow_up_message?: string | null
           id?: string
           instance_id?: string
           next_step_analyze_response?: string | null
