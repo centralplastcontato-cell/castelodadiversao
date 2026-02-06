@@ -216,7 +216,29 @@ export default function Admin() {
       if (error) {
         console.error("Erro ao buscar leads:", error);
       } else {
-        setLeads((data || []) as Lead[]);
+        const leadsData = (data || []) as Lead[];
+        
+        // Fetch has_scheduled_visit from wapi_conversations
+        if (leadsData.length > 0) {
+          const leadIds = leadsData.map(l => l.id);
+          const { data: convData } = await supabase
+            .from("wapi_conversations")
+            .select("lead_id, has_scheduled_visit")
+            .in("lead_id", leadIds)
+            .eq("has_scheduled_visit", true);
+          
+          const scheduledVisitLeadIds = new Set((convData || []).map(c => c.lead_id));
+          
+          const leadsWithVisitInfo = leadsData.map(lead => ({
+            ...lead,
+            has_scheduled_visit: scheduledVisitLeadIds.has(lead.id)
+          }));
+          
+          setLeads(leadsWithVisitInfo);
+        } else {
+          setLeads(leadsData);
+        }
+        
         setTotalCount(count || 0);
       }
 

@@ -45,6 +45,7 @@ export interface Lead {
   status: LeadStatus;
   responsavel_id: string | null;
   observacoes: string | null;
+  has_scheduled_visit?: boolean; // From wapi_conversations link
 }
 
 export interface LeadWithResponsavel extends Lead {
