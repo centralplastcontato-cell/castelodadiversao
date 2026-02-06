@@ -220,29 +220,40 @@ export default function Admin() {
       } else {
         const leadsData = (data || []) as Lead[];
         
-        // Fetch has_scheduled_visit from wapi_conversations
+        // Fetch has_scheduled_visit from wapi_conversations and has_follow_up from lead_history
         if (leadsData.length > 0) {
           const leadIds = leadsData.map(l => l.id);
-          const { data: convData } = await supabase
-            .from("wapi_conversations")
-            .select("lead_id, has_scheduled_visit")
-            .in("lead_id", leadIds)
-            .eq("has_scheduled_visit", true);
           
-          const scheduledVisitLeadIds = new Set((convData || []).map(c => c.lead_id));
+          // Parallel fetch for visit and follow-up data
+          const [convResult, historyResult] = await Promise.all([
+            supabase
+              .from("wapi_conversations")
+              .select("lead_id, has_scheduled_visit")
+              .in("lead_id", leadIds)
+              .eq("has_scheduled_visit", true),
+            supabase
+              .from("lead_history")
+              .select("lead_id")
+              .in("lead_id", leadIds)
+              .eq("action", "Follow-up automático enviado")
+          ]);
           
-          let leadsWithVisitInfo = leadsData.map(lead => ({
+          const scheduledVisitLeadIds = new Set((convResult.data || []).map(c => c.lead_id));
+          const followUpLeadIds = new Set((historyResult.data || []).map(h => h.lead_id));
+          
+          let leadsWithExtraInfo = leadsData.map(lead => ({
             ...lead,
-            has_scheduled_visit: scheduledVisitLeadIds.has(lead.id)
+            has_scheduled_visit: scheduledVisitLeadIds.has(lead.id),
+            has_follow_up: followUpLeadIds.has(lead.id)
           }));
           
           // Apply scheduled visit filter if enabled
           if (filters.hasScheduledVisit) {
-            leadsWithVisitInfo = leadsWithVisitInfo.filter(lead => lead.has_scheduled_visit);
+            leadsWithExtraInfo = leadsWithExtraInfo.filter(lead => lead.has_scheduled_visit);
           }
           
-          setLeads(leadsWithVisitInfo);
-          setTotalCount(filters.hasScheduledVisit ? leadsWithVisitInfo.length : (count || 0));
+          setLeads(leadsWithExtraInfo);
+          setTotalCount(filters.hasScheduledVisit ? leadsWithExtraInfo.length : (count || 0));
         } else {
           setLeads(leadsData);
           setTotalCount(count || 0);
