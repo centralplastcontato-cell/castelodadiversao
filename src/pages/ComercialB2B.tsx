@@ -6,25 +6,26 @@
  import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Badge } from "@/components/ui/badge";
- import { 
-   Presentation, 
-   DollarSign, 
-   CheckCircle2, 
-   Target, 
-   MessageSquare,
-   BarChart3,
-   Users,
-   Zap,
-   Shield,
-   Smartphone,
-   Clock,
-   TrendingUp,
-   FileText,
-   Copy,
-   Check,
-   Phone,
-   Building2
- } from "lucide-react";
+import { 
+  Presentation, 
+  DollarSign, 
+  CheckCircle2, 
+  Target, 
+  MessageSquare,
+  BarChart3,
+  Users,
+  Zap,
+  Shield,
+  Smartphone,
+  Clock,
+  TrendingUp,
+  FileText,
+  Copy,
+  Check,
+  Phone,
+  Building2,
+  Monitor
+} from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { toast } from "sonner";
  import { ProposalGenerator } from "@/components/admin/ProposalGenerator";
@@ -37,6 +38,7 @@ const ComercialB2B = () => {
   const [hasB2BAccess, setHasB2BAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [lpViewMode, setLpViewMode] = useState<'desktop' | 'mobile'>('desktop');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -999,30 +1001,59 @@ Deixe o prospect falar. Anote objeções.
                 <TabsContent value="landing" className="space-y-4">
                   <Card>
                     <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <CardTitle className="flex items-center gap-2">
-                            <Smartphone className="h-5 w-5" />
+                            {lpViewMode === 'desktop' ? <Monitor className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
                             Preview da Landing Page B2B
                           </CardTitle>
                           <CardDescription>
                             Visualize a página que seus clientes B2B vão ver
                           </CardDescription>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open('/para-buffets', '_blank')}
-                        >
-                          Abrir em Nova Aba
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {/* Toggle Desktop/Mobile */}
+                          <div className="flex items-center border rounded-lg p-1 bg-muted/50">
+                            <Button
+                              variant={lpViewMode === 'desktop' ? 'default' : 'ghost'}
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => setLpViewMode('desktop')}
+                            >
+                              <Monitor className="h-4 w-4" />
+                              <span className="hidden sm:inline">Desktop</span>
+                            </Button>
+                            <Button
+                              variant={lpViewMode === 'mobile' ? 'default' : 'ghost'}
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => setLpViewMode('mobile')}
+                            >
+                              <Smartphone className="h-4 w-4" />
+                              <span className="hidden sm:inline">Mobile</span>
+                            </Button>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open('/para-buffets', '_blank')}
+                          >
+                            Abrir em Nova Aba
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-0">
-                      <div className="border rounded-lg overflow-hidden bg-muted">
+                    <CardContent className="p-4">
+                      <div 
+                        className={`mx-auto transition-all duration-300 border rounded-lg overflow-hidden bg-muted shadow-lg ${
+                          lpViewMode === 'mobile' 
+                            ? 'w-[375px] h-[700px]' 
+                            : 'w-full h-[700px]'
+                        }`}
+                      >
                         <iframe
                           src="/para-buffets"
-                          className="w-full h-[700px] border-0"
+                          className="w-full h-full border-0"
                           title="Landing Page B2B"
                         />
                       </div>
