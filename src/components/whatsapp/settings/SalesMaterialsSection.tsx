@@ -306,7 +306,9 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
             name: formData.name,
             type: formData.type,
             guest_count: formData.type === "pdf_package" ? formData.guest_count : null,
-            file_url: formData.type === "photo_collection" ? formData.photo_urls[0] || "" : formData.file_url,
+            file_url: formData.type === "photo_collection" 
+              ? (formData.photo_urls[0] || "collection") 
+              : formData.file_url,
             file_path: formData.file_path,
             photo_urls: formData.type === "photo_collection" ? formData.photo_urls : [],
             is_active: formData.is_active,
@@ -333,7 +335,9 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
             name: formData.name,
             type: formData.type,
             guest_count: formData.type === "pdf_package" ? formData.guest_count : null,
-            file_url: formData.type === "photo_collection" ? formData.photo_urls[0] || "" : formData.file_url,
+            file_url: formData.type === "photo_collection" 
+              ? (formData.photo_urls[0] || "collection") 
+              : formData.file_url,
             file_path: formData.file_path,
             photo_urls: formData.type === "photo_collection" ? formData.photo_urls : [],
             is_active: formData.is_active,
