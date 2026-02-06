@@ -477,6 +477,50 @@ export type Database = {
         }
         Relationships: []
       }
+      wapi_bot_questions: {
+        Row: {
+          confirmation_text: string | null
+          created_at: string
+          id: string
+          instance_id: string
+          is_active: boolean
+          question_text: string
+          sort_order: number
+          step: string
+          updated_at: string
+        }
+        Insert: {
+          confirmation_text?: string | null
+          created_at?: string
+          id?: string
+          instance_id: string
+          is_active?: boolean
+          question_text: string
+          sort_order?: number
+          step: string
+          updated_at?: string
+        }
+        Update: {
+          confirmation_text?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string
+          is_active?: boolean
+          question_text?: string
+          sort_order?: number
+          step?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wapi_bot_questions_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "wapi_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wapi_bot_settings: {
         Row: {
           bot_enabled: boolean
