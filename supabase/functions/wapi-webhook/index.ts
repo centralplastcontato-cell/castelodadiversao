@@ -61,6 +61,13 @@ const TIPO_OPTIONS = [
   { num: 2, value: 'Quero um orçamento' },
 ];
 
+// Default próximo passo options
+const PROXIMO_PASSO_OPTIONS = [
+  { num: 1, value: 'Agendar visita' },
+  { num: 2, value: 'Tirar dúvidas' },
+  { num: 3, value: 'Analisar com calma' },
+];
+
 // Build menu text
 function buildMenuText(options: { num: number; value: string }[]): string {
   return options.map(opt => `*${opt.num}* - ${opt.value}`).join('\n');
@@ -132,6 +139,10 @@ function validateAnswer(step: string, input: string, questionText?: string): { v
     case 'convidados': {
       const customOptions = questionText ? extractOptionsFromQuestion(questionText) : null;
       return validateGuests(input, customOptions || undefined);
+    }
+    case 'proximo_passo': {
+      const customOptions = questionText ? extractOptionsFromQuestion(questionText) : null;
+      return validateMenuChoice(input, customOptions || PROXIMO_PASSO_OPTIONS, 'próximo passo');
     }
     default: return { valid: true, value: input.trim() };
   }
@@ -320,7 +331,7 @@ async function processBotQualification(
     const firstQ = questions[firstStep];
     msg = settings.welcome_message + '\n\n' + (firstQ?.question || DEFAULT_QUESTIONS.nome.question);
     nextStep = firstStep;
-  } else if (questions[step]) {
+  } else if (questions[step] || step === 'proximo_passo') {
     // Get the current question text for dynamic option extraction
     const currentQuestionText = questions[step]?.question;
     
@@ -337,7 +348,7 @@ async function processBotQualification(
       updated[step] = validation.value || content.trim();
       
       const currentQ = questions[step];
-      const nextStepKey = currentQ.next;
+      const nextStepKey = currentQ?.next || (step === 'proximo_passo' ? 'complete_final' : 'complete');
       
       // Special handling for "tipo" step - check if already client
       if (step === 'tipo') {
@@ -432,18 +443,18 @@ async function processBotQualification(
       }
       
       if (nextStepKey === 'complete') {
-        // All questions answered - create or update lead
-        nextStep = 'complete';
+        // All qualification questions answered - create or update lead, then ask about next step
+        nextStep = 'proximo_passo';
         
         // Build completion message from settings or use default
-        const defaultCompletion = `Perfeito, {nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
+        const defaultCompletion = `Perfeito, {nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}`;
         const completionTemplate = settings.completion_message || defaultCompletion;
-        const completionMsg = replaceVariables(completionTemplate, updated);
+        let completionMsg = replaceVariables(completionTemplate, updated);
         
         console.log(`[Bot] Qualification complete for ${contactPhone}. Data:`, JSON.stringify(updated));
         
+        // Create or update lead
         if (conv.lead_id) {
-          // Update existing lead with bot data
           console.log(`[Bot] Updating existing lead ${conv.lead_id}`);
           const { error: updateErr } = await supabase.from('campaign_leads').update({
             name: updated.nome || contactName || contactPhone,
@@ -457,9 +468,7 @@ async function processBotQualification(
           } else {
             console.log(`[Bot] Lead ${conv.lead_id} updated successfully`);
           }
-          msg = completionMsg;
         } else {
-          // Create new lead in CRM
           console.log(`[Bot] Creating new lead for phone ${n}, unit ${instance.unit}`);
           const { data: newLead, error } = await supabase.from('campaign_leads').insert({
             name: updated.nome || contactName || contactPhone,
@@ -475,11 +484,65 @@ async function processBotQualification(
           
           if (error) {
             console.error(`[Bot] Error creating lead:`, error.message);
-            msg = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato!';
           } else {
             console.log(`[Bot] Lead created successfully: ${newLead.id}`);
             await supabase.from('wapi_conversations').update({ lead_id: newLead.id }).eq('id', conv.id);
-            msg = completionMsg;
+          }
+        }
+        
+        // Get next step question from database or use default
+        const nextStepQuestion = questions['proximo_passo']?.question || 
+          `E agora, como você gostaria de continuar? 🤔\n\nResponda com o *número*:\n\n${buildMenuText(PROXIMO_PASSO_OPTIONS)}`;
+        
+        // Combine completion message with next step question
+        msg = `${completionMsg}\n\n${nextStepQuestion}`;
+        
+      } else if (nextStepKey === 'proximo_passo' || step === 'proximo_passo') {
+        // Processing proximo_passo answer
+        nextStep = 'complete_final';
+        
+        const choice = validation.value || '';
+        let responseMsg = '';
+        let scheduleVisit = false;
+        
+        if (choice === 'Agendar visita' || content.trim() === '1') {
+          // User wants to schedule a visit
+          scheduleVisit = true;
+          responseMsg = `Ótima escolha! 🏰✨\n\nNossa equipe vai entrar em contato para agendar sua visita ao Castelo da Diversão!\n\nAguarde um momento que já vamos te chamar! 👑`;
+          console.log(`[Bot] User ${contactPhone} wants to schedule a visit`);
+        } else if (choice === 'Tirar dúvidas' || content.trim() === '2') {
+          // User wants to ask questions
+          responseMsg = `Claro! 💬\n\nPode mandar sua dúvida aqui que nossa equipe vai te responder rapidinho!\n\nEstamos à disposição! 👑`;
+          console.log(`[Bot] User ${contactPhone} wants to ask questions`);
+        } else if (choice === 'Analisar com calma' || content.trim() === '3') {
+          // User wants time to think
+          responseMsg = `Sem problemas! 📋\n\nVou enviar nossos materiais para você analisar com calma. Quando estiver pronto, é só chamar aqui!\n\nEstamos à disposição! 👑✨`;
+          console.log(`[Bot] User ${contactPhone} wants time to analyze`);
+        } else {
+          // Invalid choice, re-ask
+          nextStep = 'proximo_passo';
+          msg = `Por favor, responda apenas com o *número* da opção desejada (1, 2 ou 3) 👇\n\n${buildMenuText(PROXIMO_PASSO_OPTIONS)}`;
+        }
+        
+        if (nextStep === 'complete_final') {
+          msg = responseMsg;
+          
+          // Update conversation with visit flag if applicable
+          if (scheduleVisit) {
+            await supabase.from('wapi_conversations').update({
+              has_scheduled_visit: true
+            }).eq('id', conv.id);
+          }
+          
+          // Also update lead status based on choice
+          if (conv.lead_id || scheduleVisit) {
+            const leadId = conv.lead_id;
+            if (leadId) {
+              const newStatus = scheduleVisit ? 'em_contato' : 'novo';
+              await supabase.from('campaign_leads').update({
+                status: newStatus
+              }).eq('id', leadId);
+            }
           }
         }
       } else {
@@ -524,8 +587,15 @@ async function processBotQualification(
     last_message_from_me: true
   }).eq('id', conv.id);
 
-  // After qualification complete, send materials automatically
-  if (nextStep === 'complete') {
+  // After qualification complete (final), send materials automatically
+  // Materials are sent after proximo_passo is answered (complete_final)
+  // OR if user chose "Analisar com calma" (option 3)
+  if (nextStep === 'complete_final') {
+    // Disable bot after completion
+    await supabase.from('wapi_conversations').update({
+      bot_enabled: false
+    }).eq('id', conv.id);
+    
     // Use background task to send materials after responding to user
     EdgeRuntime.waitUntil(
       sendQualificationMaterials(
