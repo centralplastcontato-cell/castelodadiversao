@@ -176,28 +176,21 @@ export function SalesMaterialsMenu({
   const handleSendMaterial = async (material: SalesMaterial) => {
     setIsSending(material.id);
     try {
-      // Handle photo collection - send photos in parallel batches for speed
+      // Handle photo collection - send caption once, then photos without captions
       if (material.type === "photo_collection" && material.photo_urls && material.photo_urls.length > 0) {
         const photoCount = material.photo_urls.length;
         
-        // Send intro message first
+        // Send caption message once before photos
         if (onSendTextMessage) {
-          const leadName = lead?.name?.split(' ')[0] || '';
-          let introMessage = '';
-          if (leadName) {
-            introMessage = `Oi ${leadName}! Seguem ${photoCount} fotos da ${material.name} da unidade ${unit}. 📸`;
-          } else {
-            introMessage = `Seguem ${photoCount} fotos da ${material.name} da unidade ${unit}. 📸`;
-          }
-          await onSendTextMessage(introMessage);
+          const unitCaption = getCaption("photo_collection");
+          await onSendTextMessage(unitCaption);
+          // Small delay to ensure message order
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // Get caption from database or use fallback
-        const unitCaption = getCaption("photo_collection");
-
-        // Send all photos in parallel with unit caption
+        // Send all photos in parallel WITHOUT caption (caption was sent as text message)
         const sendPromises = material.photo_urls.map((photoUrl) => 
-          onSendMedia(photoUrl, "image", unitCaption)
+          onSendMedia(photoUrl, "image")
         );
         
         await Promise.all(sendPromises);
