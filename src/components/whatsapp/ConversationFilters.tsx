@@ -72,7 +72,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'all' 
             ? "bg-primary text-primary-foreground shadow-md hover:bg-primary/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-primary/40"
+            : "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
         )}
         onClick={() => onFilterChange('all')}
       >
@@ -85,7 +85,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'unread' 
             ? "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-destructive/40"
+            : "bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20"
         )}
         onClick={() => onFilterChange('unread')}
       >
@@ -108,7 +108,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'closed' 
             ? "bg-muted-foreground text-white shadow-md hover:bg-muted-foreground/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-muted-foreground/40"
+            : "bg-muted-foreground/10 text-muted-foreground hover:bg-muted-foreground/20 border border-muted-foreground/20"
         )}
         onClick={() => onFilterChange('closed')}
       >
@@ -132,7 +132,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'fechados' 
             ? "bg-green-600 text-white shadow-md hover:bg-green-600/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-green-500/40"
+            : "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20 border border-green-500/20"
         )}
         onClick={() => onFilterChange('fechados')}
       >
@@ -143,7 +143,7 @@
             "ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold",
             filter === 'fechados' 
               ? "bg-white/20 text-white" 
-              : "bg-green-500/20 text-green-700 dark:text-green-400"
+              : "bg-green-500/25 text-green-700 dark:text-green-400"
           )}>
             {closedLeadCount}
           </Badge>
@@ -156,7 +156,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'oe' 
             ? "bg-purple-600 text-white shadow-md hover:bg-purple-600/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-purple-500/40"
+            : "bg-purple-500/10 text-purple-700 dark:text-purple-400 hover:bg-purple-500/20 border border-purple-500/20"
         )}
         onClick={() => onFilterChange('oe')}
       >
@@ -167,7 +167,7 @@
             "ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold",
             filter === 'oe' 
               ? "bg-white/20 text-white" 
-              : "bg-purple-500/20 text-purple-700 dark:text-purple-400"
+              : "bg-purple-500/25 text-purple-700 dark:text-purple-400"
           )}>
             {orcamentoEnviadoCount}
           </Badge>
@@ -180,7 +180,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'visitas' 
             ? "bg-blue-600 text-white shadow-md hover:bg-blue-600/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-blue-500/40"
+            : "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
         )}
         onClick={() => onFilterChange('visitas')}
       >
@@ -191,7 +191,7 @@
             "ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold",
             filter === 'visitas' 
               ? "bg-white/20 text-white" 
-              : "bg-blue-500/20 text-blue-700 dark:text-blue-400"
+              : "bg-blue-500/25 text-blue-700 dark:text-blue-400"
           )}>
             {visitasCount}
           </Badge>
@@ -204,7 +204,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'freelancer' 
             ? "bg-orange-600 text-white shadow-md hover:bg-orange-600/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-orange-500/40"
+            : "bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-500/20 border border-orange-500/20"
         )}
         onClick={() => onFilterChange('freelancer')}
       >
@@ -215,7 +215,7 @@
             "ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold",
             filter === 'freelancer' 
               ? "bg-white/20 text-white" 
-              : "bg-orange-500/20 text-orange-700 dark:text-orange-400"
+              : "bg-orange-500/25 text-orange-700 dark:text-orange-400"
           )}>
             {freelancerCount}
           </Badge>
@@ -228,7 +228,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'equipe' 
             ? "bg-cyan-600 text-white shadow-md hover:bg-cyan-600/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-cyan-500/40"
+            : "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20"
         )}
         onClick={() => onFilterChange('equipe')}
       >
@@ -239,7 +239,7 @@
             "ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold",
             filter === 'equipe' 
               ? "bg-white/20 text-white" 
-              : "bg-cyan-500/20 text-cyan-700 dark:text-cyan-400"
+              : "bg-cyan-500/25 text-cyan-700 dark:text-cyan-400"
           )}>
             {equipeCount}
           </Badge>
@@ -252,7 +252,7 @@
           "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
           filter === 'favorites' 
             ? "bg-amber-500 text-white shadow-md hover:bg-amber-500/90" 
-            : "bg-card hover:bg-muted border border-border/60 hover:border-amber-500/40"
+            : "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20"
         )}
         onClick={() => onFilterChange('favorites')}
       >
