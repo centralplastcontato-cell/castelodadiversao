@@ -155,9 +155,9 @@ export function SalesMaterialsMenu({
         }
 
         // Send all photos in parallel for maximum speed
-        // The order in WhatsApp will be determined by which arrives first at the server
-        const sendPromises = material.photo_urls.map((photoUrl, i) => 
-          onSendMedia(photoUrl, "image", `${material.name} (${i + 1}/${photoCount})`)
+        // Photos are sent without individual captions for a cleaner look
+        const sendPromises = material.photo_urls.map((photoUrl) => 
+          onSendMedia(photoUrl, "image")
         );
         
         await Promise.all(sendPromises);
