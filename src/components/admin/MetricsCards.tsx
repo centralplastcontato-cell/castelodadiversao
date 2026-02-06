@@ -107,14 +107,14 @@ export function MetricsCards({ leads, isLoading }: MetricsCardsProps) {
         <Card 
           key={metric.title} 
           className={`
-            border ${metric.borderColor} overflow-hidden
+            relative border ${metric.borderColor} overflow-hidden
             hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.02]
             transition-all duration-300 ease-out cursor-default
             bg-card
           `}
         >
           <div className={`absolute inset-0 bg-gradient-to-br ${metric.gradient} pointer-events-none`} />
-          <CardContent className="p-4 relative">
+          <CardContent className="p-4 relative z-10">
             <div className="flex items-center gap-2.5 mb-3">
               <div className={`p-2 rounded-lg ${metric.iconBg} shadow-sm`}>
                 <metric.icon className={`w-4 h-4 ${metric.iconColor}`} />
