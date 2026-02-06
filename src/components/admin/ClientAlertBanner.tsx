@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Crown, X, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNotificationSounds } from "@/hooks/useNotificationSounds";
+import { useChatNotificationToggle } from "@/hooks/useChatNotificationToggle";
 
 interface ClientNotificationData {
   conversation_id: string;
@@ -27,6 +29,14 @@ interface ClientAlertBannerProps {
 
 export function ClientAlertBanner({ userId, onOpenConversation }: ClientAlertBannerProps) {
   const [alerts, setAlerts] = useState<ClientNotification[]>([]);
+  const { playClientSound } = useNotificationSounds();
+  const { notificationsEnabled } = useChatNotificationToggle();
+  const notificationsEnabledRef = useRef(notificationsEnabled);
+  
+  // Keep ref in sync with state for use in realtime callback
+  useEffect(() => {
+    notificationsEnabledRef.current = notificationsEnabled;
+  }, [notificationsEnabled]);
 
   // Fetch unread client notifications
   useEffect(() => {
@@ -68,6 +78,10 @@ export function ClientAlertBanner({ userId, onOpenConversation }: ClientAlertBan
           const notification = payload.new as ClientNotification;
           if (notification.type === "existing_client") {
             setAlerts((prev) => [notification, ...prev]);
+            // Play sound for new client alert
+            if (notificationsEnabledRef.current) {
+              playClientSound();
+            }
           }
         }
       )
