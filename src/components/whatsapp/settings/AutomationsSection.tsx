@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Clock, Forward, Zap, Plus, Trash2, Phone, Shield, Beaker, Power, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Bot, Clock, Forward, Zap, Plus, Trash2, Phone, Shield, Beaker, Power, Loader2, MessageSquare, Save, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -25,6 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface WapiInstance {
   id: string;
@@ -50,13 +57,32 @@ interface VipNumber {
   reason: string | null;
 }
 
+interface BotQuestion {
+  id: string;
+  instance_id: string;
+  step: string;
+  question_text: string;
+  confirmation_text: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+const DEFAULT_QUESTIONS = [
+  { step: 'nome', question_text: 'Para começar, me conta: qual é o seu nome? 👑', confirmation_text: 'Muito prazer, {nome}! 👑✨', sort_order: 1 },
+  { step: 'mes', question_text: 'Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Ex: Fevereiro, Março, Abril...', confirmation_text: '{mes}, ótima escolha! 🎊', sort_order: 2 },
+  { step: 'dia', question_text: 'Maravilha! Tem preferência de dia da semana? 🗓️\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo', confirmation_text: 'Anotado!', sort_order: 3 },
+  { step: 'convidados', question_text: 'E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Ex: 50, 70, 100 pessoas...', confirmation_text: null, sort_order: 4 },
+];
+
 export function AutomationsSection() {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<WapiInstance | null>(null);
   const [botSettings, setBotSettings] = useState<BotSettings | null>(null);
   const [vipNumbers, setVipNumbers] = useState<VipNumber[]>([]);
+  const [botQuestions, setBotQuestions] = useState<BotQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingQuestions, setIsSavingQuestions] = useState(false);
   
   // New VIP number form state
   const [showAddVipDialog, setShowAddVipDialog] = useState(false);
@@ -73,6 +99,7 @@ export function AutomationsSection() {
     if (selectedInstance) {
       fetchBotSettings();
       fetchVipNumbers();
+      fetchBotQuestions();
     }
   }, [selectedInstance]);
 
@@ -149,6 +176,23 @@ export function AutomationsSection() {
     setVipNumbers(data || []);
   };
 
+  const fetchBotQuestions = async () => {
+    if (!selectedInstance) return;
+
+    const { data, error } = await supabase
+      .from("wapi_bot_questions")
+      .select("*")
+      .eq("instance_id", selectedInstance.id)
+      .order("sort_order", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching bot questions:", error);
+      return;
+    }
+
+    setBotQuestions(data || []);
+  };
+
   const updateBotSettings = async (updates: Partial<BotSettings>) => {
     if (!botSettings) return;
 
@@ -175,6 +219,88 @@ export function AutomationsSection() {
     }
 
     setIsSaving(false);
+  };
+
+  const updateQuestion = (index: number, field: keyof BotQuestion, value: string | boolean | null) => {
+    const updated = [...botQuestions];
+    updated[index] = { ...updated[index], [field]: value };
+    setBotQuestions(updated);
+  };
+
+  const saveQuestions = async () => {
+    if (!selectedInstance) return;
+    setIsSavingQuestions(true);
+
+    try {
+      for (const question of botQuestions) {
+        const { error } = await supabase
+          .from("wapi_bot_questions")
+          .update({
+            question_text: question.question_text,
+            confirmation_text: question.confirmation_text,
+            is_active: question.is_active,
+          })
+          .eq("id", question.id);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Perguntas salvas",
+        description: "As perguntas do bot foram atualizadas com sucesso.",
+      });
+    } catch (error) {
+      console.error("Error saving questions:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as perguntas.",
+        variant: "destructive",
+      });
+    }
+
+    setIsSavingQuestions(false);
+  };
+
+  const resetQuestions = async () => {
+    if (!selectedInstance) return;
+    setIsSavingQuestions(true);
+
+    try {
+      // Delete existing questions
+      await supabase
+        .from("wapi_bot_questions")
+        .delete()
+        .eq("instance_id", selectedInstance.id);
+
+      // Insert default questions
+      const newQuestions = DEFAULT_QUESTIONS.map(q => ({
+        ...q,
+        instance_id: selectedInstance.id,
+        is_active: true,
+      }));
+
+      const { data, error } = await supabase
+        .from("wapi_bot_questions")
+        .insert(newQuestions)
+        .select();
+
+      if (error) throw error;
+
+      setBotQuestions(data || []);
+      toast({
+        title: "Perguntas restauradas",
+        description: "As perguntas padrão foram restauradas com sucesso.",
+      });
+    } catch (error) {
+      console.error("Error resetting questions:", error);
+      toast({
+        title: "Erro ao restaurar",
+        description: "Não foi possível restaurar as perguntas padrão.",
+        variant: "destructive",
+      });
+    }
+
+    setIsSavingQuestions(false);
   };
 
   const addVipNumber = async () => {
@@ -245,6 +371,16 @@ export function AutomationsSection() {
       return `+${phone.slice(0, 2)} (${phone.slice(2, 4)}) ${phone.slice(4, 8)}-${phone.slice(8)}`;
     }
     return phone;
+  };
+
+  const getStepLabel = (step: string) => {
+    const labels: Record<string, string> = {
+      nome: "Nome",
+      mes: "Mês",
+      dia: "Dia da Semana",
+      convidados: "Convidados",
+    };
+    return labels[step] || step;
   };
 
   if (isLoading) {
@@ -387,6 +523,134 @@ export function AutomationsSection() {
               <Badge variant="secondary">Bot Desativado</Badge>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Bot Questions Editor */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Perguntas do Bot
+              </CardTitle>
+              <CardDescription>
+                Personalize as perguntas que o bot faz para qualificar os leads
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetQuestions}
+                disabled={isSavingQuestions}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Restaurar Padrão
+              </Button>
+              <Button
+                size="sm"
+                onClick={saveQuestions}
+                disabled={isSavingQuestions || botQuestions.length === 0}
+              >
+                {isSavingQuestions ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {botQuestions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">Nenhuma pergunta configurada</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={resetQuestions}
+                disabled={isSavingQuestions}
+              >
+                Criar Perguntas Padrão
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Welcome Message */}
+              <div className="p-4 border rounded-lg bg-muted/30">
+                <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">0</span>
+                  Mensagem de Boas-vindas
+                </Label>
+                <Textarea
+                  value={botSettings?.welcome_message || ""}
+                  onChange={(e) => setBotSettings(prev => prev ? { ...prev, welcome_message: e.target.value } : null)}
+                  onBlur={() => botSettings && updateBotSettings({ welcome_message: botSettings.welcome_message })}
+                  className="min-h-[80px]"
+                  placeholder="Olá! 👋 Bem-vindo ao Castelo da Diversão!"
+                />
+              </div>
+
+              {/* Questions */}
+              <Accordion type="multiple" className="w-full">
+                {botQuestions.map((question, index) => (
+                  <AccordionItem key={question.id} value={question.id}>
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${question.is_active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                          {index + 1}
+                        </span>
+                        <span className={question.is_active ? '' : 'text-muted-foreground line-through'}>
+                          {getStepLabel(question.step)}
+                        </span>
+                        {!question.is_active && (
+                          <Badge variant="secondary" className="text-xs">Desativada</Badge>
+                        )}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">Pergunta ativa</Label>
+                        <Switch
+                          checked={question.is_active}
+                          onCheckedChange={(checked) => updateQuestion(index, 'is_active', checked)}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-sm">Pergunta</Label>
+                        <Textarea
+                          value={question.question_text}
+                          onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
+                          className="min-h-[100px]"
+                          placeholder="Digite a pergunta..."
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm">
+                          Confirmação <span className="text-muted-foreground">(opcional)</span>
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Mensagem exibida após a resposta. Use {`{${question.step}}`} para incluir a resposta.
+                        </p>
+                        <Input
+                          value={question.confirmation_text || ""}
+                          onChange={(e) => updateQuestion(index, 'confirmation_text', e.target.value || null)}
+                          placeholder={`Ex: Muito prazer, {${question.step}}! 👑`}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
+          )}
         </CardContent>
       </Card>
 
