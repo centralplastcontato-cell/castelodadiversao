@@ -1904,12 +1904,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   >
                     <div className="relative shrink-0">
                       <Avatar className="h-10 w-10">
-                        {conv.contact_picture && (
-                          <AvatarImage 
-                            src={conv.contact_picture} 
-                            alt={conv.contact_name || conv.contact_phone}
-                          />
-                        )}
+                        <AvatarImage 
+                          src={conv.contact_picture || undefined} 
+                          alt={conv.contact_name || conv.contact_phone}
+                        />
                         <AvatarFallback className={cn(
                           "text-primary text-sm",
                           conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
@@ -2035,20 +2033,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         )}
                       >
                         <div className="relative shrink-0">
-                          <Avatar className="h-10 w-10">
-                            {conv.contact_picture && (
-                              <AvatarImage 
-                                src={conv.contact_picture} 
-                                alt={conv.contact_name || conv.contact_phone}
-                              />
-                            )}
-                            <AvatarFallback className={cn(
-                              "text-primary text-sm",
-                              conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
-                            )}>
-                              {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage 
+                            src={conv.contact_picture || undefined} 
+                            alt={conv.contact_name || conv.contact_phone}
+                          />
+                          <AvatarFallback className={cn(
+                            "text-primary text-sm",
+                            conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
+                          )}>
+                            {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                           {conv.is_favorite && (
                             <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
                           )}
@@ -2191,12 +2187,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                   {/* Chat Header */}
                   <div className="p-3 border-b flex items-center gap-2 sm:gap-3 shrink-0">
                     <Avatar className="h-9 w-9 shrink-0">
-                      {selectedConversation.contact_picture && (
-                        <AvatarImage 
-                          src={selectedConversation.contact_picture} 
-                          alt={selectedConversation.contact_name || selectedConversation.contact_phone}
-                        />
-                      )}
+                      <AvatarImage 
+                        src={selectedConversation.contact_picture || undefined} 
+                        alt={selectedConversation.contact_name || selectedConversation.contact_phone}
+                      />
                       <AvatarFallback className="bg-primary/10 text-primary text-sm">
                         {(selectedConversation.contact_name || selectedConversation.contact_phone)
                           .charAt(0)
@@ -2836,12 +2830,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     <ArrowLeft className="w-5 h-5" />
                   </Button>
                   <Avatar className="h-9 w-9 shrink-0">
-                    {selectedConversation.contact_picture && (
-                      <AvatarImage 
-                        src={selectedConversation.contact_picture} 
-                        alt={selectedConversation.contact_name || selectedConversation.contact_phone}
-                      />
-                    )}
+                    <AvatarImage 
+                      src={selectedConversation.contact_picture || undefined} 
+                      alt={selectedConversation.contact_name || selectedConversation.contact_phone}
+                    />
                     <AvatarFallback className="bg-primary/10 text-primary text-sm">
                       {(selectedConversation.contact_name || selectedConversation.contact_phone)
                         .charAt(0)
