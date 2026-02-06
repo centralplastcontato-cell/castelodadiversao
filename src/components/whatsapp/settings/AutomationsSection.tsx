@@ -597,7 +597,7 @@ export function AutomationsSection() {
                   value={botSettings?.welcome_message || ""}
                   onChange={(e) => setBotSettings(prev => prev ? { ...prev, welcome_message: e.target.value } : null)}
                   onBlur={() => botSettings && updateBotSettings({ welcome_message: botSettings.welcome_message })}
-                  className="min-h-[80px]"
+                  className="min-h-[80px] text-base"
                   placeholder="Olá! 👋 Bem-vindo ao Castelo da Diversão!"
                 />
               </div>
@@ -633,7 +633,7 @@ export function AutomationsSection() {
                         <Textarea
                           value={question.question_text}
                           onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
-                          className="min-h-[100px]"
+                          className="min-h-[100px] text-base"
                           placeholder="Digite a pergunta..."
                         />
                       </div>
@@ -649,12 +649,30 @@ export function AutomationsSection() {
                           value={question.confirmation_text || ""}
                           onChange={(e) => updateQuestion(index, 'confirmation_text', e.target.value || null)}
                           placeholder={`Ex: Muito prazer, {${question.step}}! 👑`}
+                          className="text-base"
                         />
                       </div>
                     </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
+
+              {/* Floating Save Button for Mobile */}
+              <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-background via-background to-transparent -mx-4 px-4 sm:-mx-6 sm:px-6">
+                <Button
+                  onClick={saveQuestions}
+                  disabled={isSavingQuestions || botQuestions.length === 0}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isSavingQuestions ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Salvar Alterações
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
