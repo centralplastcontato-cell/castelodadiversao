@@ -917,21 +917,7 @@ async function sendQualificationMaterials(
     await new Promise(r => setTimeout(r, 2000));
   }
   
-  // 3. SEND PROMO VIDEO (only for Feb/March)
-  if (sendPromoVideo && isPromoMonth && promoVideos.length > 0) {
-    const promoVideo = promoVideos[0];
-    console.log(`[Bot Materials] Sending promo video for ${month}: ${promoVideo.name}`);
-    
-    const promoCaption = captionMap['video_promo'] || `🎭 Promoção especial! Garanta sua festa em ${month}! 🎉`;
-    const caption = promoCaption.replace(/\{unidade\}/gi, unit);
-    
-    const msgId = await sendVideo(promoVideo.file_url, caption);
-    if (msgId) await saveMessage(msgId, 'video', caption, promoVideo.file_url);
-    
-    await new Promise(r => setTimeout(r, 2000));
-  }
-  
-  // 4. SEND PDF PACKAGE (matching guest count)
+  // 3. SEND PDF PACKAGE (matching guest count) - Send PDF BEFORE promo video
   if (sendPdf && guestCount && pdfPackages.length > 0) {
     // Find exact match or closest package
     let matchingPdf = pdfPackages.find(p => p.guest_count === guestCount);
@@ -960,7 +946,24 @@ async function sendQualificationMaterials(
       const fileName = matchingPdf.name?.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, ' ').trim() + '.pdf' || `Pacote ${guestCount} pessoas.pdf`;
       const msgId = await sendDocument(matchingPdf.file_url, fileName);
       if (msgId) await saveMessage(msgId, 'document', fileName, matchingPdf.file_url);
+      
+      await new Promise(r => setTimeout(r, 2000));
     }
+  }
+  
+  // 4. SEND PROMO VIDEO (only for Feb/March) - LAST material before next step question
+  if (sendPromoVideo && isPromoMonth && promoVideos.length > 0) {
+    const promoVideo = promoVideos[0];
+    console.log(`[Bot Materials] Sending promo video for ${month}: ${promoVideo.name}`);
+    
+    const promoCaption = captionMap['video_promo'] || `🎭 Promoção especial! Garanta sua festa em ${month}! 🎉`;
+    const caption = promoCaption.replace(/\{unidade\}/gi, unit);
+    
+    const msgId = await sendVideo(promoVideo.file_url, caption);
+    if (msgId) await saveMessage(msgId, 'video', caption, promoVideo.file_url);
+    
+    // Wait for video to be delivered before proceeding
+    await new Promise(r => setTimeout(r, 3000));
   }
   
   // Update conversation last message
