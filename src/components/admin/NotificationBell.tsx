@@ -122,61 +122,91 @@ export function NotificationBell() {
               Nenhuma notificação
             </div>
           ) : (
-            <div className="divide-y">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={cn(
-                    "p-3 hover:bg-muted/50 cursor-pointer transition-colors",
-                    !notification.read && "bg-primary/5"
-                  )}
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <p
-                          className={cn(
-                            "text-sm",
-                            !notification.read && "font-medium"
-                          )}
-                        >
-                          {notification.title}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteNotification(notification.id);
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3 text-muted-foreground" />
-                        </Button>
-                      </div>
-                      {notification.message && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {notification.message}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(
-                          new Date(notification.created_at),
-                          "dd/MM 'às' HH:mm",
-                          { locale: ptBR }
-                        )}
-                      </p>
-                    </div>
-                    {!notification.read && (
-                      <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
+            <div className="divide-y divide-border/50">
+              {notifications.map((notification) => {
+                const isClientAlert = notification.type === "existing_client";
+                return (
+                  <div
+                    key={notification.id}
+                    className={cn(
+                      "p-3 cursor-pointer transition-all duration-200 group",
+                      isClientAlert && !notification.read
+                        ? "bg-gradient-to-r from-amber-50 via-amber-50/50 to-transparent dark:from-amber-900/20 dark:via-amber-900/10 dark:to-transparent border-l-4 border-l-amber-500 hover:from-amber-100 dark:hover:from-amber-900/30"
+                        : !notification.read
+                          ? "bg-primary/5 hover:bg-primary/10"
+                          : "hover:bg-muted/50"
                     )}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={cn(
+                        "flex-shrink-0 mt-0.5 p-1.5 rounded-full",
+                        isClientAlert 
+                          ? "bg-amber-100 dark:bg-amber-900/40" 
+                          : notification.type === "lead_transfer"
+                            ? "bg-primary/10"
+                            : "bg-muted"
+                      )}>
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p
+                            className={cn(
+                              "text-sm",
+                              !notification.read && "font-semibold",
+                              isClientAlert && !notification.read && "text-amber-800 dark:text-amber-300"
+                            )}
+                          >
+                            {notification.title}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3 text-muted-foreground" />
+                          </Button>
+                        </div>
+                        {notification.message && (
+                          <p className={cn(
+                            "text-xs mt-0.5 line-clamp-2",
+                            isClientAlert && !notification.read 
+                              ? "text-amber-700 dark:text-amber-400" 
+                              : "text-muted-foreground"
+                          )}>
+                            {notification.message}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <p className="text-xs text-muted-foreground">
+                            {format(
+                              new Date(notification.created_at),
+                              "dd/MM 'às' HH:mm",
+                              { locale: ptBR }
+                            )}
+                          </p>
+                          {isClientAlert && !notification.read && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-200/60 dark:bg-amber-800/40 px-1.5 py-0.5 rounded-full">
+                              Ação necessária
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {!notification.read && (
+                        <div className={cn(
+                          "w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5 animate-pulse",
+                          isClientAlert ? "bg-amber-500" : "bg-primary"
+                        )} />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </ScrollArea>
