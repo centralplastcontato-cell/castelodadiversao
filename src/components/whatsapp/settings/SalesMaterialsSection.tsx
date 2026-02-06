@@ -64,6 +64,8 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
     is_active: true,
     unit: null as string | null,
   });
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     fetchMaterials();
@@ -242,6 +244,41 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
     const newUrls = [...formData.photo_urls];
     newUrls.splice(index, 1);
     setFormData({ ...formData, photo_urls: newUrls });
+  };
+
+  // Drag and drop handlers for reordering photos
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newUrls = [...formData.photo_urls];
+    const [draggedUrl] = newUrls.splice(draggedIndex, 1);
+    newUrls.splice(targetIndex, 0, draggedUrl);
+    
+    setFormData({ ...formData, photo_urls: newUrls });
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleSaveMaterial = async () => {
@@ -772,26 +809,44 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
                 
                 {/* Photo thumbnails grid */}
                 {formData.photo_urls.length > 0 && (
-                  <div className="grid grid-cols-5 gap-2">
-                    {formData.photo_urls.map((url, index) => (
-                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group">
-                        <img 
-                          src={url} 
-                          alt={`Foto ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removePhotoFromCollection(index)}
-                          className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Arraste para reordenar</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {formData.photo_urls.map((url, index) => (
+                        <div 
+                          key={`photo-${index}`} 
+                          draggable
+                          onDragStart={() => handleDragStart(index)}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={() => handleDrop(index)}
+                          onDragEnd={handleDragEnd}
+                          className={`relative aspect-square rounded-lg overflow-hidden border group cursor-grab active:cursor-grabbing transition-all ${
+                            draggedIndex === index ? "opacity-50 scale-95" : ""
+                          } ${
+                            dragOverIndex === index && draggedIndex !== index 
+                              ? "ring-2 ring-primary ring-offset-2" 
+                              : ""
+                          }`}
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-0.5">
-                          {index + 1}
-                        </span>
-                      </div>
-                    ))}
+                          <img 
+                            src={url} 
+                            alt={`Foto ${index + 1}`}
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhotoFromCollection(index)}
+                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-0.5">
+                            {index + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
