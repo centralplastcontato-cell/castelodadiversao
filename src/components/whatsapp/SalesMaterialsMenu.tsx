@@ -154,10 +154,14 @@ export function SalesMaterialsMenu({
           await onSendTextMessage(introMessage);
         }
 
-        // Send all photos in parallel for maximum speed
-        // Photos are sent without individual captions for a cleaner look
+        // Unit-specific captions for photo collections
+        const unitCaption = unit === "Manchester" 
+          ? "📍 Castelo da Diversão - Unidade Manchester" 
+          : "📍 Castelo da Diversão - Unidade Trujillo";
+
+        // Send all photos in parallel with unit caption
         const sendPromises = material.photo_urls.map((photoUrl) => 
-          onSendMedia(photoUrl, "image")
+          onSendMedia(photoUrl, "image", unitCaption)
         );
         
         await Promise.all(sendPromises);
