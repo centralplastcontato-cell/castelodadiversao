@@ -5,18 +5,11 @@ import { User, Session } from "@supabase/supabase-js";
 import { useUserRole } from "@/hooks/useUserRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { MobileMenu } from "@/components/admin/MobileMenu";
 import { WhatsAppConfig } from "@/components/whatsapp/WhatsAppConfig";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { Settings, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import logoCastelo from "@/assets/logo-castelo.png";
 import { toast } from "@/hooks/use-toast";
 
@@ -115,49 +108,22 @@ export default function Configuracoes() {
           <div className="px-3 py-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                  <SheetTrigger asChild>
+                <MobileMenu
+                  isOpen={isMobileMenuOpen}
+                  onOpenChange={setIsMobileMenuOpen}
+                  trigger={
                     <Button variant="ghost" size="icon" className="h-9 w-9">
                       <Menu className="w-5 h-5" />
                     </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-72 p-0">
-                    <SheetHeader className="p-4 border-b border-border">
-                      <div className="flex items-center gap-3">
-                        <img src={logoCastelo} alt="Castelo da Diversão" className="h-10 w-auto" />
-                        <div>
-                          <SheetTitle className="text-left text-base">Castelo da Diversão</SheetTitle>
-                          <p className="text-xs text-muted-foreground">
-                            {currentUserProfile?.full_name || user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </SheetHeader>
-                    
-                    <nav className="flex flex-col p-2">
-                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/atendimento"); setIsMobileMenuOpen(false); }}>
-                        Central de Atendimento
-                      </Button>
-                      
-                      <Button variant="secondary" className="justify-start h-11 px-3" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Settings className="w-5 h-5 mr-3" />
-                        Configurações
-                      </Button>
-                      
-                      {canManageUsers && (
-                        <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/users"); setIsMobileMenuOpen(false); }}>
-                          Gerenciar Usuários
-                        </Button>
-                      )}
-                      
-                      <Separator className="my-2" />
-                      
-                      <Button variant="ghost" className="justify-start h-11 px-3 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>
-                        Sair da Conta
-                      </Button>
-                    </nav>
-                  </SheetContent>
-                </Sheet>
+                  }
+                  currentPage="configuracoes"
+                  userName={currentUserProfile?.full_name || ""}
+                  userEmail={user.email || ""}
+                  canManageUsers={canManageUsers}
+                  canAccessB2B={canAccessB2B}
+                  onRefresh={handleRefresh}
+                  onLogout={handleLogout}
+                />
 
                 <div className="flex items-center gap-2 min-w-0">
                   <img src={logoCastelo} alt="Castelo da Diversão" className="h-8 w-auto shrink-0" />
