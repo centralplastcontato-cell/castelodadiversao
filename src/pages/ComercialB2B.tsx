@@ -400,86 +400,127 @@ const ComercialB2B = () => {
                      </CardDescription>
                    </CardHeader>
                    <CardContent>
-                     <div className="grid md:grid-cols-3 gap-6">
-                       {/* Starter */}
-                       <Card className="border-2">
-                         <CardHeader className="text-center pb-2">
-                           <Badge variant="outline" className="w-fit mx-auto mb-2">Starter</Badge>
-                           <CardTitle className="text-3xl">R$ 197</CardTitle>
-                           <CardDescription>/mês</CardDescription>
-                         </CardHeader>
-                         <CardContent className="space-y-3">
-                           {[
-                             "1 unidade",
-                             "2 usuários",
-                             "500 leads/mês",
-                             "WhatsApp integrado",
-                             "CRM básico",
-                             "Landing page padrão",
-                           ].map((item, index) => (
-                             <div key={index} className="flex items-center gap-2 text-sm">
-                               <CheckCircle2 className="h-4 w-4 text-accent" />
-                               <span>{item}</span>
-                             </div>
-                           ))}
-                         </CardContent>
-                       </Card>
- 
-                       {/* Pro */}
-                       <Card className="border-2 border-primary relative">
-                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                           <Badge className="bg-primary">Mais Popular</Badge>
-                         </div>
-                         <CardHeader className="text-center pb-2">
-                           <Badge variant="outline" className="w-fit mx-auto mb-2">Pro</Badge>
-                           <CardTitle className="text-3xl">R$ 497</CardTitle>
-                           <CardDescription>/mês</CardDescription>
-                         </CardHeader>
-                         <CardContent className="space-y-3">
-                           {[
-                             "3 unidades",
-                             "5 usuários",
-                             "Leads ilimitados",
-                             "WhatsApp + Bot",
-                             "CRM completo",
-                             "Landing pages customizadas",
-                             "Relatórios avançados",
-                             "Suporte prioritário",
-                           ].map((item, index) => (
-                             <div key={index} className="flex items-center gap-2 text-sm">
-                               <CheckCircle2 className="h-4 w-4 text-primary" />
-                               <span>{item}</span>
-                             </div>
-                           ))}
-                         </CardContent>
-                       </Card>
- 
-                       {/* Enterprise */}
-                       <Card className="border-2">
-                         <CardHeader className="text-center pb-2">
-                           <Badge variant="outline" className="w-fit mx-auto mb-2">Enterprise</Badge>
-                           <CardTitle className="text-2xl">Sob Consulta</CardTitle>
-                           <CardDescription>personalizado</CardDescription>
-                         </CardHeader>
-                         <CardContent className="space-y-3">
-                           {[
-                             "Unidades ilimitadas",
-                             "Usuários ilimitados",
-                             "White-label",
-                             "API de integração",
-                             "Suporte dedicado",
-                             "SLA garantido",
-                             "Treinamento incluso",
-                             "Customizações",
-                           ].map((item, index) => (
-                             <div key={index} className="flex items-center gap-2 text-sm">
-                               <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                               <span>{item}</span>
-                             </div>
-                           ))}
-                         </CardContent>
-                       </Card>
-                     </div>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {/* Starter */}
+                        <Card className="border-2">
+                          <CardHeader className="text-center pb-2">
+                            <Badge variant="outline" className="w-fit mx-auto mb-2">Starter</Badge>
+                            <CardTitle className="text-3xl">R$ 299</CardTitle>
+                            <CardDescription>/mês</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {[
+                              "1 unidade",
+                              "2 usuários",
+                              "200 leads/mês",
+                              "WhatsApp integrado",
+                              "CRM completo",
+                              "Landing page padrão",
+                              "URL e domínio Celebrei",
+                              "Treinamento por vídeo chamada",
+                            ].map((item, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <CheckCircle2 className="h-4 w-4 text-accent" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+
+                        {/* Pro */}
+                        <Card className="border-2 border-primary relative">
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                            <Badge className="bg-primary">Mais Popular</Badge>
+                          </div>
+                          <CardHeader className="text-center pb-2">
+                            <Badge variant="outline" className="w-fit mx-auto mb-2">Pró</Badge>
+                            <CardTitle className="text-3xl">R$ 549</CardTitle>
+                            <CardDescription>/mês</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {[
+                              "1 unidade",
+                              "5 usuários",
+                              "500 leads/mês",
+                              "WhatsApp integrado + Bot",
+                              "CRM completo",
+                              "Landing page customizada",
+                              "URL e domínio próprio*",
+                              "Treinamento por vídeo chamada",
+                            ].map((item, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                            <p className="text-xs text-muted-foreground pt-2">
+                              *Custos adicionais de domínio
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        {/* Premium */}
+                        <Card className="border-2 border-secondary">
+                          <CardHeader className="text-center pb-2">
+                            <Badge variant="outline" className="w-fit mx-auto mb-2 border-secondary text-secondary">Premium</Badge>
+                            <CardTitle className="text-3xl">R$ 899</CardTitle>
+                            <CardDescription>/mês</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {[
+                              "2 unidades",
+                              "10 usuários",
+                              "Leads ilimitados",
+                              "WhatsApp integrado + Bot",
+                              "CRM completo",
+                              "1 Landing page customizada/mês",
+                              "URL e domínio próprio*",
+                              "Relatórios avançados",
+                              "Treinamento por vídeo chamada",
+                              "Suporte prioritário",
+                            ].map((item, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <CheckCircle2 className="h-4 w-4 text-secondary" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                            <p className="text-xs text-muted-foreground pt-2">
+                              *Custos adicionais de domínio
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        {/* Enterprise */}
+                        <Card className="border-2">
+                          <CardHeader className="text-center pb-2">
+                            <Badge variant="outline" className="w-fit mx-auto mb-2">Enterprise</Badge>
+                            <CardTitle className="text-2xl">Sob Consulta</CardTitle>
+                            <CardDescription>personalizado</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {[
+                              "5 unidades",
+                              "20 usuários",
+                              "Leads ilimitados",
+                              "WhatsApp integrado + Bot",
+                              "CRM completo",
+                              "1 Landing page customizada/mês",
+                              "URL e domínio próprio*",
+                              "Relatórios avançados",
+                              "Treinamento por vídeo chamada",
+                              "Suporte prioritário",
+                            ].map((item, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                            <p className="text-xs text-muted-foreground pt-2">
+                              *Custos adicionais de domínio
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
                    </CardContent>
                  </Card>
  
