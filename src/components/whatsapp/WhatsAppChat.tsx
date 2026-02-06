@@ -492,12 +492,27 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     }
   }, [selectedInstance, selectedConversation?.id, notify, initialPhone, initialPhoneProcessed]);
 
+  // Clear messages immediately when conversation changes (before fetch)
+  const prevConversationIdRef = useRef<string | null>(null);
+  
   useEffect(() => {
     if (selectedConversation) {
+      // If switching to a different conversation, clear messages immediately
+      if (prevConversationIdRef.current !== selectedConversation.id) {
+        setMessages([]);
+        setLinkedLead(null);
+        setIsLoadingMessages(true);
+        setHasMoreMessages(true);
+        setOldestMessageTimestamp(null);
+        setIsInitialLoad(true);
+        setHasUserScrolledToTop(false);
+        prevConversationIdRef.current = selectedConversation.id;
+      }
+      
       // Use cached lead data if available, otherwise fetch
       const cachedLead = conversationLeadsMap[selectedConversation.id];
       
-      // Start fetching messages immediately
+      // Start fetching messages
       fetchMessages(selectedConversation.id);
       
       // Use cached lead if available, otherwise fetch
@@ -548,6 +563,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       };
     } else {
       setLinkedLead(null);
+      prevConversationIdRef.current = null;
     }
   }, [selectedConversation?.id]);
 
@@ -835,14 +851,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     if (loadMore) {
       isLoadingMoreRef.current = true;
       setIsLoadingMoreMessages(true);
-    } else {
-      setIsLoadingMessages(true);
-      setMessages([]);
-      setOldestMessageTimestamp(null);
-      setHasMoreMessages(true); // Assume there are more until proven otherwise
-      setIsInitialLoad(true);
-      setHasUserScrolledToTop(false); // Reset scroll tracking on new conversation
     }
+    // Note: For initial load, states are already set in the useEffect before calling this function
     
     try {
       // Build query with cursor-based pagination
