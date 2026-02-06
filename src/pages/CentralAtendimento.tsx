@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatedBadge } from "@/components/ui/animated-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { LayoutList, Columns, Menu, Bell, BellOff, MessageSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
@@ -593,7 +594,10 @@ export default function CentralAtendimento() {
             </TabsContent>
 
             <TabsContent value="leads" className="flex-1 min-h-0 mt-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto px-3 py-4">
+              <PullToRefresh 
+                onRefresh={handleRefresh} 
+                className="flex-1 px-3 py-4"
+              >
                 {/* View Mode Toggle - at top like unit tabs in Chat */}
                 <div className="flex items-center gap-2 mb-4">
                   <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="flex-1">
@@ -672,7 +676,7 @@ export default function CentralAtendimento() {
                     onDelete={handleDeleteLead}
                   />
                 )}
-              </div>
+              </PullToRefresh>
             </TabsContent>
 
           </Tabs>
