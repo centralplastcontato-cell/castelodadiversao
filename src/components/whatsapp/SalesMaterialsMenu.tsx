@@ -35,6 +35,13 @@ interface SalesMaterial {
   is_active: boolean;
 }
 
+interface Caption {
+  id: string;
+  unit: string;
+  caption_type: "video" | "video_promo" | "photo_collection";
+  caption_text: string;
+}
+
 interface Lead {
   id: string;
   name: string;
@@ -64,30 +71,45 @@ export function SalesMaterialsMenu({
   variant = "icon"
 }: SalesMaterialsMenuProps) {
   const [materials, setMaterials] = useState<SalesMaterial[]>([]);
+  const [captions, setCaptions] = useState<Caption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryType>("main");
   const isMobile = useIsMobile();
 
-  const fetchMaterials = async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("sales_materials")
-        .select("*")
-        .eq("unit", unit)
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
+      // Fetch materials and captions in parallel
+      const [materialsResponse, captionsResponse] = await Promise.all([
+        supabase
+          .from("sales_materials")
+          .select("*")
+          .eq("unit", unit)
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("sales_material_captions")
+          .select("*")
+          .eq("unit", unit)
+          .eq("is_active", true)
+      ]);
 
-      if (error) {
-        console.error("[SalesMaterialsMenu] Error fetching materials:", error);
-        return;
+      if (materialsResponse.error) {
+        console.error("[SalesMaterialsMenu] Error fetching materials:", materialsResponse.error);
+      } else if (materialsResponse.data) {
+        console.log("[SalesMaterialsMenu] Fetched materials for unit:", unit, "Count:", materialsResponse.data.length);
+        setMaterials(materialsResponse.data as SalesMaterial[]);
       }
 
-      if (data) {
-        console.log("[SalesMaterialsMenu] Fetched materials for unit:", unit, "Count:", data.length, "Types:", data.map(m => m.type));
-        setMaterials(data as SalesMaterial[]);
+      if (captionsResponse.error) {
+        console.error("[SalesMaterialsMenu] Error fetching captions:", captionsResponse.error);
+      } else if (captionsResponse.data) {
+        // Filter valid caption types
+        const validTypes = ["video", "video_promo", "photo_collection"];
+        const validCaptions = captionsResponse.data.filter(c => validTypes.includes(c.caption_type)) as Caption[];
+        setCaptions(validCaptions);
       }
     } finally {
       setIsLoading(false);
@@ -96,7 +118,7 @@ export function SalesMaterialsMenu({
 
   useEffect(() => {
     if (unit) {
-      fetchMaterials();
+      fetchData();
     }
   }, [unit]);
 
@@ -114,6 +136,30 @@ export function SalesMaterialsMenu({
   };
 
   const leadGuestCount = getLeadGuestCount();
+
+  // Helper function to get caption from database or fallback to default
+  const getCaption = (captionType: "video" | "video_promo" | "photo_collection"): string => {
+    const caption = captions.find(c => c.caption_type === captionType);
+    if (caption) {
+      return caption.caption_text;
+    }
+    
+    // Fallback defaults if not found in database
+    const defaults: Record<string, Record<string, string>> = {
+      Manchester: {
+        video: "🎬 Veja como é incrível o nosso espaço! ✨ Unidade Manchester te espera para uma festa inesquecível! 🎉",
+        video_promo: "🎭🎉 PROMOÇÃO ESPECIAL DE CARNAVAL! 🎊✨ Aproveite condições imperdíveis para garantir a festa dos sonhos do seu filho! Entre em contato agora e confira! 🏰💜",
+        photo_collection: "✨ Espaço incrível para festas inesquecíveis! Venha conhecer nossa unidade Manchester e encante-se com a estrutura completa para a diversão da criançada! 🎉🏰"
+      },
+      Trujillo: {
+        video: "🎬 Dá só uma olhada no nosso espaço! ✨ Unidade Trujillo pronta para fazer a festa perfeita! 🎉",
+        video_promo: "🎭🎉 PROMOÇÃO ESPECIAL DE CARNAVAL! 🎊✨ Aproveite condições imperdíveis para garantir a festa dos sonhos do seu filho! Entre em contato agora e confira! 🏰💜",
+        photo_collection: "✨ Um mundo de diversão espera por você! Conheça nossa unidade Trujillo e surpreenda-se com tudo que preparamos para a festa perfeita! 🎉🏰"
+      }
+    };
+    
+    return defaults[unit]?.[captionType] || defaults.Manchester[captionType];
+  };
 
   // Use useMemo to ensure filters are recalculated when materials change
   const { packages, photos, videos, collections } = useMemo(() => ({
@@ -154,10 +200,8 @@ export function SalesMaterialsMenu({
           await onSendTextMessage(introMessage);
         }
 
-        // Unit-specific captions for photo collections - more engaging text
-        const unitCaption = unit === "Manchester" 
-          ? "✨ Espaço incrível para festas inesquecíveis! Venha conhecer nossa unidade Manchester e encante-se com a estrutura completa para a diversão da criançada! 🎉🏰" 
-          : "✨ Um mundo de diversão espera por você! Conheça nossa unidade Trujillo e surpreenda-se com tudo que preparamos para a festa perfeita! 🎉🏰";
+        // Get caption from database or use fallback
+        const unitCaption = getCaption("photo_collection");
 
         // Send all photos in parallel with unit caption
         const sendPromises = material.photo_urls.map((photoUrl) => 
@@ -191,13 +235,11 @@ export function SalesMaterialsMenu({
                                 material.name.toLowerCase().includes("promocao");
         
         if (isCarnavalVideo) {
-          // Special caption for Carnival promotion videos
-          caption = "🎭🎉 PROMOÇÃO ESPECIAL DE CARNAVAL! 🎊✨ Aproveite condições imperdíveis para garantir a festa dos sonhos do seu filho! Entre em contato agora e confira! 🏰💜";
+          // Get promo caption from database or use fallback
+          caption = getCaption("video_promo");
         } else {
-          // Engaging caption for regular videos
-          caption = unit === "Manchester"
-            ? "🎬 Veja como é incrível o nosso espaço! ✨ Unidade Manchester te espera para uma festa inesquecível! 🎉"
-            : "🎬 Dá só uma olhada no nosso espaço! ✨ Unidade Trujillo pronta para fazer a festa perfeita! 🎉";
+          // Get regular video caption from database or use fallback
+          caption = getCaption("video");
         }
       } else if (material.type === "pdf_package") {
         // Create a descriptive file name for PDFs

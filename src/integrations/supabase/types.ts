@@ -346,6 +346,36 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_material_captions: {
+        Row: {
+          caption_text: string
+          caption_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          caption_text: string
+          caption_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          caption_text?: string
+          caption_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales_materials: {
         Row: {
           created_at: string
