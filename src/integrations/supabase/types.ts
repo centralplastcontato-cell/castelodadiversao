@@ -541,6 +541,7 @@ export type Database = {
           follow_up_message: string | null
           id: string
           instance_id: string
+          message_delay_seconds: number | null
           next_step_analyze_response: string | null
           next_step_question: string | null
           next_step_questions_response: string | null
@@ -571,6 +572,7 @@ export type Database = {
           follow_up_message?: string | null
           id?: string
           instance_id: string
+          message_delay_seconds?: number | null
           next_step_analyze_response?: string | null
           next_step_question?: string | null
           next_step_questions_response?: string | null
@@ -601,6 +603,7 @@ export type Database = {
           follow_up_message?: string | null
           id?: string
           instance_id?: string
+          message_delay_seconds?: number | null
           next_step_analyze_response?: string | null
           next_step_question?: string | null
           next_step_questions_response?: string | null
