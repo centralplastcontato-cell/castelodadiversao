@@ -47,6 +47,7 @@ interface BotSettings {
   test_mode_enabled: boolean;
   test_mode_number: string | null;
   welcome_message: string;
+  completion_message: string | null;
 }
 
 interface VipNumber {
@@ -656,6 +657,24 @@ export function AutomationsSection() {
                   </AccordionItem>
                 ))}
               </Accordion>
+
+              {/* Completion Message */}
+              <div className="p-4 border rounded-lg bg-green-50/50 dark:bg-green-950/10 border-green-500/30">
+                <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs">✓</span>
+                  Mensagem de Conclusão
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Mensagem enviada ao finalizar a qualificação. Use {`{nome}`}, {`{mes}`}, {`{dia}`} e {`{convidados}`} para incluir as respostas.
+                </p>
+                <Textarea
+                  value={botSettings?.completion_message || "Perfeito, {nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉"}
+                  onChange={(e) => setBotSettings(prev => prev ? { ...prev, completion_message: e.target.value } : null)}
+                  onBlur={() => botSettings && updateBotSettings({ completion_message: botSettings.completion_message })}
+                  className="min-h-[120px] text-base"
+                  placeholder="Perfeito, {nome}! 🏰✨..."
+                />
+              </div>
 
               {/* Floating Save Button for Mobile */}
               <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-background via-background to-transparent -mx-4 px-4 sm:-mx-6 sm:px-6">

@@ -524,6 +524,7 @@ export type Database = {
       wapi_bot_settings: {
         Row: {
           bot_enabled: boolean
+          completion_message: string | null
           created_at: string
           id: string
           instance_id: string
@@ -534,6 +535,7 @@ export type Database = {
         }
         Insert: {
           bot_enabled?: boolean
+          completion_message?: string | null
           created_at?: string
           id?: string
           instance_id: string
@@ -544,6 +546,7 @@ export type Database = {
         }
         Update: {
           bot_enabled?: boolean
+          completion_message?: string | null
           created_at?: string
           id?: string
           instance_id?: string

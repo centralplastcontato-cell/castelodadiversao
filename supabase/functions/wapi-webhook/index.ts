@@ -134,7 +134,7 @@ async function isVipNumber(supabase: SupabaseClient, instanceId: string, phone: 
 }
 
 async function getBotSettings(supabase: SupabaseClient, instanceId: string) {
-  const { data } = await supabase.from('wapi_bot_settings').select('*').eq('instance_id', instanceId).single();
+  const { data } = await supabase.from('wapi_bot_settings').select('*, completion_message').eq('instance_id', instanceId).single();
   return data;
 }
 
@@ -256,6 +256,11 @@ async function processBotQualification(
         // All questions answered - create or update lead
         nextStep = 'complete';
         
+        // Build completion message from settings or use default
+        const defaultCompletion = `Perfeito, {nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
+        const completionTemplate = settings.completion_message || defaultCompletion;
+        const completionMsg = replaceVariables(completionTemplate, updated);
+        
         if (conv.lead_id) {
           // Update existing lead
           await supabase.from('campaign_leads').update({
@@ -265,7 +270,7 @@ async function processBotQualification(
             guests: updated.convidados || null,
           }).eq('id', conv.lead_id);
           
-          msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
+          msg = completionMsg;
         } else {
           // Create new lead
           const { data: newLead, error } = await supabase.from('campaign_leads').insert({
@@ -284,7 +289,7 @@ async function processBotQualification(
             msg = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato!';
           } else {
             await supabase.from('wapi_conversations').update({ lead_id: newLead.id }).eq('id', conv.id);
-            msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
+            msg = completionMsg;
           }
         }
       } else {
