@@ -154,10 +154,10 @@ export function SalesMaterialsMenu({
           await onSendTextMessage(introMessage);
         }
 
-        // Unit-specific captions for photo collections
+        // Unit-specific captions for photo collections - more engaging text
         const unitCaption = unit === "Manchester" 
-          ? "📍 Castelo da Diversão - Unidade Manchester" 
-          : "📍 Castelo da Diversão - Unidade Trujillo";
+          ? "✨ Espaço incrível para festas inesquecíveis! Venha conhecer nossa unidade Manchester e encante-se com a estrutura completa para a diversão da criançada! 🎉🏰" 
+          : "✨ Um mundo de diversão espera por você! Conheça nossa unidade Trujillo e surpreenda-se com tudo que preparamos para a festa perfeita! 🎉🏰";
 
         // Send all photos in parallel with unit caption
         const sendPromises = material.photo_urls.map((photoUrl) => 
