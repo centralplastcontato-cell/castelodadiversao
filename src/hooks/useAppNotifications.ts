@@ -21,7 +21,7 @@ export function useAppNotifications() {
   const [transferCount, setTransferCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const { showBrowserNotification, requestPermission } = useNotifications({ soundEnabled: false });
-  const { playMessageSound, playLeadSound, playClientSound } = useNotificationSounds();
+  const { playMessageSound, playLeadSound, playClientSound, playVisitSound } = useNotificationSounds();
 
   const updateCounts = useCallback((notifs: AppNotification[]) => {
     const unread = notifs.filter((n) => !n.read);
@@ -125,9 +125,17 @@ export function useAppNotifications() {
             });
 
             // Play different sound based on notification type
-            if (newNotification.type === "existing_client") {
+            if (newNotification.type === "visit_scheduled") {
+              // Priority: ascending fanfare for scheduled visits
+              playVisitSound();
+            } else if (newNotification.type === "existing_client") {
+              // Urgent: triple chime for existing clients
               playClientSound();
             } else if (newNotification.type === "lead_transfer" || newNotification.type === "new_lead") {
+              // Normal: two-tone chime for new leads
+              playLeadSound();
+            } else if (newNotification.type === "lead_questions" || newNotification.type === "lead_analyzing") {
+              // Standard: regular lead sound for bot choices
               playLeadSound();
             } else {
               playMessageSound();
