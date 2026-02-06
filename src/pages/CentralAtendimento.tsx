@@ -841,6 +841,7 @@ export default function CentralAtendimento() {
               
               {/* User Info Desktop - Premium Style */}
               <div className="flex items-center gap-3">
+                <NotificationBell />
                 <div className="flex items-center gap-2 bg-muted/40 rounded-full pl-3 pr-1 py-1">
                   <span className="text-sm text-muted-foreground hidden lg:block">{currentUserProfile?.full_name || user.email}</span>
                   <Avatar 
