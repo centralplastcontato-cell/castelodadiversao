@@ -25,6 +25,7 @@ import {
   AlertCircle,
   ArrowRightLeft,
   Trash2,
+  CalendarCheck,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
@@ -261,6 +262,19 @@ export function KanbanCard({
             ) : (
               <div className="flex items-center gap-1 flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate flex-1 min-w-0" title={lead.name}>{lead.name}</p>
+                {lead.has_scheduled_visit && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-full animate-pulse">
+                        <CalendarCheck className="w-3 h-3 text-blue-500" />
+                        <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Visita</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      <p>🗓️ Visita agendada pelo bot</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 {isIncomplete && (
                   <Tooltip>
                     <TooltipTrigger asChild>
