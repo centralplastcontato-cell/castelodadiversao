@@ -26,6 +26,7 @@ import {
   ArrowRightLeft,
   Trash2,
   CalendarCheck,
+  RefreshCw,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
@@ -272,6 +273,19 @@ export function KanbanCard({
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs">
                       <p>🗓️ Visita agendada pelo bot</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {lead.has_follow_up && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30 rounded-full">
+                        <RefreshCw className="w-3 h-3 text-emerald-500" />
+                        <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide">F-Up</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      <p>✅ Follow-up automático enviado</p>
                     </TooltipContent>
                   </Tooltip>
                 )}
