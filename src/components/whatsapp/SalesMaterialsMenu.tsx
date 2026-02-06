@@ -138,11 +138,11 @@ export function SalesMaterialsMenu({
   const handleSendMaterial = async (material: SalesMaterial) => {
     setIsSending(material.id);
     try {
-      // Handle photo collection - send all photos in sequence
+      // Handle photo collection - send photos in parallel batches for speed
       if (material.type === "photo_collection" && material.photo_urls && material.photo_urls.length > 0) {
         const photoCount = material.photo_urls.length;
         
-        // Send intro message
+        // Send intro message first
         if (onSendTextMessage) {
           const leadName = lead?.name?.split(' ')[0] || '';
           let introMessage = '';
@@ -152,18 +152,15 @@ export function SalesMaterialsMenu({
             introMessage = `Seguem ${photoCount} fotos da ${material.name} da unidade ${unit}. 📸`;
           }
           await onSendTextMessage(introMessage);
-          await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // Send all photos in sequence
-        for (let i = 0; i < material.photo_urls.length; i++) {
-          const photoUrl = material.photo_urls[i];
-          await onSendMedia(photoUrl, "image", `${material.name} (${i + 1}/${photoCount})`);
-          // Small delay between photos to ensure order
-          if (i < material.photo_urls.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        }
+        // Send all photos in parallel for maximum speed
+        // The order in WhatsApp will be determined by which arrives first at the server
+        const sendPromises = material.photo_urls.map((photoUrl, i) => 
+          onSendMedia(photoUrl, "image", `${material.name} (${i + 1}/${photoCount})`)
+        );
+        
+        await Promise.all(sendPromises);
 
         toast({
           title: "Coleção enviada",
