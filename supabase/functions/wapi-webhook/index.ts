@@ -7,6 +7,117 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
+// Validation patterns
+const VALID_MONTHS = ['janeiro', 'fevereiro', 'março', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const VALID_DAYS = ['segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado', 'domingo', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+
+// Validation functions
+function validateName(input: string): { valid: boolean; value?: string; error?: string } {
+  const name = input.trim();
+  if (name.length < 2) {
+    return { valid: false, error: 'Hmm, não consegui entender seu nome 🤔\n\nPor favor, digite seu nome completo:' };
+  }
+  // Accept any reasonable name (letters, spaces, accents)
+  if (!/^[\p{L}\s'-]+$/u.test(name)) {
+    return { valid: false, error: 'Por favor, digite apenas seu nome (sem números ou símbolos):' };
+  }
+  return { valid: true, value: name };
+}
+
+function validateMonth(input: string): { valid: boolean; value?: string; error?: string } {
+  const normalized = input.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  // Check for month name match
+  for (const month of VALID_MONTHS) {
+    const monthNorm = month.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (normalized.includes(monthNorm) || monthNorm.includes(normalized)) {
+      // Return capitalized month name
+      return { valid: true, value: month.charAt(0).toUpperCase() + month.slice(1) };
+    }
+  }
+  
+  // Check for month number (2-12)
+  const numMatch = normalized.match(/\d+/);
+  if (numMatch) {
+    const num = parseInt(numMatch[0]);
+    if (num >= 1 && num <= 12) {
+      const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      return { valid: true, value: monthNames[num - 1] };
+    }
+  }
+  
+  return { 
+    valid: false, 
+    error: 'Não entendi o mês 😅\n\nPor favor, escolha um:\n\n📅 Fevereiro, Março, Abril, Maio, Junho, Julho, Agosto, Setembro, Outubro, Novembro ou Dezembro' 
+  };
+}
+
+function validateDay(input: string): { valid: boolean; value?: string; error?: string } {
+  const normalized = input.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  // Check for day of week
+  for (const day of VALID_DAYS) {
+    const dayNorm = day.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (normalized.includes(dayNorm)) {
+      // Map abbreviations and return proper format
+      if (['segunda', 'seg'].some(d => normalized.includes(d))) return { valid: true, value: 'Segunda a Quinta' };
+      if (['terça', 'terca', 'ter'].some(d => normalized.includes(d))) return { valid: true, value: 'Segunda a Quinta' };
+      if (['quarta', 'qua'].some(d => normalized.includes(d))) return { valid: true, value: 'Segunda a Quinta' };
+      if (['quinta', 'qui'].some(d => normalized.includes(d))) return { valid: true, value: 'Segunda a Quinta' };
+      if (['sexta', 'sex'].some(d => normalized.includes(d))) return { valid: true, value: 'Sexta' };
+      if (['sábado', 'sabado', 'sab'].some(d => normalized.includes(d))) return { valid: true, value: 'Sábado' };
+      if (['domingo', 'dom'].some(d => normalized.includes(d))) return { valid: true, value: 'Domingo' };
+    }
+  }
+  
+  // Check for day number (1-31)
+  const numMatch = normalized.match(/\d+/);
+  if (numMatch) {
+    const num = parseInt(numMatch[0]);
+    if (num >= 1 && num <= 31) {
+      return { valid: true, value: `Dia ${num}` };
+    }
+  }
+  
+  return { 
+    valid: false, 
+    error: 'Não entendi a preferência de dia 🤔\n\nEscolha uma opção:\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo\n\nOu digite o dia do mês (ex: 15)' 
+  };
+}
+
+function validateGuests(input: string): { valid: boolean; value?: string; error?: string } {
+  const normalized = input.trim().toLowerCase();
+  
+  // Extract number from input
+  const numMatch = normalized.match(/\d+/);
+  if (numMatch) {
+    const num = parseInt(numMatch[0]);
+    if (num >= 10 && num <= 500) {
+      return { valid: true, value: `${num} pessoas` };
+    } else if (num < 10) {
+      return { valid: false, error: 'Para festas menores que 10 pessoas, entre em contato diretamente com a gente! 🏰\n\nQuantos convidados você pretende chamar?' };
+    } else {
+      return { valid: false, error: 'Uau, que festão! 🎉 Para mais de 500 convidados, vamos precisar conversar sobre isso!\n\nDigite um número aproximado de convidados:' };
+    }
+  }
+  
+  return { 
+    valid: false, 
+    error: 'Não consegui entender a quantidade 🤔\n\nDigite apenas o número de convidados (ex: 50, 70, 100):' 
+  };
+}
+
+// Validation router by step
+function validateAnswer(step: string, input: string): { valid: boolean; value?: string; error?: string } {
+  switch (step) {
+    case 'nome': return validateName(input);
+    case 'mes': return validateMonth(input);
+    case 'dia': return validateDay(input);
+    case 'convidados': return validateGuests(input);
+    default: return { valid: true, value: input.trim() };
+  }
+}
+
 // Default questions fallback (used if no custom questions in DB)
 const DEFAULT_QUESTIONS: Record<string, { question: string; confirmation: string | null; next: string }> = {
   nome: { question: 'Para começar, me conta: qual é o seu nome? 👑', confirmation: 'Muito prazer, {nome}! 👑✨', next: 'mes' },
@@ -128,59 +239,69 @@ async function processBotQualification(
     msg = settings.welcome_message + '\n\n' + (firstQ?.question || DEFAULT_QUESTIONS.nome.question);
     nextStep = firstStep;
   } else if (questions[step]) {
-    // Save the answer
-    updated[step] = content.trim();
+    // Validate the answer before proceeding
+    const validation = validateAnswer(step, content);
     
-    const currentQ = questions[step];
-    const nextStepKey = currentQ.next;
-    
-    if (nextStepKey === 'complete') {
-      // All questions answered - create or update lead
-      nextStep = 'complete';
-      
-      if (conv.lead_id) {
-        // Update existing lead
-        await supabase.from('campaign_leads').update({
-          name: updated.nome || contactName || contactPhone,
-          month: updated.mes || null,
-          day_preference: updated.dia || null,
-          guests: updated.convidados || null,
-        }).eq('id', conv.lead_id);
-        
-        msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
-      } else {
-        // Create new lead
-        const { data: newLead, error } = await supabase.from('campaign_leads').insert({
-          name: updated.nome || contactName || contactPhone,
-          whatsapp: n,
-          unit: instance.unit,
-          campaign_id: 'whatsapp-bot',
-          campaign_name: 'WhatsApp Bot',
-          status: 'novo',
-          month: updated.mes || null,
-          day_preference: updated.dia || null,
-          guests: updated.convidados || null,
-        }).select('id').single();
-        
-        if (error) {
-          msg = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato!';
-        } else {
-          await supabase.from('wapi_conversations').update({ lead_id: newLead.id }).eq('id', conv.id);
-          msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
-        }
-      }
+    if (!validation.valid) {
+      // Invalid answer - send error message and stay on same step
+      msg = validation.error || 'Não entendi sua resposta. Por favor, tente novamente.';
+      nextStep = step; // Stay on same step
+      console.log(`[Bot] Invalid answer for step ${step}: "${content.substring(0, 50)}"`);
     } else {
-      // More questions to ask
-      nextStep = nextStepKey;
-      const nextQ = questions[nextStepKey];
+      // Valid answer - save and proceed
+      updated[step] = validation.value || content.trim();
       
-      // Build response: confirmation (if any) + next question
-      let confirmation = currentQ.confirmation || '';
-      if (confirmation) {
-        confirmation = replaceVariables(confirmation, updated);
+      const currentQ = questions[step];
+      const nextStepKey = currentQ.next;
+      
+      if (nextStepKey === 'complete') {
+        // All questions answered - create or update lead
+        nextStep = 'complete';
+        
+        if (conv.lead_id) {
+          // Update existing lead
+          await supabase.from('campaign_leads').update({
+            name: updated.nome || contactName || contactPhone,
+            month: updated.mes || null,
+            day_preference: updated.dia || null,
+            guests: updated.convidados || null,
+          }).eq('id', conv.lead_id);
+          
+          msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
+        } else {
+          // Create new lead
+          const { data: newLead, error } = await supabase.from('campaign_leads').insert({
+            name: updated.nome || contactName || contactPhone,
+            whatsapp: n,
+            unit: instance.unit,
+            campaign_id: 'whatsapp-bot',
+            campaign_name: 'WhatsApp Bot',
+            status: 'novo',
+            month: updated.mes || null,
+            day_preference: updated.dia || null,
+            guests: updated.convidados || null,
+          }).select('id').single();
+          
+          if (error) {
+            msg = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato!';
+          } else {
+            await supabase.from('wapi_conversations').update({ lead_id: newLead.id }).eq('id', conv.id);
+            msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
+          }
+        }
+      } else {
+        // More questions to ask
+        nextStep = nextStepKey;
+        const nextQ = questions[nextStepKey];
+        
+        // Build response: confirmation (if any) + next question
+        let confirmation = currentQ.confirmation || '';
+        if (confirmation) {
+          confirmation = replaceVariables(confirmation, updated);
+        }
+        
+        msg = confirmation ? `${confirmation}\n\n${nextQ?.question || ''}` : (nextQ?.question || '');
       }
-      
-      msg = confirmation ? `${confirmation}\n\n${nextQ?.question || ''}` : (nextQ?.question || '');
     }
   } else {
     // Unknown step, reset
