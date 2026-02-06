@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { MessageSquare, Plus, Pencil, Trash2, GripVertical, Loader2 } from "lucide-react";
+import { CaptionsCard } from "./CaptionsCard";
 
 interface MessageTemplate {
   id: string;
@@ -285,6 +286,9 @@ export function MessagesSection({ userId, isAdmin }: MessagesSectionProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Legendas de Materiais - Collapsible */}
+      <CaptionsCard />
 
       {/* Variáveis disponíveis */}
       <Card>
