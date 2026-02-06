@@ -18,6 +18,7 @@ export function useAppNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [clientAlertCount, setClientAlertCount] = useState(0);
+  const [visitCount, setVisitCount] = useState(0);
   const [transferCount, setTransferCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const { showBrowserNotification, requestPermission } = useNotifications({ soundEnabled: false });
@@ -27,6 +28,7 @@ export function useAppNotifications() {
     const unread = notifs.filter((n) => !n.read);
     setUnreadCount(unread.length);
     setClientAlertCount(unread.filter((n) => n.type === "existing_client").length);
+    setVisitCount(unread.filter((n) => n.type === "visit_scheduled").length);
     setTransferCount(unread.filter((n) => n.type === "lead_transfer").length);
   }, []);
 
@@ -170,6 +172,7 @@ export function useAppNotifications() {
     notifications,
     unreadCount,
     clientAlertCount,
+    visitCount,
     transferCount,
     isLoading,
     markAsRead,

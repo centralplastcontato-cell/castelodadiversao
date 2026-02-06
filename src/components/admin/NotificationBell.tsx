@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, Trash2, UserPlus, ArrowRightLeft, Crown } from "lucide-react";
+import { Bell, Check, Trash2, UserPlus, ArrowRightLeft, Crown, CalendarCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -22,6 +22,7 @@ export function NotificationBell() {
     notifications,
     unreadCount,
     clientAlertCount,
+    visitCount,
     markAsRead,
     markAllAsRead,
     deleteNotification,
@@ -33,6 +34,8 @@ export function NotificationBell() {
         return <ArrowRightLeft className="w-4 h-4 text-primary" />;
       case "existing_client":
         return <Crown className="w-4 h-4 text-amber-500" />;
+      case "visit_scheduled":
+        return <CalendarCheck className="w-4 h-4 text-blue-500" />;
       case "lead_assigned":
         return <UserPlus className="w-4 h-4 text-green-500" />;
       default:
@@ -80,15 +83,26 @@ export function NotificationBell() {
                   {clientAlertCount > 9 ? "9+" : clientAlertCount}
                 </Badge>
               )}
-              {(unreadCount - clientAlertCount) > 0 && (
+              {visitCount > 0 && (
+                <Badge
+                  className={cn(
+                    "h-5 min-w-5 px-1 text-xs",
+                    "bg-blue-500 text-white hover:bg-blue-500",
+                    clientAlertCount === 0 && "animate-pulse"
+                  )}
+                >
+                  {visitCount > 9 ? "9+" : visitCount}
+                </Badge>
+              )}
+              {(unreadCount - clientAlertCount - visitCount) > 0 && (
                 <Badge
                   className={cn(
                     "h-5 min-w-5 px-1 text-xs",
                     "bg-primary text-primary-foreground",
-                    clientAlertCount === 0 && "animate-pulse"
+                    clientAlertCount === 0 && visitCount === 0 && "animate-pulse"
                   )}
                 >
-                  {(unreadCount - clientAlertCount) > 99 ? "99+" : (unreadCount - clientAlertCount)}
+                  {(unreadCount - clientAlertCount - visitCount) > 99 ? "99+" : (unreadCount - clientAlertCount - visitCount)}
                 </Badge>
               )}
             </div>
@@ -105,8 +119,13 @@ export function NotificationBell() {
                 {clientAlertCount} cliente{clientAlertCount !== 1 ? 's' : ''}
               </span>
             )}
+            {visitCount > 0 && (
+              <span className="flex items-center gap-1 text-xs text-blue-600 bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-full">
+                <CalendarCheck className="w-3 h-3" />
+                {visitCount} visita{visitCount !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
-          <h4 className="font-semibold text-sm">Notificações</h4>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
@@ -129,6 +148,7 @@ export function NotificationBell() {
             <div className="divide-y divide-border/50">
               {notifications.map((notification) => {
                 const isClientAlert = notification.type === "existing_client";
+                const isVisitAlert = notification.type === "visit_scheduled";
                 return (
                   <div
                     key={notification.id}
@@ -136,9 +156,11 @@ export function NotificationBell() {
                       "p-3 cursor-pointer transition-all duration-200 group",
                       isClientAlert && !notification.read
                         ? "bg-gradient-to-r from-amber-50 via-amber-50/50 to-transparent dark:from-amber-900/20 dark:via-amber-900/10 dark:to-transparent border-l-4 border-l-amber-500 hover:from-amber-100 dark:hover:from-amber-900/30"
-                        : !notification.read
-                          ? "bg-primary/5 hover:bg-primary/10"
-                          : "hover:bg-muted/50"
+                        : isVisitAlert && !notification.read
+                          ? "bg-gradient-to-r from-blue-50 via-blue-50/50 to-transparent dark:from-blue-900/20 dark:via-blue-900/10 dark:to-transparent border-l-4 border-l-blue-500 hover:from-blue-100 dark:hover:from-blue-900/30"
+                          : !notification.read
+                            ? "bg-primary/5 hover:bg-primary/10"
+                            : "hover:bg-muted/50"
                     )}
                     onClick={() => handleNotificationClick(notification)}
                   >
@@ -147,9 +169,11 @@ export function NotificationBell() {
                         "flex-shrink-0 mt-0.5 p-1.5 rounded-full",
                         isClientAlert 
                           ? "bg-amber-100 dark:bg-amber-900/40" 
-                          : notification.type === "lead_transfer"
-                            ? "bg-primary/10"
-                            : "bg-muted"
+                          : isVisitAlert
+                            ? "bg-blue-100 dark:bg-blue-900/40"
+                            : notification.type === "lead_transfer"
+                              ? "bg-primary/10"
+                              : "bg-muted"
                       )}>
                         {getNotificationIcon(notification.type)}
                       </div>
@@ -159,7 +183,8 @@ export function NotificationBell() {
                             className={cn(
                               "text-sm",
                               !notification.read && "font-semibold",
-                              isClientAlert && !notification.read && "text-amber-800 dark:text-amber-300"
+                              isClientAlert && !notification.read && "text-amber-800 dark:text-amber-300",
+                              isVisitAlert && !notification.read && "text-blue-800 dark:text-blue-300"
                             )}
                           >
                             {notification.title}
@@ -181,7 +206,9 @@ export function NotificationBell() {
                             "text-xs mt-0.5 line-clamp-2",
                             isClientAlert && !notification.read 
                               ? "text-amber-700 dark:text-amber-400" 
-                              : "text-muted-foreground"
+                              : isVisitAlert && !notification.read
+                                ? "text-blue-700 dark:text-blue-400"
+                                : "text-muted-foreground"
                           )}>
                             {notification.message}
                           </p>
@@ -199,12 +226,17 @@ export function NotificationBell() {
                               Ação necessária
                             </span>
                           )}
+                          {isVisitAlert && !notification.read && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 dark:text-blue-400 bg-blue-200/60 dark:bg-blue-800/40 px-1.5 py-0.5 rounded-full">
+                              Visita agendada
+                            </span>
+                          )}
                         </div>
                       </div>
                       {!notification.read && (
                         <div className={cn(
                           "w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5 animate-pulse",
-                          isClientAlert ? "bg-amber-500" : "bg-primary"
+                          isClientAlert ? "bg-amber-500" : isVisitAlert ? "bg-blue-500" : "bg-primary"
                         )} />
                       )}
                     </div>
