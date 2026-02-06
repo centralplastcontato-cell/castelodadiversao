@@ -13,6 +13,7 @@ import { LeadsFilters } from "@/components/admin/LeadsFilters";
 import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { LeadDetailSheet } from "@/components/admin/LeadDetailSheet";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { MobileMenu } from "@/components/admin/MobileMenu";
 import { exportLeadsToCSV } from "@/components/admin/exportLeads";
 import { MetricsCards } from "@/components/admin/MetricsCards";
 import { NotificationBell } from "@/components/admin/NotificationBell";
@@ -24,16 +25,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedBadge } from "@/components/ui/animated-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
-import { LogOut, RefreshCw, LayoutList, Columns, Menu, Users as UsersIcon, MessageSquare, Settings, Headset, Bell, BellOff, Presentation } from "lucide-react";
+import { LayoutList, Columns, Menu, Bell, BellOff, MessageSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 
@@ -52,7 +45,7 @@ export default function CentralAtendimento() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [_session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<LeadFilters>({
     campaign: "all",
@@ -493,74 +486,23 @@ export default function CentralAtendimento() {
           <div className="px-3 py-3">
               <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                  <SheetTrigger asChild>
+                <MobileMenu
+                  isOpen={isMobileMenuOpen}
+                  onOpenChange={setIsMobileMenuOpen}
+                  trigger={
                     <Button variant="ghost" size="icon" className="h-9 w-9">
                       <Menu className="w-5 h-5" />
                     </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-72 p-0">
-                    <SheetHeader className="p-4 border-b border-border">
-                      <div className="flex items-center gap-3">
-                        <Avatar 
-                          className="h-12 w-12 border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors shrink-0" 
-                          onClick={() => { navigate("/configuracoes"); setIsMobileMenuOpen(false); }}
-                        >
-                          <AvatarImage src={currentUserProfile?.avatar_url || undefined} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {getInitials(currentUserProfile?.full_name || user.email || "U")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <SheetTitle className="text-left text-base truncate">
-                            {currentUserProfile?.full_name || "Usuário"}
-                          </SheetTitle>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </SheetHeader>
-                    
-                    <nav className="flex flex-col p-2">
-                      <Button variant="secondary" className="justify-start h-11 px-3" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Headset className="w-5 h-5 mr-3" />
-                        Central de Atendimento
-                      </Button>
-                      
-                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/configuracoes"); setIsMobileMenuOpen(false); }}>
-                        <Settings className="w-5 h-5 mr-3" />
-                        Configurações
-                      </Button>
-                      
-                      {canAccessB2B && (
-                        <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/comercial-b2b"); setIsMobileMenuOpen(false); }}>
-                          <Presentation className="w-5 h-5 mr-3" />
-                          Comercial B2B
-                        </Button>
-                      )}
-                      
-                      {canManageUsers && (
-                        <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/users"); setIsMobileMenuOpen(false); }}>
-                          <UsersIcon className="w-5 h-5 mr-3" />
-                          Gerenciar Usuários
-                        </Button>
-                      )}
-                      
-                      <Separator className="my-2" />
-                      
-                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { handleRefresh(); setIsMobileMenuOpen(false); }}>
-                        <RefreshCw className="w-5 h-5 mr-3" />
-                        Atualizar Dados
-                      </Button>
-                      
-                      <Button variant="ghost" className="justify-start h-11 px-3 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>
-                        <LogOut className="w-5 h-5 mr-3" />
-                        Sair da Conta
-                      </Button>
-                    </nav>
-                  </SheetContent>
-                </Sheet>
+                  }
+                  currentPage="atendimento"
+                  userName={currentUserProfile?.full_name || ""}
+                  userEmail={user.email || ""}
+                  userAvatar={currentUserProfile?.avatar_url}
+                  canManageUsers={canManageUsers}
+                  canAccessB2B={canAccessB2B}
+                  onRefresh={handleRefresh}
+                  onLogout={handleLogout}
+                />
 
                 <div className="flex items-center gap-2 min-w-0">
                   <img src={logoCastelo} alt="Castelo da Diversão" className="h-8 w-auto shrink-0" />

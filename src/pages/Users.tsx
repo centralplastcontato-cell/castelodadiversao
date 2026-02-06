@@ -6,6 +6,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import { UserWithRole, AppRole, ROLE_LABELS } from "@/types/crm";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { MobileMenu } from "@/components/admin/MobileMenu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,10 +53,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound, Lock, Menu, LayoutList, MessageSquare } from "lucide-react";
+import { Plus, Loader2, Users, Shield, Pencil, Trash2, KeyRound, Lock, Menu } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import logoCastelo from "@/assets/logo-castelo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -74,7 +74,7 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [_session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
@@ -836,49 +836,22 @@ export default function UsersPage() {
           <div className="px-3 py-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                  <SheetTrigger asChild>
+                <MobileMenu
+                  isOpen={isMobileMenuOpen}
+                  onOpenChange={setIsMobileMenuOpen}
+                  trigger={
                     <Button variant="ghost" size="icon" className="h-9 w-9">
                       <Menu className="w-5 h-5" />
                     </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-72 p-0">
-                    <SheetHeader className="p-4 border-b border-border">
-                      <div className="flex items-center gap-3">
-                        <img src={logoCastelo} alt="Castelo da Diversão" className="h-10 w-auto" />
-                        <div>
-                          <SheetTitle className="text-left text-base">Castelo da Diversão</SheetTitle>
-                          <p className="text-xs text-muted-foreground">
-                            {currentUserProfile?.full_name || user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </SheetHeader>
-                    
-                    <nav className="flex flex-col p-2">
-                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/admin"); setIsMobileMenuOpen(false); }}>
-                        <LayoutList className="w-5 h-5 mr-3" />
-                        Gestão de Leads
-                      </Button>
-                      
-                      <Button variant="ghost" className="justify-start h-11 px-3" onClick={() => { navigate("/whatsapp"); setIsMobileMenuOpen(false); }}>
-                        <MessageSquare className="w-5 h-5 mr-3" />
-                        WhatsApp
-                      </Button>
-                      
-                      <Button variant="secondary" className="justify-start h-11 px-3" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Users className="w-5 h-5 mr-3" />
-                        Gerenciar Usuários
-                      </Button>
-                      
-                      <Separator className="my-2" />
-                      
-                      <Button variant="ghost" className="justify-start h-11 px-3 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>
-                        Sair da Conta
-                      </Button>
-                    </nav>
-                  </SheetContent>
-                </Sheet>
+                  }
+                  currentPage="users"
+                  userName={currentUserProfile?.full_name || ""}
+                  userEmail={user.email || ""}
+                  canManageUsers={canManageUsers}
+                  canAccessB2B={canAccessB2B}
+                  onRefresh={handleRefresh}
+                  onLogout={handleLogout}
+                />
 
                 <div className="flex items-center gap-2 min-w-0">
                   <img src={logoCastelo} alt="Castelo da Diversão" className="h-8 w-auto shrink-0" />
