@@ -48,6 +48,7 @@ interface BotSettings {
   test_mode_number: string | null;
   welcome_message: string;
   completion_message: string | null;
+  transfer_message: string | null;
 }
 
 interface VipNumber {
@@ -377,6 +378,7 @@ export function AutomationsSection() {
   const getStepLabel = (step: string) => {
     const labels: Record<string, string> = {
       nome: "Nome",
+      tipo: "Tipo (Cliente/Orçamento)",
       mes: "Mês",
       dia: "Dia da Semana",
       convidados: "Convidados",
@@ -658,14 +660,34 @@ export function AutomationsSection() {
                 ))}
               </Accordion>
 
+              {/* Transfer Message (for existing clients) */}
+              <div className="p-4 border rounded-lg bg-cyan-50/50 dark:bg-cyan-950/10 border-cyan-500/30">
+                <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-cyan-500 text-white flex items-center justify-center text-xs">
+                    <Forward className="w-3 h-3" />
+                  </span>
+                  Mensagem de Transferência (Clientes)
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Mensagem enviada quando o lead diz que já é cliente. O bot para e transfere para a equipe. Use {`{nome}`} para incluir o nome.
+                </p>
+                <Textarea
+                  value={botSettings?.transfer_message || "Entendido, {nome}! 🏰\n\nVou transferir sua conversa para nossa equipe comercial que vai te ajudar com sua festa.\n\nAguarde um momento, por favor! 👑"}
+                  onChange={(e) => setBotSettings(prev => prev ? { ...prev, transfer_message: e.target.value } : null)}
+                  onBlur={() => botSettings && updateBotSettings({ transfer_message: botSettings.transfer_message })}
+                  className="min-h-[100px] text-base"
+                  placeholder="Entendido, {nome}! Vou transferir..."
+                />
+              </div>
+
               {/* Completion Message */}
               <div className="p-4 border rounded-lg bg-green-50/50 dark:bg-green-950/10 border-green-500/30">
                 <Label className="text-sm font-medium flex items-center gap-2 mb-2">
                   <span className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs">✓</span>
-                  Mensagem de Conclusão
+                  Mensagem de Conclusão (Orçamento)
                 </Label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Mensagem enviada ao finalizar a qualificação. Use {`{nome}`}, {`{mes}`}, {`{dia}`} e {`{convidados}`} para incluir as respostas.
+                  Mensagem enviada ao finalizar a qualificação de quem quer orçamento. Use {`{nome}`}, {`{mes}`}, {`{dia}`} e {`{convidados}`} para incluir as respostas.
                 </p>
                 <Textarea
                   value={botSettings?.completion_message || "Perfeito, {nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉"}

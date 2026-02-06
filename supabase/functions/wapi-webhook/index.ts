@@ -176,7 +176,7 @@ async function isVipNumber(supabase: SupabaseClient, instanceId: string, phone: 
 }
 
 async function getBotSettings(supabase: SupabaseClient, instanceId: string) {
-  const { data } = await supabase.from('wapi_bot_settings').select('*, completion_message').eq('instance_id', instanceId).single();
+  const { data } = await supabase.from('wapi_bot_settings').select('*, completion_message, transfer_message').eq('instance_id', instanceId).single();
   return data;
 }
 
@@ -305,7 +305,10 @@ async function processBotQualification(
           // User is already a client - transfer to commercial team, disable bot, don't create lead
           console.log(`[Bot] User ${contactPhone} is already a client. Transferring to commercial team.`);
           
-          msg = `Entendido, ${updated.nome || 'cliente'}! 🏰\n\nVou transferir sua conversa para nossa equipe comercial que vai te ajudar com sua festa.\n\nAguarde um momento, por favor! 👑`;
+          // Use configurable transfer message or default
+          const defaultTransfer = `Entendido, {nome}! 🏰\n\nVou transferir sua conversa para nossa equipe comercial que vai te ajudar com sua festa.\n\nAguarde um momento, por favor! 👑`;
+          const transferTemplate = settings.transfer_message || defaultTransfer;
+          msg = replaceVariables(transferTemplate, updated);
           nextStep = 'transferred';
           
           // Send message, disable bot, and DON'T create lead
