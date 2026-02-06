@@ -81,13 +81,11 @@ export function AdminSidebar({
     >
       <SidebarHeader className="p-3">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-            <img 
-              src={logoCastelo} 
-              alt="Castelo da Diversão" 
-              className="h-6 w-6 object-contain"
-            />
-          </div>
+          <img 
+            src={logoCastelo} 
+            alt="Castelo da Diversão" 
+            className="h-9 w-9 object-contain shrink-0 rounded-lg"
+          />
           {!collapsed && (
             <>
               <div className="min-w-0 overflow-hidden flex-1">
