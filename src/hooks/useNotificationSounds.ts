@@ -1,12 +1,13 @@
 import { useCallback, useRef, useEffect } from "react";
 
-type SoundType = "message" | "lead" | "client" | "generic";
+type SoundType = "message" | "lead" | "client" | "visit" | "generic";
 
 interface SoundConfig {
   frequency: number;
   duration: number;
   pattern?: number[]; // Array of [on, off, on, off...] durations in ms
   secondFrequency?: number; // For two-tone sounds
+  thirdFrequency?: number; // For three-tone sounds
 }
 
 const SOUND_CONFIGS: Record<SoundType, SoundConfig> = {
@@ -24,6 +25,13 @@ const SOUND_CONFIGS: Record<SoundType, SoundConfig> = {
     duration: 0.25,
     pattern: [200, 80, 200, 80, 200], // Triple chime for urgency
     secondFrequency: 554.37, // C#5 - creates a more distinctive alert
+  },
+  visit: {
+    frequency: 587.33, // D5 - distinctive ascending fanfare for visits
+    duration: 0.2,
+    pattern: [180, 60, 180, 60, 250], // Rising triple tone - celebratory
+    secondFrequency: 698.46, // F5 - ascending second note
+    thirdFrequency: 880, // A5 - highest note for urgency
   },
   generic: {
     frequency: 660, // E5
@@ -103,18 +111,25 @@ export function useNotificationSounds() {
 
     try {
       if (config.pattern) {
-        // Play pattern (for lead/client notifications - multi-tone chime)
+        // Play pattern (for lead/client/visit notifications - multi-tone chime)
         let timeOffset = 0;
         config.pattern.forEach((ms, index) => {
           if (index % 2 === 0) {
             // Play tone - alternate between frequencies for more distinctive sound
             let freq = config.frequency;
-            if (config.secondFrequency) {
+            const toneIndex = Math.floor(index / 2); // Which tone in sequence (0, 1, 2...)
+            
+            if (config.thirdFrequency && config.secondFrequency) {
+              // Three-tone ascending for visit alerts
+              if (toneIndex === 0) freq = config.frequency;
+              else if (toneIndex === 1) freq = config.secondFrequency;
+              else freq = config.thirdFrequency;
+            } else if (config.secondFrequency) {
               // Alternate between frequencies for client alerts
-              freq = index === 0 ? config.frequency : (index === 2 ? config.secondFrequency : config.frequency);
+              freq = toneIndex === 0 ? config.frequency : (toneIndex === 1 ? config.secondFrequency : config.frequency);
             } else {
               // Original behavior for leads - second tone slightly higher
-              freq = index === 0 ? config.frequency : config.frequency * 1.25;
+              freq = toneIndex === 0 ? config.frequency : config.frequency * 1.25;
             }
             playTone(freq, ms / 1000, timeOffset / 1000);
           }
@@ -141,6 +156,10 @@ export function useNotificationSounds() {
     playSound("client");
   }, [playSound]);
 
+  const playVisitSound = useCallback(() => {
+    playSound("visit");
+  }, [playSound]);
+
   const setSoundEnabled = useCallback((enabled: boolean) => {
     soundEnabledRef.current = enabled;
   }, []);
@@ -150,6 +169,7 @@ export function useNotificationSounds() {
     playMessageSound,
     playLeadSound,
     playClientSound,
+    playVisitSound,
     setSoundEnabled,
   };
 }
