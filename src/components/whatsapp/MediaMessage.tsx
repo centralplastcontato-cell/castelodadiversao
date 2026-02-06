@@ -172,23 +172,13 @@ export function MediaMessage({
       case 'image':
         if (hasValidUrl && !imageLoadError) {
           return (
-            <div className="relative">
-              <img
-                src={currentUrl!}
-                alt={content || "Imagem"}
-                className="rounded max-w-full max-h-64 object-contain cursor-pointer"
-                onClick={() => window.open(currentUrl!, '_blank')}
-                onError={handleImageError}
-              />
-              {isDownloading && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center rounded">
-                  <div className="flex items-center gap-2 text-white text-xs">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Salvando...
-                  </div>
-                </div>
-              )}
-            </div>
+            <img
+              src={currentUrl!}
+              alt={content || "Imagem"}
+              className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer"
+              onClick={() => window.open(currentUrl!, '_blank')}
+              onError={handleImageError}
+            />
           );
         }
         return renderPlaceholder();
@@ -196,24 +186,14 @@ export function MediaMessage({
       case 'video':
         if (hasValidUrl && !imageLoadError) {
           return (
-            <div className="relative">
-              <video
-                controls
-                className="rounded max-w-full max-h-64"
-                preload="metadata"
-                onError={handleImageError}
-              >
-                <source src={currentUrl!} />
-              </video>
-              {isDownloading && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center rounded">
-                  <div className="flex items-center gap-2 text-white text-xs">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Salvando...
-                  </div>
-                </div>
-              )}
-            </div>
+            <video
+              controls
+              className="rounded-lg max-w-full max-h-64"
+              preload="metadata"
+              onError={handleImageError}
+            >
+              <source src={currentUrl!} />
+            </video>
           );
         }
         return renderPlaceholder();
@@ -221,17 +201,9 @@ export function MediaMessage({
       case 'audio':
         if (hasValidUrl && !imageLoadError) {
           return (
-            <div className="relative">
-              <audio controls className="max-w-full" onError={handleImageError}>
-                <source src={currentUrl!} />
-              </audio>
-              {isDownloading && (
-                <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Salvando áudio...
-                </div>
-              )}
-            </div>
+            <audio controls className="max-w-full" onError={handleImageError}>
+              <source src={currentUrl!} />
+            </audio>
           );
         }
         return renderPlaceholder();
