@@ -276,7 +276,7 @@ export function KanbanCard({
                     </TooltipContent>
                   </Tooltip>
                 )}
-                {lead.has_follow_up && (
+                {lead.has_follow_up && !lead.has_follow_up_2 && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30 rounded-full">
@@ -285,7 +285,20 @@ export function KanbanCard({
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs">
-                      <p>✅ Follow-up automático enviado</p>
+                      <p>✅ Follow-up #1 enviado</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {lead.has_follow_up_2 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-full">
+                        <RefreshCw className="w-3 h-3 text-amber-500" />
+                        <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">F-Up 2</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      <p>✅ Follow-up #2 enviado</p>
                     </TooltipContent>
                   </Tooltip>
                 )}

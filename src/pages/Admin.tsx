@@ -224,8 +224,8 @@ export default function Admin() {
         if (leadsData.length > 0) {
           const leadIds = leadsData.map(l => l.id);
           
-          // Parallel fetch for visit and follow-up data
-          const [convResult, historyResult] = await Promise.all([
+          // Parallel fetch for visit, follow-up 1 and follow-up 2 data
+          const [convResult, historyResult, historyResult2] = await Promise.all([
             supabase
               .from("wapi_conversations")
               .select("lead_id, has_scheduled_visit")
@@ -235,16 +235,23 @@ export default function Admin() {
               .from("lead_history")
               .select("lead_id")
               .in("lead_id", leadIds)
-              .eq("action", "Follow-up automático enviado")
+              .eq("action", "Follow-up automático enviado"),
+            supabase
+              .from("lead_history")
+              .select("lead_id")
+              .in("lead_id", leadIds)
+              .eq("action", "Follow-up #2 automático enviado")
           ]);
           
           const scheduledVisitLeadIds = new Set((convResult.data || []).map(c => c.lead_id));
           const followUpLeadIds = new Set((historyResult.data || []).map(h => h.lead_id));
+          const followUp2LeadIds = new Set((historyResult2.data || []).map(h => h.lead_id));
           
           let leadsWithExtraInfo = leadsData.map(lead => ({
             ...lead,
             has_scheduled_visit: scheduledVisitLeadIds.has(lead.id),
-            has_follow_up: followUpLeadIds.has(lead.id)
+            has_follow_up: followUpLeadIds.has(lead.id),
+            has_follow_up_2: followUp2LeadIds.has(lead.id)
           }));
           
           // Apply scheduled visit filter if enabled
