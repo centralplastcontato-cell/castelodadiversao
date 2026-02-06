@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,20 +115,25 @@ export function SalesMaterialsMenu({
 
   const leadGuestCount = getLeadGuestCount();
 
-  const packages = materials.filter(m => m.type === "pdf_package");
-  const photos = materials.filter(m => m.type === "photo");
-  const videos = materials.filter(m => m.type === "video");
-  const collections = materials.filter(m => m.type === "photo_collection");
+  // Use useMemo to ensure filters are recalculated when materials change
+  const { packages, photos, videos, collections } = useMemo(() => ({
+    packages: materials.filter(m => m.type === "pdf_package"),
+    photos: materials.filter(m => m.type === "photo"),
+    videos: materials.filter(m => m.type === "video"),
+    collections: materials.filter(m => m.type === "photo_collection"),
+  }), [materials]);
 
-  const sortedPackages = [...packages].sort((a, b) => {
-    if (leadGuestCount) {
-      const aMatch = a.guest_count === leadGuestCount;
-      const bMatch = b.guest_count === leadGuestCount;
-      if (aMatch && !bMatch) return -1;
-      if (!aMatch && bMatch) return 1;
-    }
-    return (a.guest_count || 0) - (b.guest_count || 0);
-  });
+  const sortedPackages = useMemo(() => {
+    return [...packages].sort((a, b) => {
+      if (leadGuestCount) {
+        const aMatch = a.guest_count === leadGuestCount;
+        const bMatch = b.guest_count === leadGuestCount;
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+      }
+      return (a.guest_count || 0) - (b.guest_count || 0);
+    });
+  }, [packages, leadGuestCount]);
 
   const handleSendMaterial = async (material: SalesMaterial) => {
     setIsSending(material.id);
