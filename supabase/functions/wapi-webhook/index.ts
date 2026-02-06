@@ -267,11 +267,16 @@ async function processBotQualification(
       .single();
     
     // If lead already has all qualification data, send welcome message for qualified leads
+    // BUT: If bot_step is proximo_passo, we need to continue processing the user's choice!
     if (existingLead?.name && existingLead?.month && existingLead?.day_preference && existingLead?.guests) {
-      console.log(`[Bot] Lead ${conv.lead_id} already qualified from LP`);
+      console.log(`[Bot] Lead ${conv.lead_id} already qualified from LP, bot_step: ${conv.bot_step}`);
       
-      // Only send welcome message if this is the first message from the lead (bot_step is null/welcome)
-      if (!conv.bot_step || conv.bot_step === 'welcome') {
+      // If we're waiting for proximo_passo answer, don't return - let it process below
+      if (conv.bot_step === 'proximo_passo') {
+        console.log(`[Bot] Lead is qualified but waiting for proximo_passo answer, continuing...`);
+        // Don't return - continue to process the proximo_passo step below
+      } else if (!conv.bot_step || conv.bot_step === 'welcome') {
+        // Only send welcome message if this is the first message from the lead
         const defaultQualifiedMsg = `Olá, {nome}! 👋\n\nRecebemos seu interesse pelo site e já temos seus dados aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}\n\nNossa equipe vai te responder em breve! 🏰✨`;
         const qualifiedTemplate = settings.qualified_lead_message || defaultQualifiedMsg;
         
@@ -310,8 +315,11 @@ async function processBotQualification(
           
           console.log(`[Bot] Sent qualified lead welcome message to ${contactPhone}`);
         }
+        return;
+      } else {
+        // For other steps (like sending_materials, complete_final, qualified_from_lp), return
+        return;
       }
-      return;
     }
   }
 
