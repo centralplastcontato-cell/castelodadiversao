@@ -67,6 +67,10 @@ interface BotSettings {
   follow_up_enabled: boolean;
   follow_up_delay_hours: number;
   follow_up_message: string | null;
+  // Second follow-up settings
+  follow_up_2_enabled: boolean;
+  follow_up_2_delay_hours: number;
+  follow_up_2_message: string | null;
 }
 
 interface VipNumber {
@@ -1050,81 +1054,169 @@ export function AutomationsSection() {
             Follow-up Automático
           </CardTitle>
           <CardDescription>
-            Envia mensagem de acompanhamento para leads que escolheram "Analisar com calma"
+            Envia mensagens de acompanhamento para leads que escolheram "Analisar com calma"
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Toggle Follow-up */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 border rounded-lg">
-            <div className="flex items-start sm:items-center gap-3 min-w-0">
-              <div className={`p-2 rounded-full shrink-0 ${botSettings?.follow_up_enabled ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"}`}>
-                <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+        <CardContent className="space-y-6">
+          {/* First Follow-up */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">1ª Mensagem</Badge>
+            </div>
+            
+            {/* Toggle Follow-up 1 */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 border rounded-lg">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className={`p-2 rounded-full shrink-0 ${botSettings?.follow_up_enabled ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"}`}>
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-medium text-sm sm:text-base">Primeiro Follow-up</h4>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Primeira mensagem automática após o período configurado
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h4 className="font-medium text-sm sm:text-base">Follow-up Ativo</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Envia mensagem automática após o período configurado
-                </p>
+              <Switch
+                checked={botSettings?.follow_up_enabled || false}
+                onCheckedChange={(checked) => updateBotSettings({ follow_up_enabled: checked })}
+                disabled={isSaving}
+                className="shrink-0 self-end sm:self-auto"
+              />
+            </div>
+
+            {/* Delay Configuration 1 */}
+            <div className="space-y-2">
+              <Label htmlFor="follow-up-delay">Tempo de espera</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="follow-up-delay"
+                  type="number"
+                  min={1}
+                  max={72}
+                  value={botSettings?.follow_up_delay_hours || 24}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 24;
+                    setBotSettings(prev => prev ? { ...prev, follow_up_delay_hours: value } : prev);
+                  }}
+                  onBlur={(e) => {
+                    const value = Math.max(1, Math.min(72, parseInt(e.target.value) || 24));
+                    updateBotSettings({ follow_up_delay_hours: value });
+                  }}
+                  className="w-24"
+                  disabled={isSaving || !botSettings?.follow_up_enabled}
+                />
+                <span className="text-sm text-muted-foreground">horas</span>
               </div>
             </div>
-            <Switch
-              checked={botSettings?.follow_up_enabled || false}
-              onCheckedChange={(checked) => updateBotSettings({ follow_up_enabled: checked })}
-              disabled={isSaving}
-              className="shrink-0 self-end sm:self-auto"
-            />
-          </div>
 
-          {/* Delay Configuration */}
-          <div className="space-y-2">
-            <Label htmlFor="follow-up-delay">Tempo de espera (horas)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="follow-up-delay"
-                type="number"
-                min={1}
-                max={72}
-                value={botSettings?.follow_up_delay_hours || 24}
+            {/* Follow-up Message 1 */}
+            <div className="space-y-2">
+              <Label htmlFor="follow-up-message" className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Mensagem
+              </Label>
+              <Textarea
+                id="follow-up-message"
+                placeholder="Olá, {nome}! 👋 Passando para saber se teve a chance de analisar as informações..."
+                value={botSettings?.follow_up_message || ""}
                 onChange={(e) => {
-                  const value = parseInt(e.target.value) || 24;
-                  setBotSettings(prev => prev ? { ...prev, follow_up_delay_hours: value } : prev);
+                  setBotSettings(prev => prev ? { ...prev, follow_up_message: e.target.value } : prev);
                 }}
                 onBlur={(e) => {
-                  const value = Math.max(1, Math.min(72, parseInt(e.target.value) || 24));
-                  updateBotSettings({ follow_up_delay_hours: value });
+                  updateBotSettings({ follow_up_message: e.target.value });
                 }}
-                className="w-24"
+                className="min-h-[100px]"
                 disabled={isSaving || !botSettings?.follow_up_enabled}
               />
-              <span className="text-sm text-muted-foreground">horas após escolher "Analisar com calma"</span>
+              <p className="text-xs text-muted-foreground">
+                Variáveis: {"{nome}"}, {"{unidade}"}, {"{mes}"}, {"{convidados}"}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Recomendado: 24h. O sistema verifica a cada hora e envia para leads elegíveis.
-            </p>
           </div>
 
-          {/* Follow-up Message */}
-          <div className="space-y-2">
-            <Label htmlFor="follow-up-message" className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Mensagem de Follow-up
-            </Label>
-            <Textarea
-              id="follow-up-message"
-              placeholder="Olá, {nome}! 👋 Passando para saber se teve a chance de analisar as informações..."
-              value={botSettings?.follow_up_message || ""}
-              onChange={(e) => {
-                setBotSettings(prev => prev ? { ...prev, follow_up_message: e.target.value } : prev);
-              }}
-              onBlur={(e) => {
-                updateBotSettings({ follow_up_message: e.target.value });
-              }}
-              className="min-h-[120px]"
-              disabled={isSaving || !botSettings?.follow_up_enabled}
-            />
-            <p className="text-xs text-muted-foreground">
-              Variáveis disponíveis: {"{nome}"}, {"{unidade}"}, {"{mes}"}, {"{convidados}"}
-            </p>
+          {/* Divider */}
+          <div className="border-t border-dashed" />
+
+          {/* Second Follow-up */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">2ª Mensagem</Badge>
+              <span className="text-xs text-muted-foreground">Enviada apenas se não houver resposta</span>
+            </div>
+            
+            {/* Toggle Follow-up 2 */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 border rounded-lg border-dashed">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className={`p-2 rounded-full shrink-0 ${botSettings?.follow_up_2_enabled ? "bg-amber-100 text-amber-600" : "bg-muted text-muted-foreground"}`}>
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-medium text-sm sm:text-base">Segundo Follow-up</h4>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Segunda tentativa caso o lead não responda à primeira
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={botSettings?.follow_up_2_enabled || false}
+                onCheckedChange={(checked) => updateBotSettings({ follow_up_2_enabled: checked })}
+                disabled={isSaving || !botSettings?.follow_up_enabled}
+                className="shrink-0 self-end sm:self-auto"
+              />
+            </div>
+
+            {/* Delay Configuration 2 */}
+            <div className="space-y-2">
+              <Label htmlFor="follow-up-2-delay">Tempo de espera após primeira mensagem</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="follow-up-2-delay"
+                  type="number"
+                  min={24}
+                  max={96}
+                  value={botSettings?.follow_up_2_delay_hours || 48}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 48;
+                    setBotSettings(prev => prev ? { ...prev, follow_up_2_delay_hours: value } : prev);
+                  }}
+                  onBlur={(e) => {
+                    const value = Math.max(24, Math.min(96, parseInt(e.target.value) || 48));
+                    updateBotSettings({ follow_up_2_delay_hours: value });
+                  }}
+                  className="w-24"
+                  disabled={isSaving || !botSettings?.follow_up_2_enabled}
+                />
+                <span className="text-sm text-muted-foreground">horas (desde a escolha original)</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Deve ser maior que o tempo da primeira mensagem. Recomendado: 48h.
+              </p>
+            </div>
+
+            {/* Follow-up Message 2 */}
+            <div className="space-y-2">
+              <Label htmlFor="follow-up-2-message" className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Mensagem
+              </Label>
+              <Textarea
+                id="follow-up-2-message"
+                placeholder="Olá, {nome}! 👋 Ainda não tivemos retorno sobre a festa..."
+                value={botSettings?.follow_up_2_message || ""}
+                onChange={(e) => {
+                  setBotSettings(prev => prev ? { ...prev, follow_up_2_message: e.target.value } : prev);
+                }}
+                onBlur={(e) => {
+                  updateBotSettings({ follow_up_2_message: e.target.value });
+                }}
+                className="min-h-[100px]"
+                disabled={isSaving || !botSettings?.follow_up_2_enabled}
+              />
+              <p className="text-xs text-muted-foreground">
+                Variáveis: {"{nome}"}, {"{unidade}"}, {"{mes}"}, {"{convidados}"}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
