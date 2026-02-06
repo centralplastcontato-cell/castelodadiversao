@@ -523,6 +523,13 @@ export type Database = {
       }
       wapi_bot_settings: {
         Row: {
+          auto_send_materials: boolean | null
+          auto_send_pdf: boolean | null
+          auto_send_pdf_intro: string | null
+          auto_send_photos: boolean | null
+          auto_send_photos_intro: string | null
+          auto_send_presentation_video: boolean | null
+          auto_send_promo_video: boolean | null
           bot_enabled: boolean
           completion_message: string | null
           created_at: string
@@ -536,6 +543,13 @@ export type Database = {
           welcome_message: string | null
         }
         Insert: {
+          auto_send_materials?: boolean | null
+          auto_send_pdf?: boolean | null
+          auto_send_pdf_intro?: string | null
+          auto_send_photos?: boolean | null
+          auto_send_photos_intro?: string | null
+          auto_send_presentation_video?: boolean | null
+          auto_send_promo_video?: boolean | null
           bot_enabled?: boolean
           completion_message?: string | null
           created_at?: string
@@ -549,6 +563,13 @@ export type Database = {
           welcome_message?: string | null
         }
         Update: {
+          auto_send_materials?: boolean | null
+          auto_send_pdf?: boolean | null
+          auto_send_pdf_intro?: string | null
+          auto_send_photos?: boolean | null
+          auto_send_photos_intro?: string | null
+          auto_send_presentation_video?: boolean | null
+          auto_send_promo_video?: boolean | null
           bot_enabled?: boolean
           completion_message?: string | null
           created_at?: string

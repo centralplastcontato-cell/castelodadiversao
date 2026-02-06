@@ -176,7 +176,7 @@ async function isVipNumber(supabase: SupabaseClient, instanceId: string, phone: 
 }
 
 async function getBotSettings(supabase: SupabaseClient, instanceId: string) {
-  const { data } = await supabase.from('wapi_bot_settings').select('*, completion_message, transfer_message, qualified_lead_message').eq('instance_id', instanceId).single();
+  const { data } = await supabase.from('wapi_bot_settings').select('*').eq('instance_id', instanceId).single();
   return data;
 }
 
@@ -546,8 +546,22 @@ async function sendQualificationMaterials(
   instance: { id: string; instance_id: string; instance_token: string; unit: string | null },
   conv: { id: string; remote_jid: string },
   botData: Record<string, string>,
-  settings: { completion_message?: string | null } | null
+  settings: {
+    auto_send_materials?: boolean;
+    auto_send_photos?: boolean;
+    auto_send_presentation_video?: boolean;
+    auto_send_promo_video?: boolean;
+    auto_send_pdf?: boolean;
+    auto_send_photos_intro?: string | null;
+    auto_send_pdf_intro?: string | null;
+  } | null
 ) {
+  // Check if auto-send is enabled
+  if (settings?.auto_send_materials === false) {
+    console.log('[Bot Materials] Auto-send is disabled in settings');
+    return;
+  }
+
   const unit = instance.unit;
   const month = botData.mes || '';
   const guestsStr = botData.convidados || '';
@@ -559,6 +573,16 @@ async function sendQualificationMaterials(
     console.log('[Bot Materials] No unit configured, skipping');
     return;
   }
+  
+  // Settings for which materials to send (default to true if not set)
+  const sendPhotos = settings?.auto_send_photos !== false;
+  const sendPresentationVideo = settings?.auto_send_presentation_video !== false;
+  const sendPromoVideo = settings?.auto_send_promo_video !== false;
+  const sendPdf = settings?.auto_send_pdf !== false;
+  
+  // Custom intro messages
+  const photosIntro = settings?.auto_send_photos_intro || '✨ Conheça nosso espaço incrível! 🏰🎉';
+  const pdfIntro = settings?.auto_send_pdf_intro || '📋 Oi {nome}! Segue o pacote completo para {convidados} na unidade {unidade}. Qualquer dúvida é só chamar! 💜';
   
   // Small delay to ensure completion message is delivered first
   await new Promise(r => setTimeout(r, 2000));
@@ -699,16 +723,15 @@ async function sendQualificationMaterials(
   };
   
   // 1. SEND PHOTO COLLECTION (with intro text)
-  if (photoCollections.length > 0) {
+  if (sendPhotos && photoCollections.length > 0) {
     const collection = photoCollections[0];
     const photos = collection.photo_urls || [];
     
     if (photos.length > 0) {
       console.log(`[Bot Materials] Sending ${photos.length} photos from collection`);
       
-      // Send intro text
-      const introCaption = captionMap['photo_collection'] || `✨ Conheça nosso espaço incrível na unidade ${unit}! 🏰🎉`;
-      const introText = introCaption.replace(/\{unidade\}/gi, unit);
+      // Send intro text (use custom or default caption)
+      const introText = photosIntro.replace(/\{unidade\}/gi, unit);
       const introMsgId = await sendText(introText);
       if (introMsgId) await saveMessage(introMsgId, 'text', introText);
       
@@ -726,7 +749,7 @@ async function sendQualificationMaterials(
   }
   
   // 2. SEND PRESENTATION VIDEO
-  if (presentationVideos.length > 0) {
+  if (sendPresentationVideo && presentationVideos.length > 0) {
     const video = presentationVideos[0];
     console.log(`[Bot Materials] Sending presentation video: ${video.name}`);
     
@@ -740,7 +763,7 @@ async function sendQualificationMaterials(
   }
   
   // 3. SEND PROMO VIDEO (only for Feb/March)
-  if (isPromoMonth && promoVideos.length > 0) {
+  if (sendPromoVideo && isPromoMonth && promoVideos.length > 0) {
     const promoVideo = promoVideos[0];
     console.log(`[Bot Materials] Sending promo video for ${month}: ${promoVideo.name}`);
     
@@ -754,7 +777,7 @@ async function sendQualificationMaterials(
   }
   
   // 4. SEND PDF PACKAGE (matching guest count)
-  if (guestCount && pdfPackages.length > 0) {
+  if (sendPdf && guestCount && pdfPackages.length > 0) {
     // Find exact match or closest package
     let matchingPdf = pdfPackages.find(p => p.guest_count === guestCount);
     
@@ -767,11 +790,14 @@ async function sendQualificationMaterials(
     if (matchingPdf) {
       console.log(`[Bot Materials] Sending PDF package: ${matchingPdf.name} for ${guestCount} guests`);
       
-      // Send intro message for PDF
+      // Send intro message for PDF (use custom template with variables)
       const firstName = (botData.nome || '').split(' ')[0] || 'você';
-      const pdfIntro = `📋 Oi ${firstName}! Segue o pacote completo para ${guestsStr} na unidade ${unit}. Qualquer dúvida é só chamar! 💜`;
-      const introMsgId = await sendText(pdfIntro);
-      if (introMsgId) await saveMessage(introMsgId, 'text', pdfIntro);
+      const pdfIntroText = pdfIntro
+        .replace(/\{nome\}/gi, firstName)
+        .replace(/\{convidados\}/gi, guestsStr)
+        .replace(/\{unidade\}/gi, unit);
+      const introMsgId = await sendText(pdfIntroText);
+      if (introMsgId) await saveMessage(introMsgId, 'text', pdfIntroText);
       
       await new Promise(r => setTimeout(r, 500));
       
