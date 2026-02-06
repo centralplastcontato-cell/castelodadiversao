@@ -592,85 +592,87 @@ export default function CentralAtendimento() {
               />
             </TabsContent>
 
-            <TabsContent value="leads" className="flex-1 overflow-auto min-h-0 mt-0 px-3 py-4">
-              {/* View Mode Toggle - at top like unit tabs in Chat */}
-              <div className="flex items-center gap-2 mb-4">
-                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="flex-1">
-                  <TabsList>
-                    <TabsTrigger value="list" className="flex items-center gap-2">
-                      <LayoutList className="w-4 h-4" />
-                      Lista
-                    </TabsTrigger>
-                    <TabsTrigger value="kanban" className="flex items-center gap-2">
-                      <Columns className="w-4 h-4" />
-                      CRM
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
+            <TabsContent value="leads" className="flex-1 min-h-0 mt-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-3 py-4">
+                {/* View Mode Toggle - at top like unit tabs in Chat */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="flex-1">
+                    <TabsList>
+                      <TabsTrigger value="list" className="flex items-center gap-2">
+                        <LayoutList className="w-4 h-4" />
+                        Lista
+                      </TabsTrigger>
+                      <TabsTrigger value="kanban" className="flex items-center gap-2">
+                        <Columns className="w-4 h-4" />
+                        CRM
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
 
-              <MetricsCards leads={leads} isLoading={isLoadingLeads} />
-              <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
+                <MetricsCards leads={leads} isLoading={isLoadingLeads} />
+                <LeadsFilters filters={filters} onFiltersChange={setFilters} responsaveis={responsaveis} onExport={handleExport} />
 
-              {viewMode === "list" ? (
-                <LeadsTable
-                  leads={leads}
-                  isLoading={isLoadingLeads}
-                  totalCount={totalCount}
-                  responsaveis={responsaveis}
-                  onLeadClick={handleLeadClick}
-                  onStatusChange={handleStatusChange}
-                  onRefresh={handleRefresh}
-                  canEdit={canEdit}
-                  isAdmin={isAdmin}
-                  currentUserId={user.id}
-                  currentUserName={currentUserProfile?.full_name || user.email || ""}
-                />
-              ) : (
-                <LeadsKanban
-                  leads={leads}
-                  responsaveis={responsaveis}
-                  onLeadClick={handleLeadClick}
-                  onStatusChange={async (leadId, newStatus) => {
-                    try {
+                {viewMode === "list" ? (
+                  <LeadsTable
+                    leads={leads}
+                    isLoading={isLoadingLeads}
+                    totalCount={totalCount}
+                    responsaveis={responsaveis}
+                    onLeadClick={handleLeadClick}
+                    onStatusChange={handleStatusChange}
+                    onRefresh={handleRefresh}
+                    canEdit={canEdit}
+                    isAdmin={isAdmin}
+                    currentUserId={user.id}
+                    currentUserName={currentUserProfile?.full_name || user.email || ""}
+                  />
+                ) : (
+                  <LeadsKanban
+                    leads={leads}
+                    responsaveis={responsaveis}
+                    onLeadClick={handleLeadClick}
+                    onStatusChange={async (leadId, newStatus) => {
+                      try {
+                        const lead = leads.find((l) => l.id === leadId);
+                        if (!lead) return;
+                        await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de status", old_value: lead.status, new_value: newStatus });
+                        const { error } = await supabase.from("campaign_leads").update({ status: newStatus }).eq("id", leadId);
+                        if (error) throw error;
+                        handleStatusChange(leadId, newStatus);
+                      } catch (error) {
+                        console.error("Error updating status:", error);
+                        toast({ title: "Erro ao atualizar status", description: "Tente novamente.", variant: "destructive" });
+                      }
+                    }}
+                    onNameUpdate={async (leadId, newName) => {
                       const lead = leads.find((l) => l.id === leadId);
                       if (!lead) return;
-                      await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de status", old_value: lead.status, new_value: newStatus });
-                      const { error } = await supabase.from("campaign_leads").update({ status: newStatus }).eq("id", leadId);
+                      await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de nome", old_value: lead.name, new_value: newName });
+                      const { error } = await supabase.from("campaign_leads").update({ name: newName }).eq("id", leadId);
                       if (error) throw error;
-                      handleStatusChange(leadId, newStatus);
-                    } catch (error) {
-                      console.error("Error updating status:", error);
-                      toast({ title: "Erro ao atualizar status", description: "Tente novamente.", variant: "destructive" });
-                    }
-                  }}
-                  onNameUpdate={async (leadId, newName) => {
-                    const lead = leads.find((l) => l.id === leadId);
-                    if (!lead) return;
-                    await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de nome", old_value: lead.name, new_value: newName });
-                    const { error } = await supabase.from("campaign_leads").update({ name: newName }).eq("id", leadId);
-                    if (error) throw error;
-                    // Also update contact_name in linked conversations
-                    await supabase.from("wapi_conversations").update({ contact_name: newName }).eq("lead_id", leadId);
-                    setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, name: newName } : l));
-                    toast({ title: "Nome atualizado", description: `O nome foi alterado para "${newName}".` });
-                  }}
-                  onDescriptionUpdate={async (leadId, newDescription) => {
-                    const lead = leads.find((l) => l.id === leadId);
-                    if (!lead) return;
-                    await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de observações", old_value: lead.observacoes || "", new_value: newDescription });
-                    const { error } = await supabase.from("campaign_leads").update({ observacoes: newDescription }).eq("id", leadId);
-                    if (error) throw error;
-                    setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, observacoes: newDescription } : l));
-                    toast({ title: "Observação atualizada", description: "A observação foi salva com sucesso." });
-                  }}
-                  canEdit={canEdit}
-                  canEditName={canEditName}
-                  canEditDescription={canEditDescription}
-                  canDelete={isAdmin}
-                  onDelete={handleDeleteLead}
-                />
-              )}
+                      // Also update contact_name in linked conversations
+                      await supabase.from("wapi_conversations").update({ contact_name: newName }).eq("lead_id", leadId);
+                      setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, name: newName } : l));
+                      toast({ title: "Nome atualizado", description: `O nome foi alterado para "${newName}".` });
+                    }}
+                    onDescriptionUpdate={async (leadId, newDescription) => {
+                      const lead = leads.find((l) => l.id === leadId);
+                      if (!lead) return;
+                      await supabase.from("lead_history").insert({ lead_id: leadId, user_id: user.id, user_name: currentUserProfile?.full_name || user.email, action: "Alteração de observações", old_value: lead.observacoes || "", new_value: newDescription });
+                      const { error } = await supabase.from("campaign_leads").update({ observacoes: newDescription }).eq("id", leadId);
+                      if (error) throw error;
+                      setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, observacoes: newDescription } : l));
+                      toast({ title: "Observação atualizada", description: "A observação foi salva com sucesso." });
+                    }}
+                    canEdit={canEdit}
+                    canEditName={canEditName}
+                    canEditDescription={canEditDescription}
+                    canDelete={isAdmin}
+                    onDelete={handleDeleteLead}
+                  />
+                )}
+              </div>
             </TabsContent>
 
           </Tabs>
