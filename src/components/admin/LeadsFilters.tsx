@@ -89,7 +89,7 @@ export function LeadsFilters({
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
   return (
-    <div className="bg-card rounded-xl border border-border p-3 sm:p-4 mb-4 sm:mb-6">
+    <div className="bg-card/80 backdrop-blur-sm rounded-xl border border-border/60 p-3 sm:p-4 mb-4 sm:mb-6 shadow-subtle">
       <div className="flex flex-col gap-3 sm:gap-4">
         {/* Row 1: Search and Export */}
         <div className="flex gap-2 sm:gap-4">
@@ -97,18 +97,23 @@ export function LeadsFilters({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar..."
+                placeholder="Buscar por nome, telefone..."
                 value={filters.search}
                 onChange={(e) =>
                   onFiltersChange({ ...filters, search: e.target.value })
                 }
-                className="pl-10 text-sm"
+                className="pl-10 text-sm bg-background/50 border-border/60 focus:border-primary/50 focus:ring-primary/20"
               />
             </div>
           </div>
-          <Button variant="outline" size="sm" className="shrink-0" onClick={onExport}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="shrink-0 border-border/60 hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all" 
+            onClick={onExport}
+          >
             <Download className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Exportar CSV</span>
+            <span className="hidden sm:inline">Exportar</span>
           </Button>
         </div>
 

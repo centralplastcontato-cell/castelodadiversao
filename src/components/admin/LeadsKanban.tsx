@@ -128,21 +128,21 @@ export function LeadsKanban({
           <Button
             variant="outline"
             size="icon"
-            className="h-9 w-9 shrink-0"
+            className="h-9 w-9 shrink-0 border-border/60 hover:bg-primary/5 hover:border-primary/30"
             onClick={handlePrevColumn}
             disabled={mobileColumnIndex === 0}
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
           
-          <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+          <div className="flex-1 flex items-center justify-center gap-2 min-w-0 bg-card/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-border/60">
             <div
-              className={cn("w-3 h-3 rounded-full shrink-0", LEAD_STATUS_COLORS[currentMobileColumn])}
+              className={cn("w-3 h-3 rounded-full shrink-0 shadow-sm", LEAD_STATUS_COLORS[currentMobileColumn])}
             />
-            <span className="font-medium text-sm truncate">
+            <span className="font-semibold text-sm truncate">
               {LEAD_STATUS_LABELS[currentMobileColumn]}
             </span>
-            <Badge variant="secondary" className="text-xs shrink-0">
+            <Badge variant="secondary" className="text-xs shrink-0 bg-muted/80">
               {mobileColumnLeads.length}
             </Badge>
           </div>
@@ -150,7 +150,7 @@ export function LeadsKanban({
           <Button
             variant="outline"
             size="icon"
-            className="h-9 w-9 shrink-0"
+            className="h-9 w-9 shrink-0 border-border/60 hover:bg-primary/5 hover:border-primary/30"
             onClick={handleNextColumn}
             disabled={mobileColumnIndex === columns.length - 1}
           >
@@ -165,9 +165,9 @@ export function LeadsKanban({
               key={status}
               onClick={() => setMobileColumnIndex(index)}
               className={cn(
-                "w-2 h-2 rounded-full transition-all",
+                "w-2 h-2 rounded-full transition-all duration-200",
                 index === mobileColumnIndex 
-                  ? LEAD_STATUS_COLORS[status]
+                  ? `${LEAD_STATUS_COLORS[status]} ring-2 ring-offset-1 ring-offset-background ring-primary/30`
                   : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
               )}
               title={LEAD_STATUS_LABELS[status]}
@@ -177,7 +177,7 @@ export function LeadsKanban({
 
         {/* Mobile Column Content */}
         <div
-          className="flex-1 bg-muted/30 rounded-xl border border-border flex flex-col min-h-0"
+          className="flex-1 bg-gradient-to-b from-muted/40 to-muted/20 rounded-xl border border-border/60 flex flex-col min-h-0 shadow-inner"
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, currentMobileColumn)}
         >
@@ -221,22 +221,22 @@ export function LeadsKanban({
           return (
             <div
               key={status}
-              className="flex-shrink-0 w-72 bg-muted/30 rounded-xl border border-border flex flex-col max-h-[calc(100vh-220px)]"
+              className="flex-shrink-0 w-72 bg-gradient-to-b from-muted/50 to-muted/20 rounded-xl border border-border/60 flex flex-col max-h-[calc(100vh-220px)] shadow-sm hover:shadow-md transition-shadow duration-200"
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, status)}
             >
               {/* Column Header */}
-              <div className="p-3 border-b border-border flex-shrink-0">
+              <div className="p-3 border-b border-border/60 flex-shrink-0 bg-card/50 backdrop-blur-sm rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div
-                      className={`w-3 h-3 rounded-full ${LEAD_STATUS_COLORS[status]}`}
+                      className={`w-3 h-3 rounded-full shadow-sm ${LEAD_STATUS_COLORS[status]}`}
                     />
-                    <span className="font-medium text-sm">
+                    <span className="font-semibold text-sm">
                       {LEAD_STATUS_LABELS[status]}
                     </span>
                   </div>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs font-medium bg-background/80 shadow-sm">
                     {columnLeads.length}
                   </Badge>
                 </div>
@@ -246,8 +246,8 @@ export function LeadsKanban({
               <ScrollArea className="flex-1 min-h-0">
                 <div className="p-2 space-y-2">
                   {columnLeads.length === 0 ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground">
-                      Nenhum lead
+                    <div className="p-6 text-center text-sm text-muted-foreground/70 border-2 border-dashed border-border/40 rounded-lg m-2">
+                      Arraste leads aqui
                     </div>
                   ) : (
                     columnLeads.map((lead) => (

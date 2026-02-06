@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Lead, LeadStatus, LEAD_STATUS_LABELS } from "@/types/crm";
+import { Lead, LeadStatus } from "@/types/crm";
 import { Users, UserPlus, Clock, CheckCircle, XCircle, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -29,50 +29,60 @@ export function MetricsCards({ leads, isLoading }: MetricsCardsProps) {
   const closed = leadsByStatus["fechado"] || 0;
   const lost = leadsByStatus["perdido"] || 0;
 
-  const conversionRate = totalLeads > 0 ? ((closed / totalLeads) * 100).toFixed(1) : "0";
-
   const metrics = [
     {
       title: "Total de Leads",
       value: totalLeads,
       icon: Users,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
+      gradient: "from-primary/20 via-primary/10 to-transparent",
+      iconBg: "bg-primary/15",
+      iconColor: "text-primary",
+      borderColor: "border-primary/20",
     },
     {
       title: "Leads Hoje",
       value: leadsToday,
       icon: UserPlus,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10",
+      gradient: "from-sky-500/20 via-sky-500/10 to-transparent",
+      iconBg: "bg-sky-500/15",
+      iconColor: "text-sky-600",
+      borderColor: "border-sky-500/20",
     },
     {
       title: "Novos",
       value: newLeads,
       icon: Clock,
-      color: "text-yellow-500",
-      bgColor: "bg-yellow-500/10",
+      gradient: "from-amber-500/20 via-amber-500/10 to-transparent",
+      iconBg: "bg-amber-500/15",
+      iconColor: "text-amber-600",
+      borderColor: "border-amber-500/20",
     },
     {
       title: "Em Contato",
       value: inContact,
       icon: TrendingUp,
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10",
+      gradient: "from-orange-500/20 via-orange-500/10 to-transparent",
+      iconBg: "bg-orange-500/15",
+      iconColor: "text-orange-600",
+      borderColor: "border-orange-500/20",
     },
     {
       title: "Fechados",
       value: closed,
       icon: CheckCircle,
-      color: "text-green-500",
-      bgColor: "bg-green-500/10",
+      gradient: "from-emerald-500/20 via-emerald-500/10 to-transparent",
+      iconBg: "bg-emerald-500/15",
+      iconColor: "text-emerald-600",
+      borderColor: "border-emerald-500/20",
     },
     {
       title: "Perdidos",
       value: lost,
       icon: XCircle,
-      color: "text-red-500",
-      bgColor: "bg-red-500/10",
+      gradient: "from-rose-500/20 via-rose-500/10 to-transparent",
+      iconBg: "bg-rose-500/15",
+      iconColor: "text-rose-600",
+      borderColor: "border-rose-500/20",
     },
   ];
 
@@ -80,9 +90,9 @@ export function MetricsCards({ leads, isLoading }: MetricsCardsProps) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="border-border/50">
+          <Card key={i} className="border-border/50 overflow-hidden">
             <CardContent className="p-4">
-              <Skeleton className="h-4 w-20 mb-2" />
+              <Skeleton className="h-4 w-20 mb-3" />
               <Skeleton className="h-8 w-12" />
             </CardContent>
           </Card>
@@ -96,18 +106,24 @@ export function MetricsCards({ leads, isLoading }: MetricsCardsProps) {
       {metrics.map((metric) => (
         <Card 
           key={metric.title} 
-          className="border-border/50 hover:border-primary/30 transition-colors"
+          className={`
+            border ${metric.borderColor} overflow-hidden
+            hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.02]
+            transition-all duration-300 ease-out cursor-default
+            bg-card
+          `}
         >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className={`p-1.5 rounded-md ${metric.bgColor}`}>
-                <metric.icon className={`w-4 h-4 ${metric.color}`} />
+          <div className={`absolute inset-0 bg-gradient-to-br ${metric.gradient} pointer-events-none`} />
+          <CardContent className="p-4 relative">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className={`p-2 rounded-lg ${metric.iconBg} shadow-sm`}>
+                <metric.icon className={`w-4 h-4 ${metric.iconColor}`} />
               </div>
               <span className="text-xs text-muted-foreground font-medium truncate">
                 {metric.title}
               </span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{metric.value}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{metric.value}</p>
           </CardContent>
         </Card>
       ))}

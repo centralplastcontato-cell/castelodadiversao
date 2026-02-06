@@ -845,19 +845,27 @@ export default function CentralAtendimento() {
               </TabsContent>
 
               <TabsContent value="leads" className="flex-1 overflow-auto min-h-0 mt-0">
-               {/* View mode toggle - positioned at top like mobile. Using flex layout to contain table scroll */}
+               {/* View mode toggle - Premium Style */}
                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")} className="h-full flex flex-col">
-                  <div className="mb-4">
-                    <TabsList>
-                      <TabsTrigger value="list" className="flex items-center gap-2">
-                        <LayoutList className="w-4 h-4" />
-                        Lista
-                      </TabsTrigger>
-                      <TabsTrigger value="kanban" className="flex items-center gap-2">
-                        <Columns className="w-4 h-4" />
-                        CRM
-                      </TabsTrigger>
-                    </TabsList>
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="bg-muted/50 rounded-lg p-1 inline-flex">
+                      <TabsList className="bg-transparent">
+                        <TabsTrigger 
+                          value="list" 
+                          className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md"
+                        >
+                          <LayoutList className="w-4 h-4" />
+                          Lista
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="kanban" 
+                          className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md"
+                        >
+                          <Columns className="w-4 h-4" />
+                          CRM
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
                   </div>
 
                   <MetricsCards leads={leads} isLoading={isLoadingLeads} />
