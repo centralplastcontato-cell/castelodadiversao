@@ -1825,8 +1825,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header with Unit Tabs and Notifications Toggle */}
-      <div className="flex items-center justify-between gap-2 mt-3 mb-2 px-1 shrink-0">
+      {/* Header with Unit Tabs - Premium Glassmorphism */}
+      <div className="flex items-center justify-between gap-2 mt-3 mb-3 px-1 shrink-0">
         {/* Unit Tabs - only show if multiple instances */}
         {instances.length > 1 ? (
           <Tabs 
@@ -1834,13 +1834,13 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
             onValueChange={handleInstanceChange}
             className="flex-1"
           >
-            <TabsList>
+            <TabsList className="bg-card/80 backdrop-blur-sm border border-border/60 shadow-sm">
               {instances.map((instance) => (
                 <TabsTrigger 
                   key={instance.id} 
                   value={instance.id}
                   disabled={instance.status !== 'connected'}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                 >
                   <Building2 className="w-4 h-4" />
                   {instance.unit}
@@ -1856,30 +1856,30 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         )}
       </div>
 
-      {/* Disconnected warning */}
+      {/* Disconnected warning - Premium styled */}
       {hasDisconnectedInstances && selectedInstance?.status !== 'connected' && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 mb-2 text-sm text-center shrink-0">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 mb-3 text-sm text-center shrink-0 shadow-sm backdrop-blur-sm">
           <WifiOff className="w-4 h-4 inline mr-2" />
           Esta unidade está desconectada. Selecione outra ou aguarde o administrador.
         </div>
       )}
 
-      {/* Chat Area */}
+      {/* Chat Area - Premium Container */}
       {selectedInstance?.status === 'connected' && (
-        <div className="flex flex-1 border rounded-lg overflow-hidden bg-card min-h-0">
+        <div className="flex flex-1 border border-border/60 rounded-xl overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 min-h-0 shadow-lg">
           {/* Mobile: Show full width list or chat */}
           <div className={cn(
             "w-full flex flex-col overflow-hidden md:hidden",
             selectedConversation && "hidden"
           )}>
-            <div className="p-3 border-b space-y-2">
+            <div className="p-3 border-b border-border/60 space-y-2 bg-card/80 backdrop-blur-sm">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar conversa..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 bg-background/80 border-border/60 focus:border-primary/50 focus:ring-primary/20"
                 />
               </div>
               <ConversationFilters
@@ -1907,26 +1907,26 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     key={conv.id}
                     onClick={() => setSelectedConversation(conv)}
                     className={cn(
-                      "w-full p-2.5 flex items-center gap-2.5 hover:bg-accent transition-colors text-left border-b group",
-                      selectedConversation?.id === conv.id && "bg-accent",
-                      conv.unread_count > 0 && "bg-primary/5"
+                      "w-full p-2.5 flex items-center gap-2.5 hover:bg-primary/5 transition-all text-left border-b border-border/40 group",
+                      selectedConversation?.id === conv.id && "bg-primary/10 border-l-2 border-l-primary",
+                      conv.unread_count > 0 && "bg-gradient-to-r from-primary/10 to-transparent"
                     )}
                   >
                     <div className="relative shrink-0">
-                      <Avatar className="h-10 w-10">
+                      <Avatar className="h-10 w-10 ring-2 ring-border/50 shadow-sm">
                         <AvatarImage 
                           src={conv.contact_picture || undefined} 
                           alt={conv.contact_name || conv.contact_phone}
                         />
                         <AvatarFallback className={cn(
-                          "text-primary text-sm",
-                          conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
+                          "text-primary text-sm font-semibold bg-gradient-to-br",
+                          conv.unread_count > 0 ? "from-primary/30 to-primary/10" : "from-primary/15 to-primary/5"
                         )}>
                           {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       {conv.is_favorite && (
-                        <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
+                        <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary drop-shadow-sm" />
                       )}
                       {conv.has_scheduled_visit && (
                         <CalendarCheck className="absolute -top-1 -left-1 w-3 h-3 text-blue-600 bg-background rounded-full" />
@@ -2001,15 +2001,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
               maxSize={50}
               className="flex flex-col min-h-0"
             >
-              <div className="flex flex-col h-full border-r">
-                <div className="p-3 border-b space-y-2">
+              <div className="flex flex-col h-full border-r border-border/60 bg-gradient-to-b from-card to-muted/10">
+                <div className="p-3 border-b border-border/60 space-y-2 bg-card/80 backdrop-blur-sm">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar conversa..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 bg-background/80 border-border/60 focus:border-primary/50 focus:ring-primary/20"
                     />
                   </div>
                   <ConversationFilters
@@ -2037,35 +2037,35 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         key={conv.id}
                         onClick={() => setSelectedConversation(conv)}
                         className={cn(
-                          "w-full p-2.5 flex items-center gap-2.5 hover:bg-accent transition-colors text-left border-b group",
-                          selectedConversation?.id === conv.id && "bg-accent",
-                          conv.unread_count > 0 && "bg-primary/5"
+                          "w-full p-2.5 flex items-center gap-2.5 hover:bg-primary/5 transition-all text-left border-b border-border/40 group",
+                          selectedConversation?.id === conv.id && "bg-primary/10 border-l-2 border-l-primary shadow-sm",
+                          conv.unread_count > 0 && "bg-gradient-to-r from-primary/10 to-transparent"
                         )}
                       >
                         <div className="relative shrink-0">
-                        <Avatar className="h-10 w-10">
+                        <Avatar className="h-10 w-10 ring-2 ring-border/50 shadow-sm">
                           <AvatarImage 
                             src={conv.contact_picture || undefined} 
                             alt={conv.contact_name || conv.contact_phone}
                           />
                           <AvatarFallback className={cn(
-                            "text-primary text-sm",
-                            conv.unread_count > 0 ? "bg-primary/20" : "bg-primary/10"
+                            "text-primary text-sm font-semibold bg-gradient-to-br",
+                            conv.unread_count > 0 ? "from-primary/30 to-primary/10" : "from-primary/15 to-primary/5"
                           )}>
                             {(conv.contact_name || conv.contact_phone).charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                           {conv.is_favorite && (
-                            <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary" />
+                            <Star className="absolute -top-1 -right-1 w-3 h-3 text-secondary fill-secondary drop-shadow-sm" />
                           )}
                           {conv.has_scheduled_visit && (
-                            <CalendarCheck className="absolute -top-1 -left-1 w-3 h-3 text-blue-600 bg-background rounded-full" />
+                            <CalendarCheck className="absolute -top-1 -left-1 w-3.5 h-3.5 text-blue-600 bg-background rounded-full shadow-sm" />
                           )}
                           {conv.is_freelancer && (
-                            <Briefcase className="absolute -bottom-1 -left-1 w-3 h-3 text-orange-600 bg-background rounded-full" />
+                            <Briefcase className="absolute -bottom-1 -left-1 w-3.5 h-3.5 text-orange-600 bg-background rounded-full shadow-sm" />
                           )}
                           {conv.is_closed && (
-                            <X className="absolute -bottom-1 -right-1 w-3 h-3 text-destructive bg-background rounded-full" />
+                            <X className="absolute -bottom-1 -right-1 w-3.5 h-3.5 text-destructive bg-background rounded-full shadow-sm" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0 overflow-hidden">
@@ -2188,20 +2188,20 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
             </ResizablePanel>
 
             {/* Resize Handle */}
-            <ResizableHandle withHandle className="bg-border hover:bg-primary/20 transition-colors" />
+            <ResizableHandle withHandle className="bg-border/60 hover:bg-primary/30 transition-colors" />
 
             {/* Messages Panel */}
-            <ResizablePanel defaultSize={65} minSize={40} className="flex flex-col min-h-0 min-w-0">
+            <ResizablePanel defaultSize={65} minSize={40} className="flex flex-col min-h-0 min-w-0 bg-gradient-to-b from-muted/20 to-background">
               {selectedConversation ? (
                 <>
-                  {/* Chat Header */}
-                  <div className="p-3 border-b flex items-center gap-2 sm:gap-3 shrink-0">
-                    <Avatar className="h-9 w-9 shrink-0">
+                  {/* Chat Header - Premium Glassmorphism */}
+                  <div className="p-3 border-b border-border/60 flex items-center gap-2 sm:gap-3 shrink-0 bg-card/90 backdrop-blur-sm shadow-sm">
+                    <Avatar className="h-9 w-9 shrink-0 ring-2 ring-primary/20 shadow-md">
                       <AvatarImage 
                         src={selectedConversation.contact_picture || undefined} 
                         alt={selectedConversation.contact_name || selectedConversation.contact_phone}
                       />
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary text-sm font-semibold">
                         {(selectedConversation.contact_name || selectedConversation.contact_phone)
                           .charAt(0)
                           .toUpperCase()}
