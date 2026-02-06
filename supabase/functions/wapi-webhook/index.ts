@@ -500,26 +500,48 @@ async function processBotQualification(
         
         const choice = validation.value || '';
         let responseMsg = '';
+        let newLeadStatus: 'em_contato' | 'aguardando_resposta' | 'novo' = 'novo';
         let scheduleVisit = false;
+        let notificationType = '';
+        let notificationTitle = '';
+        let notificationMessage = '';
+        let notificationPriority = false;
         
         // Default responses
         const defaultVisitResponse = `Ótima escolha! 🏰✨\n\nNossa equipe vai entrar em contato para agendar sua visita ao Castelo da Diversão!\n\nAguarde um momento que já vamos te chamar! 👑`;
         const defaultQuestionsResponse = `Claro! 💬\n\nPode mandar sua dúvida aqui que nossa equipe vai te responder rapidinho!\n\nEstamos à disposição! 👑`;
         const defaultAnalyzeResponse = `Sem problemas! 📋\n\nVou enviar nossos materiais para você analisar com calma. Quando estiver pronto, é só chamar aqui!\n\nEstamos à disposição! 👑✨`;
         
+        const leadName = updated.nome || contactName || contactPhone;
+        
         if (choice === 'Agendar visita' || content.trim() === '1') {
-          // User wants to schedule a visit
+          // User wants to schedule a visit - HIGH PRIORITY
           scheduleVisit = true;
+          newLeadStatus = 'em_contato';
           responseMsg = settings.next_step_visit_response || defaultVisitResponse;
-          console.log(`[Bot] User ${contactPhone} wants to schedule a visit`);
+          notificationType = 'visit_scheduled';
+          notificationTitle = '🗓️ VISITA AGENDADA - Ação urgente!';
+          notificationMessage = `${leadName} quer agendar uma visita no Castelo! Entre em contato o mais rápido possível.`;
+          notificationPriority = true;
+          console.log(`[Bot] User ${contactPhone} wants to schedule a visit - updating status to em_contato`);
         } else if (choice === 'Tirar dúvidas' || content.trim() === '2') {
           // User wants to ask questions
+          newLeadStatus = 'aguardando_resposta';
           responseMsg = settings.next_step_questions_response || defaultQuestionsResponse;
-          console.log(`[Bot] User ${contactPhone} wants to ask questions`);
+          notificationType = 'lead_questions';
+          notificationTitle = '💬 Lead com dúvidas';
+          notificationMessage = `${leadName} quer tirar dúvidas. Responda assim que possível!`;
+          notificationPriority = false;
+          console.log(`[Bot] User ${contactPhone} wants to ask questions - updating status to aguardando_resposta`);
         } else if (choice === 'Analisar com calma' || content.trim() === '3') {
           // User wants time to think
+          newLeadStatus = 'aguardando_resposta';
           responseMsg = settings.next_step_analyze_response || defaultAnalyzeResponse;
-          console.log(`[Bot] User ${contactPhone} wants time to analyze`);
+          notificationType = 'lead_analyzing';
+          notificationTitle = '📋 Lead analisando materiais';
+          notificationMessage = `${leadName} está analisando os materiais. Aguarde ou faça follow-up em breve.`;
+          notificationPriority = false;
+          console.log(`[Bot] User ${contactPhone} wants time to analyze - updating status to aguardando_resposta`);
         } else {
           // Invalid choice, re-ask
           nextStep = 'proximo_passo';
@@ -530,21 +552,76 @@ async function processBotQualification(
         if (nextStep === 'complete_final') {
           msg = responseMsg;
           
-          // Update conversation with visit flag if applicable
-          if (scheduleVisit) {
-            await supabase.from('wapi_conversations').update({
-              has_scheduled_visit: true
-            }).eq('id', conv.id);
+          // Update conversation flags
+          await supabase.from('wapi_conversations').update({
+            has_scheduled_visit: scheduleVisit
+          }).eq('id', conv.id);
+          
+          // Update lead status
+          if (conv.lead_id) {
+            await supabase.from('campaign_leads').update({
+              status: newLeadStatus
+            }).eq('id', conv.lead_id);
+            
+            // Record in lead history
+            await supabase.from('lead_history').insert({
+              lead_id: conv.lead_id,
+              action: 'Próximo passo escolhido',
+              old_value: 'novo',
+              new_value: choice,
+            });
+            
+            console.log(`[Bot] Lead ${conv.lead_id} status updated to ${newLeadStatus}`);
           }
           
-          // Also update lead status based on choice
-          if (conv.lead_id || scheduleVisit) {
-            const leadId = conv.lead_id;
-            if (leadId) {
-              const newStatus = scheduleVisit ? 'em_contato' : 'novo';
-              await supabase.from('campaign_leads').update({
-                status: newStatus
-              }).eq('id', leadId);
+          // Create notifications for team
+          if (notificationType) {
+            try {
+              const unitLower = instance.unit?.toLowerCase() || '';
+              const unitPermission = `leads.unit.${unitLower}`;
+              
+              // Get users with permission for this unit or all units
+              const { data: userPerms } = await supabase
+                .from('user_permissions')
+                .select('user_id')
+                .eq('granted', true)
+                .in('permission', [unitPermission, 'leads.unit.all']);
+              
+              // Also get admin users
+              const { data: adminRoles } = await supabase
+                .from('user_roles')
+                .select('user_id')
+                .eq('role', 'admin');
+              
+              // Combine unique user IDs
+              const userIds = new Set<string>();
+              userPerms?.forEach(p => userIds.add(p.user_id));
+              adminRoles?.forEach(r => userIds.add(r.user_id));
+              
+              // Create notification for each user
+              const notifications = Array.from(userIds).map(userId => ({
+                user_id: userId,
+                type: notificationType,
+                title: notificationTitle,
+                message: notificationMessage,
+                data: {
+                  conversation_id: conv.id,
+                  lead_id: conv.lead_id,
+                  contact_name: leadName,
+                  contact_phone: contactPhone,
+                  unit: instance.unit || 'Unknown',
+                  choice: choice,
+                  priority: notificationPriority
+                },
+                read: false
+              }));
+              
+              if (notifications.length > 0) {
+                await supabase.from('notifications').insert(notifications);
+                console.log(`[Bot] Created ${notifications.length} notifications for next step choice: ${choice}`);
+              }
+            } catch (notifErr) {
+              console.error('[Bot] Error creating next step notifications:', notifErr);
             }
           }
         }
