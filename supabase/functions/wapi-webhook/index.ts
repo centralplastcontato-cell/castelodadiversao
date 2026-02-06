@@ -7,11 +7,12 @@ const corsHeaders = {
 
 const WAPI_BASE_URL = 'https://api.w-api.app/v1';
 
-const BOT_QUESTIONS = {
-  nome: { message: 'Para começar, me conta: qual é o seu nome? 👑', next: 'mes' },
-  mes: { message: 'Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Ex: Fevereiro, Março, Abril...', next: 'dia' },
-  dia: { message: 'Maravilha! Tem preferência de dia da semana? 🗓️\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo', next: 'convidados' },
-  convidados: { message: 'E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Ex: 50, 70, 100 pessoas...', next: 'complete' },
+// Default questions fallback (used if no custom questions in DB)
+const DEFAULT_QUESTIONS: Record<string, { question: string; confirmation: string | null; next: string }> = {
+  nome: { question: 'Para começar, me conta: qual é o seu nome? 👑', confirmation: 'Muito prazer, {nome}! 👑✨', next: 'mes' },
+  mes: { question: 'Que legal! 🎉 E pra qual mês você tá pensando em fazer essa festa incrível?\n\n📅 Ex: Fevereiro, Março, Abril...', confirmation: '{mes}, ótima escolha! 🎊', next: 'dia' },
+  dia: { question: 'Maravilha! Tem preferência de dia da semana? 🗓️\n\n• Segunda a Quinta\n• Sexta\n• Sábado\n• Domingo', confirmation: 'Anotado!', next: 'convidados' },
+  convidados: { question: 'E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Ex: 50, 70, 100 pessoas...', confirmation: null, next: 'complete' },
 };
 
 const normalizePhone = (phone: string) => phone.replace(/\D/g, '');
@@ -26,6 +27,39 @@ async function isVipNumber(supabase: SupabaseClient, instanceId: string, phone: 
 async function getBotSettings(supabase: SupabaseClient, instanceId: string) {
   const { data } = await supabase.from('wapi_bot_settings').select('*').eq('instance_id', instanceId).single();
   return data;
+}
+
+async function getBotQuestions(supabase: SupabaseClient, instanceId: string): Promise<Record<string, { question: string; confirmation: string | null; next: string }>> {
+  const { data } = await supabase.from('wapi_bot_questions')
+    .select('step, question_text, confirmation_text, sort_order')
+    .eq('instance_id', instanceId)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  if (!data || data.length === 0) {
+    return DEFAULT_QUESTIONS;
+  }
+
+  // Build question chain based on sort order
+  const questions: Record<string, { question: string; confirmation: string | null; next: string }> = {};
+  for (let i = 0; i < data.length; i++) {
+    const q = data[i];
+    const nextStep = i < data.length - 1 ? data[i + 1].step : 'complete';
+    questions[q.step] = {
+      question: q.question_text,
+      confirmation: q.confirmation_text || null,
+      next: nextStep,
+    };
+  }
+  return questions;
+}
+
+function replaceVariables(text: string, data: Record<string, string>): string {
+  let result = text;
+  for (const [key, value] of Object.entries(data)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'gi'), value);
+  }
+  return result;
 }
 
 async function sendBotMessage(instanceId: string, instanceToken: string, remoteJid: string, message: string): Promise<string | null> {
@@ -54,35 +88,125 @@ async function processBotQualification(
   const n = normalizePhone(contactPhone);
   const tn = settings.test_mode_number ? normalizePhone(settings.test_mode_number) : null;
   const isTest = tn && n.includes(tn.replace(/^55/, ''));
-  const shouldRun = conv.bot_enabled !== false && (settings.bot_enabled || (settings.test_mode_enabled && isTest));
+  
+  // Bot runs if: test mode enabled AND is test number, OR global bot enabled (and not test mode only)
+  const shouldRun = conv.bot_enabled !== false && (
+    (settings.test_mode_enabled && isTest) || 
+    (settings.bot_enabled && !settings.test_mode_enabled)
+  );
+  
   if (!shouldRun) return;
   if (await isVipNumber(supabase, instance.id, contactPhone)) return;
-  if (conv.lead_id) return;
+  
+  // Check if lead already exists and has complete data - skip bot
+  if (conv.lead_id) {
+    const { data: existingLead } = await supabase.from('campaign_leads')
+      .select('name, month, day_preference, guests')
+      .eq('id', conv.lead_id)
+      .single();
+    
+    // If lead already has all qualification data, skip bot
+    if (existingLead?.name && existingLead?.month && existingLead?.day_preference && existingLead?.guests) {
+      console.log(`[Bot] Lead ${conv.lead_id} already qualified, skipping bot`);
+      return;
+    }
+  }
+
+  // Get questions from database
+  const questions = await getBotQuestions(supabase, instance.id);
+  const questionSteps = Object.keys(questions);
+  const firstStep = questionSteps[0] || 'nome';
 
   const step = conv.bot_step || 'welcome';
   const botData = (conv.bot_data || {}) as Record<string, string>;
   let nextStep: string, msg: string;
   const updated = { ...botData };
 
-  if (step === 'welcome') { msg = settings.welcome_message + '\n\n' + BOT_QUESTIONS.nome.message; nextStep = 'nome'; }
-  else if (step === 'nome') { updated.nome = content.trim(); msg = `Muito prazer, ${updated.nome}! 👑✨\n\n${BOT_QUESTIONS.mes.message}`; nextStep = 'mes'; }
-  else if (step === 'mes') { updated.mes = content.trim(); msg = `${updated.mes}, ótima escolha! 🎊\n\n${BOT_QUESTIONS.dia.message}`; nextStep = 'dia'; }
-  else if (step === 'dia') { updated.dia = content.trim(); msg = `Anotado! ${BOT_QUESTIONS.convidados.message}`; nextStep = 'convidados'; }
-  else if (step === 'convidados') {
-    updated.convidados = content.trim(); nextStep = 'complete';
-    const { data: newLead, error } = await supabase.from('campaign_leads').insert({
-      name: updated.nome || contactName || contactPhone, whatsapp: n, unit: instance.unit,
-      campaign_id: 'whatsapp-bot', campaign_name: 'WhatsApp Bot', status: 'novo',
-      month: updated.mes || null, day_preference: updated.dia || null, guests: updated.convidados || null,
-    }).select('id').single();
-    if (error) { msg = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato!'; }
-    else { await supabase.from('wapi_conversations').update({ lead_id: newLead.id }).eq('id', conv.id);
-      msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`; }
-  } else return;
+  if (step === 'welcome') {
+    // Send welcome + first question
+    const firstQ = questions[firstStep];
+    msg = settings.welcome_message + '\n\n' + (firstQ?.question || DEFAULT_QUESTIONS.nome.question);
+    nextStep = firstStep;
+  } else if (questions[step]) {
+    // Save the answer
+    updated[step] = content.trim();
+    
+    const currentQ = questions[step];
+    const nextStepKey = currentQ.next;
+    
+    if (nextStepKey === 'complete') {
+      // All questions answered - create or update lead
+      nextStep = 'complete';
+      
+      if (conv.lead_id) {
+        // Update existing lead
+        await supabase.from('campaign_leads').update({
+          name: updated.nome || contactName || contactPhone,
+          month: updated.mes || null,
+          day_preference: updated.dia || null,
+          guests: updated.convidados || null,
+        }).eq('id', conv.lead_id);
+        
+        msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
+      } else {
+        // Create new lead
+        const { data: newLead, error } = await supabase.from('campaign_leads').insert({
+          name: updated.nome || contactName || contactPhone,
+          whatsapp: n,
+          unit: instance.unit,
+          campaign_id: 'whatsapp-bot',
+          campaign_name: 'WhatsApp Bot',
+          status: 'novo',
+          month: updated.mes || null,
+          day_preference: updated.dia || null,
+          guests: updated.convidados || null,
+        }).select('id').single();
+        
+        if (error) {
+          msg = 'Muito obrigado pelas informações! 🏰\n\nEm breve nossa equipe vai entrar em contato!';
+        } else {
+          await supabase.from('wapi_conversations').update({ lead_id: newLead.id }).eq('id', conv.id);
+          msg = `Perfeito, ${updated.nome}! 🏰✨\n\nAnotei tudo aqui:\n\n📅 Mês: ${updated.mes}\n🗓️ Dia: ${updated.dia}\n👥 Convidados: ${updated.convidados}\n\nNossa equipe vai entrar em contato em breve! 👑🎉`;
+        }
+      }
+    } else {
+      // More questions to ask
+      nextStep = nextStepKey;
+      const nextQ = questions[nextStepKey];
+      
+      // Build response: confirmation (if any) + next question
+      let confirmation = currentQ.confirmation || '';
+      if (confirmation) {
+        confirmation = replaceVariables(confirmation, updated);
+      }
+      
+      msg = confirmation ? `${confirmation}\n\n${nextQ?.question || ''}` : (nextQ?.question || '');
+    }
+  } else {
+    // Unknown step, reset
+    return;
+  }
 
   const msgId = await sendBotMessage(instance.instance_id, instance.instance_token, conv.remote_jid, msg);
-  if (msgId) { await supabase.from('wapi_messages').insert({ conversation_id: conv.id, message_id: msgId, from_me: true, message_type: 'text', content: msg, status: 'sent', timestamp: new Date().toISOString() }); }
-  await supabase.from('wapi_conversations').update({ bot_step: nextStep, bot_data: updated, last_message_at: new Date().toISOString(), last_message_content: msg.substring(0, 100), last_message_from_me: true }).eq('id', conv.id);
+  if (msgId) {
+    await supabase.from('wapi_messages').insert({
+      conversation_id: conv.id,
+      message_id: msgId,
+      from_me: true,
+      message_type: 'text',
+      content: msg,
+      status: 'sent',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  await supabase.from('wapi_conversations').update({
+    bot_step: nextStep,
+    bot_data: updated,
+    last_message_at: new Date().toISOString(),
+    last_message_content: msg.substring(0, 100),
+    last_message_from_me: true
+  }).eq('id', conv.id);
 }
 
 function isPdfContent(bytes: Uint8Array): boolean { return bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; }
@@ -289,11 +413,16 @@ Deno.serve(async (req) => {
           await supabase.from('wapi_conversations').update(upd).eq('id', ex.id);
         } else {
           const n = phone.replace(/\D/g, ''), vars = [n, n.replace(/^55/, ''), `55${n}`];
-          const { data: lead } = await supabase.from('campaign_leads').select('id').or(vars.map(p => `whatsapp.ilike.%${p}%`).join(',')).eq('unit', instance.unit).limit(1).single();
+          const { data: lead } = await supabase.from('campaign_leads').select('id, name, month, day_preference, guests').or(vars.map(p => `whatsapp.ilike.%${p}%`).join(',')).eq('unit', instance.unit).limit(1).single();
+          
+          // Determine if bot should start: only for new contacts without complete lead data
+          const hasCompleteLead = lead?.name && lead?.month && lead?.day_preference && lead?.guests;
+          const shouldStartBot = !hasCompleteLead;
+          
           const { data: nc, error: ce } = await supabase.from('wapi_conversations').insert({
             instance_id: instance.id, remote_jid: rj, contact_phone: phone, contact_name: cName || (isGrp ? `Grupo ${phone}` : phone), contact_picture: cPic,
             last_message_at: new Date().toISOString(), unread_count: fromMe ? 0 : 1, last_message_content: preview.substring(0, 100), last_message_from_me: fromMe,
-            lead_id: lead?.id || null, bot_enabled: true, bot_step: lead?.id ? null : 'welcome', bot_data: {}
+            lead_id: lead?.id || null, bot_enabled: shouldStartBot, bot_step: shouldStartBot ? 'welcome' : null, bot_data: {}
           }).select('*, bot_enabled, bot_step, bot_data').single();
           if (ce) break;
           conv = nc;
