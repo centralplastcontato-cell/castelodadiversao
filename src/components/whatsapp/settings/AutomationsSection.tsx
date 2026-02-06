@@ -49,6 +49,7 @@ interface BotSettings {
   welcome_message: string;
   completion_message: string | null;
   transfer_message: string | null;
+  qualified_lead_message: string | null;
 }
 
 interface VipNumber {
@@ -695,6 +696,24 @@ export function AutomationsSection() {
                   onBlur={() => botSettings && updateBotSettings({ completion_message: botSettings.completion_message })}
                   className="min-h-[120px] text-base"
                   placeholder="Perfeito, {nome}! 🏰✨..."
+                />
+              </div>
+
+              {/* Qualified Lead Welcome Message (from LP) */}
+              <div className="p-4 border rounded-lg bg-purple-50/50 dark:bg-purple-950/10 border-purple-500/30">
+                <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs">🌐</span>
+                  Boas-vindas para Leads do Site
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Mensagem automática enviada quando um lead que veio pela Landing Page (já qualificado) envia a primeira mensagem. Use {`{nome}`}, {`{mes}`}, {`{dia}`} e {`{convidados}`}.
+                </p>
+                <Textarea
+                  value={botSettings?.qualified_lead_message || "Olá, {nome}! 👋\n\nRecebemos seu interesse pelo site e já temos seus dados aqui:\n\n📅 Mês: {mes}\n🗓️ Dia: {dia}\n👥 Convidados: {convidados}\n\nNossa equipe vai te responder em breve! 🏰✨"}
+                  onChange={(e) => setBotSettings(prev => prev ? { ...prev, qualified_lead_message: e.target.value } : null)}
+                  onBlur={() => botSettings && updateBotSettings({ qualified_lead_message: botSettings.qualified_lead_message })}
+                  className="min-h-[120px] text-base"
+                  placeholder="Olá, {nome}! 👋 Recebemos seu interesse..."
                 />
               </div>
 
