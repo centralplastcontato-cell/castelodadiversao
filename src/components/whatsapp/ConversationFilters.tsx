@@ -63,124 +63,169 @@
  // Count active filters (non-default)
  const hasActiveFilter = filter !== 'all';
  
- const filterButtons = (
-   <div className="flex gap-1 flex-wrap">
-     <Button 
-       variant={filter === 'all' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('all')}
-     >
-       Tudo
-     </Button>
-     <Button 
-       variant={filter === 'unread' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('unread')}
-     >
-       Não lidas
-       {unreadCount > 0 && (
-         <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
-           {unreadCount}
-         </Badge>
-       )}
-     </Button>
-     <Button 
-       variant={filter === 'closed' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('closed')}
-     >
-       <X className="w-3 h-3 mr-1" />
-       Encerradas
-       {closedCount > 0 && (
-         <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center">
-           {closedCount}
-         </Badge>
-       )}
-     </Button>
-     <Button 
-       variant={filter === 'fechados' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('fechados')}
-     >
-       <CheckCircle className="w-3 h-3 mr-1" />
-       Fechados
-       {closedLeadCount > 0 && (
-         <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-green-500/20 text-green-700">
-           {closedLeadCount}
-         </Badge>
-       )}
-     </Button>
-     <Button 
-       variant={filter === 'oe' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('oe')}
-     >
-       <FileCheck className="w-3 h-3 mr-1" />
-       O.E
-       {orcamentoEnviadoCount > 0 && (
-         <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-purple-500/20 text-purple-700">
-           {orcamentoEnviadoCount}
-         </Badge>
-       )}
-     </Button>
-     <Button
-       variant={filter === 'visitas' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('visitas')}
-     >
-       <CalendarCheck className="w-3 h-3 mr-1" />
-       Visitas
-       {visitasCount > 0 && (
-         <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-blue-500/20 text-blue-700">
-           {visitasCount}
-         </Badge>
-       )}
-     </Button>
-     <Button 
-       variant={filter === 'freelancer' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('freelancer')}
-     >
-       <Briefcase className="w-3 h-3 mr-1" />
-       Freelancer
-       {freelancerCount > 0 && (
-         <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-orange-500/20 text-orange-700">
-           {freelancerCount}
-         </Badge>
-       )}
-     </Button>
-     <Button 
-       variant={filter === 'equipe' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('equipe')}
-     >
-       <Users className="w-3 h-3 mr-1" />
-       Equipe
-       {equipeCount > 0 && (
-         <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-cyan-500/20 text-cyan-700">
-           {equipeCount}
-         </Badge>
-       )}
-     </Button>
-     <Button
-       variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
-       size="sm" 
-       className="h-7 text-xs"
-       onClick={() => onFilterChange('favorites')}
-     >
-       <Star className="w-3 h-3 mr-1" />
-       Favoritos
-     </Button>
-   </div>
- );
+  const filterButtons = (
+    <div className="flex gap-1.5 flex-wrap">
+      <Button 
+        variant={filter === 'all' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'all' 
+            ? "bg-primary/15 text-primary border border-primary/30 shadow-sm hover:bg-primary/20" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('all')}
+      >
+        Tudo
+      </Button>
+      <Button 
+        variant={filter === 'unread' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'unread' 
+            ? "bg-destructive/15 text-destructive border border-destructive/30 shadow-sm hover:bg-destructive/20" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('unread')}
+      >
+        Não lidas
+        {unreadCount > 0 && (
+          <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold flex items-center justify-center bg-destructive text-destructive-foreground shadow-sm">
+            {unreadCount}
+          </Badge>
+        )}
+      </Button>
+      <Button 
+        variant={filter === 'closed' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'closed' 
+            ? "bg-muted text-muted-foreground border border-border shadow-sm hover:bg-muted/80" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('closed')}
+      >
+        <X className="w-3.5 h-3.5 mr-1 opacity-70" />
+        Encerradas
+        {closedCount > 0 && (
+          <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-semibold flex items-center justify-center bg-muted-foreground/20">
+            {closedCount}
+          </Badge>
+        )}
+      </Button>
+      <Button 
+        variant={filter === 'fechados' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'fechados' 
+            ? "bg-green-500/15 text-green-700 border border-green-500/30 shadow-sm hover:bg-green-500/20 dark:text-green-400" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('fechados')}
+      >
+        <CheckCircle className="w-3.5 h-3.5 mr-1 opacity-80" />
+        Fechados
+        {closedLeadCount > 0 && (
+          <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold flex items-center justify-center bg-green-500/25 text-green-700 dark:text-green-400 shadow-sm">
+            {closedLeadCount}
+          </Badge>
+        )}
+      </Button>
+      <Button 
+        variant={filter === 'oe' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'oe' 
+            ? "bg-purple-500/15 text-purple-700 border border-purple-500/30 shadow-sm hover:bg-purple-500/20 dark:text-purple-400" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('oe')}
+      >
+        <FileCheck className="w-3.5 h-3.5 mr-1 opacity-80" />
+        O.E
+        {orcamentoEnviadoCount > 0 && (
+          <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold flex items-center justify-center bg-purple-500/25 text-purple-700 dark:text-purple-400 shadow-sm">
+            {orcamentoEnviadoCount}
+          </Badge>
+        )}
+      </Button>
+      <Button
+        variant={filter === 'visitas' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'visitas' 
+            ? "bg-blue-500/15 text-blue-700 border border-blue-500/30 shadow-sm hover:bg-blue-500/20 dark:text-blue-400" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('visitas')}
+      >
+        <CalendarCheck className="w-3.5 h-3.5 mr-1 opacity-80" />
+        Visitas
+        {visitasCount > 0 && (
+          <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold flex items-center justify-center bg-blue-500/25 text-blue-700 dark:text-blue-400 shadow-sm">
+            {visitasCount}
+          </Badge>
+        )}
+      </Button>
+      <Button 
+        variant={filter === 'freelancer' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'freelancer' 
+            ? "bg-orange-500/15 text-orange-700 border border-orange-500/30 shadow-sm hover:bg-orange-500/20 dark:text-orange-400" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('freelancer')}
+      >
+        <Briefcase className="w-3.5 h-3.5 mr-1 opacity-80" />
+        Freelancer
+        {freelancerCount > 0 && (
+          <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold flex items-center justify-center bg-orange-500/25 text-orange-700 dark:text-orange-400 shadow-sm">
+            {freelancerCount}
+          </Badge>
+        )}
+      </Button>
+      <Button 
+        variant={filter === 'equipe' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'equipe' 
+            ? "bg-cyan-500/15 text-cyan-700 border border-cyan-500/30 shadow-sm hover:bg-cyan-500/20 dark:text-cyan-400" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('equipe')}
+      >
+        <Users className="w-3.5 h-3.5 mr-1 opacity-80" />
+        Equipe
+        {equipeCount > 0 && (
+          <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold flex items-center justify-center bg-cyan-500/25 text-cyan-700 dark:text-cyan-400 shadow-sm">
+            {equipeCount}
+          </Badge>
+        )}
+      </Button>
+      <Button
+        variant={filter === 'favorites' ? 'secondary' : 'ghost'} 
+        size="sm" 
+        className={cn(
+          "h-8 text-xs font-medium rounded-lg transition-all duration-200",
+          filter === 'favorites' 
+            ? "bg-amber-500/15 text-amber-700 border border-amber-500/30 shadow-sm hover:bg-amber-500/20 dark:text-amber-400" 
+            : "hover:bg-muted/80 border border-transparent hover:border-border/50"
+        )}
+        onClick={() => onFilterChange('favorites')}
+      >
+        <Star className="w-3.5 h-3.5 mr-1 opacity-80" />
+        Favoritos
+      </Button>
+    </div>
+  );
  
  if (!collapsible) {
    return filterButtons;
