@@ -717,6 +717,7 @@ async function sendQualificationMaterials(
     auto_send_pdf?: boolean;
     auto_send_photos_intro?: string | null;
     auto_send_pdf_intro?: string | null;
+    message_delay_seconds?: number;
   } | null
 ) {
   // Check if auto-send is enabled
@@ -743,12 +744,15 @@ async function sendQualificationMaterials(
   const sendPromoVideo = settings?.auto_send_promo_video !== false;
   const sendPdf = settings?.auto_send_pdf !== false;
   
+  // Configurable delay between messages (default 5 seconds, convert to milliseconds)
+  const messageDelay = (settings?.message_delay_seconds || 5) * 1000;
+  
   // Custom intro messages
   const photosIntro = settings?.auto_send_photos_intro || '✨ Conheça nosso espaço incrível! 🏰🎉';
   const pdfIntro = settings?.auto_send_pdf_intro || '📋 Oi {nome}! Segue o pacote completo para {convidados} na unidade {unidade}. Qualquer dúvida é só chamar! 💜';
   
-  // Small delay to ensure completion message is delivered first
-  await new Promise(r => setTimeout(r, 2000));
+  // Delay to ensure completion message is delivered first (uses configured delay)
+  await new Promise(r => setTimeout(r, messageDelay));
   
   // Fetch captions for different material types
   const { data: captions } = await supabase
@@ -898,7 +902,7 @@ async function sendQualificationMaterials(
       const introMsgId = await sendText(introText);
       if (introMsgId) await saveMessage(introMsgId, 'text', introText);
       
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, messageDelay / 2)); // Half delay for intro before photos
       
       // Send photos in parallel
       await Promise.all(photos.map(async (photoUrl: string) => {
@@ -907,7 +911,7 @@ async function sendQualificationMaterials(
       }));
       
       console.log(`[Bot Materials] Photos sent`);
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, messageDelay));
     }
   }
   
@@ -922,7 +926,7 @@ async function sendQualificationMaterials(
     const msgId = await sendVideo(video.file_url, caption);
     if (msgId) await saveMessage(msgId, 'video', caption, video.file_url);
     
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, messageDelay));
   }
   
   // 3. SEND PDF PACKAGE (matching guest count) - Send PDF BEFORE promo video
@@ -948,14 +952,14 @@ async function sendQualificationMaterials(
       const introMsgId = await sendText(pdfIntroText);
       if (introMsgId) await saveMessage(introMsgId, 'text', pdfIntroText);
       
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, messageDelay / 4)); // Short delay before PDF file
       
       // Send PDF with proper filename
       const fileName = matchingPdf.name?.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, ' ').trim() + '.pdf' || `Pacote ${guestCount} pessoas.pdf`;
       const msgId = await sendDocument(matchingPdf.file_url, fileName);
       if (msgId) await saveMessage(msgId, 'document', fileName, matchingPdf.file_url);
       
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, messageDelay));
     }
   }
   
@@ -971,7 +975,7 @@ async function sendQualificationMaterials(
     if (msgId) await saveMessage(msgId, 'video', caption, promoVideo.file_url);
     
     // Wait for video to be delivered before proceeding
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise(r => setTimeout(r, messageDelay * 1.5)); // Longer delay for video processing
   }
   
   // Update conversation last message
@@ -998,17 +1002,19 @@ async function sendQualificationMaterialsThenQuestion(
     auto_send_pdf?: boolean;
     auto_send_photos_intro?: string | null;
     auto_send_pdf_intro?: string | null;
+    message_delay_seconds?: number;
   } | null,
   nextStepQuestion: string
 ) {
   const phone = conv.remote_jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+  const messageDelay = (settings?.message_delay_seconds || 5) * 1000;
   
   try {
     // First, send all materials
     await sendQualificationMaterials(supabase, instance, conv, botData, settings);
     
-    // Small delay after materials
-    await new Promise(r => setTimeout(r, 2000));
+    // Delay after materials (uses configured delay)
+    await new Promise(r => setTimeout(r, messageDelay));
     
     // Now send the next step question
     console.log(`[Bot] Sending next step question to ${phone}`);

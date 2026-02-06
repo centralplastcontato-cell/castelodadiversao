@@ -63,6 +63,8 @@ interface BotSettings {
   auto_send_pdf: boolean;
   auto_send_photos_intro: string | null;
   auto_send_pdf_intro: string | null;
+  // Message delay settings
+  message_delay_seconds: number;
   // Follow-up settings
   follow_up_enabled: boolean;
   follow_up_delay_hours: number;
@@ -550,6 +552,36 @@ export function AutomationsSection() {
             ) : (
               <Badge variant="secondary">Bot Desativado</Badge>
             )}
+          </div>
+
+          {/* Message Delay Setting */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 border rounded-lg">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <div className="p-2 rounded-full shrink-0 bg-muted text-muted-foreground">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-medium text-sm sm:text-base">Delay entre Mensagens</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Tempo de espera entre cada mensagem enviada pelo bot
+                </p>
+              </div>
+            </div>
+            <Select
+              value={String(botSettings?.message_delay_seconds || 5)}
+              onValueChange={(value) => updateBotSettings({ message_delay_seconds: parseInt(value) })}
+              disabled={isSaving}
+            >
+              <SelectTrigger className="w-[120px] shrink-0">
+                <SelectValue placeholder="5 segundos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3">3 segundos</SelectItem>
+                <SelectItem value="5">5 segundos</SelectItem>
+                <SelectItem value="10">10 segundos</SelectItem>
+                <SelectItem value="15">15 segundos</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
