@@ -213,10 +213,12 @@ export function KanbanCard({
       onDragStart={handleDragStart}
       onClick={() => !isEditing && onLeadClick(lead)}
       className={`
-        bg-card rounded-xl border border-border/60 p-3.5 
-        cursor-pointer hover:border-primary/40 hover:shadow-md transition-all duration-200
-        ${canEdit && !isEditing ? "cursor-grab active:cursor-grabbing" : ""}
-        shadow-sm
+        bg-card rounded-xl border border-border/50 p-3.5 
+        cursor-pointer transition-all duration-200
+        hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5
+        ${canEdit && !isEditing ? "cursor-grab active:cursor-grabbing active:shadow-xl" : ""}
+        shadow-sm relative overflow-hidden
+        before:absolute before:inset-0 before:bg-gradient-to-br before:from-primary/[0.02] before:to-transparent before:pointer-events-none
       `}
     >
       <div className="flex items-start justify-between gap-2">
@@ -284,30 +286,30 @@ export function KanbanCard({
           </div>
 
           {(lead.unit || lead.month || lead.guests) && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
               {lead.unit && (
-                <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                  <span className="text-primary/70">📍</span> {lead.unit}
+                <span className="text-xs text-muted-foreground inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md">
+                  <span className="text-primary/80">📍</span> {lead.unit}
                 </span>
               )}
               {lead.month && (
-                <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                  <span className="text-primary/70">📅</span> {lead.day_of_month || lead.day_preference || "-"}/
+                <span className="text-xs text-muted-foreground inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md">
+                  <span className="text-primary/80">📅</span> {lead.day_of_month || lead.day_preference || "-"}/
                   {lead.month}
                 </span>
               )}
               {lead.guests && (
-                <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                  <span className="text-primary/70">👥</span> {lead.guests}
+                <span className="text-xs text-muted-foreground inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md">
+                  <span className="text-primary/80">👥</span> {lead.guests}
                 </span>
               )}
             </div>
           )}
 
           {responsavelName && (
-            <div className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded-md w-fit">
-              <User className="w-3 h-3 text-primary/60" />
-              <span className="text-xs text-muted-foreground font-medium truncate">
+            <div className="mt-2.5 flex items-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg w-fit border border-primary/10">
+              <User className="w-3 h-3 text-primary/70" />
+              <span className="text-xs text-primary/90 font-medium truncate">
                 {responsavelName}
               </span>
             </div>
