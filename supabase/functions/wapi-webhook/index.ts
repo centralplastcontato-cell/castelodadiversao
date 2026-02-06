@@ -29,13 +29,30 @@ const DAY_OPTIONS = [
   { num: 4, value: 'Domingo' },
 ];
 
-const GUEST_OPTIONS = [
-  { num: 1, value: '30 pessoas' },
-  { num: 2, value: '50 pessoas' },
+// Extract options from question text dynamically
+function extractOptionsFromQuestion(questionText: string): { num: number; value: string }[] | null {
+  const lines = questionText.split('\n');
+  const options: { num: number; value: string }[] = [];
+  
+  for (const line of lines) {
+    // Match patterns like "1 - 50 pessoas" or "*1* - 50 pessoas" or "1. 50 pessoas"
+    const match = line.match(/^\*?(\d+)\*?\s*[-\.]\s*(.+)$/);
+    if (match) {
+      options.push({ num: parseInt(match[1]), value: match[2].trim() });
+    }
+  }
+  
+  return options.length > 0 ? options : null;
+}
+
+// Default guest options (fallback only)
+const DEFAULT_GUEST_OPTIONS = [
+  { num: 1, value: '50 pessoas' },
+  { num: 2, value: '60 pessoas' },
   { num: 3, value: '70 pessoas' },
-  { num: 4, value: '100 pessoas' },
-  { num: 5, value: '150 pessoas' },
-  { num: 6, value: '200+ pessoas' },
+  { num: 4, value: '80 pessoas' },
+  { num: 5, value: '90 pessoas' },
+  { num: 6, value: '100 pessoas' },
 ];
 
 // Build menu text
@@ -85,17 +102,27 @@ function validateDay(input: string): { valid: boolean; value?: string; error?: s
   return validateMenuChoice(input, DAY_OPTIONS, 'dia');
 }
 
-function validateGuests(input: string): { valid: boolean; value?: string; error?: string } {
-  return validateMenuChoice(input, GUEST_OPTIONS, 'convidados');
+function validateGuests(input: string, customOptions?: { num: number; value: string }[]): { valid: boolean; value?: string; error?: string } {
+  const options = customOptions || DEFAULT_GUEST_OPTIONS;
+  return validateMenuChoice(input, options, 'convidados');
 }
 
-// Validation router by step
-function validateAnswer(step: string, input: string): { valid: boolean; value?: string; error?: string } {
+// Validation router by step - now accepts question context for dynamic options
+function validateAnswer(step: string, input: string, questionText?: string): { valid: boolean; value?: string; error?: string } {
   switch (step) {
     case 'nome': return validateName(input);
-    case 'mes': return validateMonth(input);
-    case 'dia': return validateDay(input);
-    case 'convidados': return validateGuests(input);
+    case 'mes': {
+      const customOptions = questionText ? extractOptionsFromQuestion(questionText) : null;
+      return validateMenuChoice(input, customOptions || MONTH_OPTIONS, 'mês');
+    }
+    case 'dia': {
+      const customOptions = questionText ? extractOptionsFromQuestion(questionText) : null;
+      return validateMenuChoice(input, customOptions || DAY_OPTIONS, 'dia');
+    }
+    case 'convidados': {
+      const customOptions = questionText ? extractOptionsFromQuestion(questionText) : null;
+      return validateGuests(input, customOptions || undefined);
+    }
     default: return { valid: true, value: input.trim() };
   }
 }
@@ -118,7 +145,7 @@ const DEFAULT_QUESTIONS: Record<string, { question: string; confirmation: string
     next: 'convidados' 
   },
   convidados: { 
-    question: `E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Responda com o *número*:\n\n${buildMenuText(GUEST_OPTIONS)}`, 
+    question: `E quantos convidados você pretende chamar pra essa festa mágica? 🎈\n\n👥 Responda com o *número*:\n\n${buildMenuText(DEFAULT_GUEST_OPTIONS)}`, 
     confirmation: null, 
     next: 'complete' 
   },
@@ -237,8 +264,10 @@ async function processBotQualification(
     msg = settings.welcome_message + '\n\n' + (firstQ?.question || DEFAULT_QUESTIONS.nome.question);
     nextStep = firstStep;
   } else if (questions[step]) {
+    // Get the current question text for dynamic option extraction
+    const currentQuestionText = questions[step]?.question;
     // Validate the answer before proceeding
-    const validation = validateAnswer(step, content);
+    const validation = validateAnswer(step, content, currentQuestionText);
     
     if (!validation.valid) {
       // Invalid answer - send error message and stay on same step
