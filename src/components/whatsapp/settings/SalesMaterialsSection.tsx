@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,9 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
   });
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const photoGridRef = useRef<HTMLDivElement>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchMaterials();
@@ -280,6 +283,85 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
+
+  // Touch handlers for mobile reordering
+  const getIndexFromTouch = useCallback((touch: React.Touch): number | null => {
+    if (!photoGridRef.current) return null;
+    
+    const gridItems = photoGridRef.current.querySelectorAll('[data-photo-index]');
+    for (let i = 0; i < gridItems.length; i++) {
+      const item = gridItems[i] as HTMLElement;
+      const rect = item.getBoundingClientRect();
+      if (
+        touch.clientX >= rect.left &&
+        touch.clientX <= rect.right &&
+        touch.clientY >= rect.top &&
+        touch.clientY <= rect.bottom
+      ) {
+        return parseInt(item.dataset.photoIndex || '-1', 10);
+      }
+    }
+    return null;
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent, index: number) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    
+    // Start long press timer for drag initiation
+    longPressTimer.current = setTimeout(() => {
+      setDraggedIndex(index);
+      // Add haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 200);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (draggedIndex === null) {
+      // Cancel long press if user moves finger before timer
+      if (longPressTimer.current && touchStartPos.current) {
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+        const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+        if (dx > 10 || dy > 10) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+      }
+      return;
+    }
+
+    e.preventDefault();
+    const touch = e.touches[0];
+    const targetIndex = getIndexFromTouch(touch);
+    
+    if (targetIndex !== null && targetIndex !== draggedIndex) {
+      setDragOverIndex(targetIndex);
+    } else {
+      setDragOverIndex(null);
+    }
+  }, [draggedIndex, getIndexFromTouch]);
+
+  const handleTouchEnd = useCallback(() => {
+    // Clear long press timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    
+    if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+      const newUrls = [...formData.photo_urls];
+      const [draggedUrl] = newUrls.splice(draggedIndex, 1);
+      newUrls.splice(dragOverIndex, 0, draggedUrl);
+      setFormData({ ...formData, photo_urls: newUrls });
+    }
+    
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    touchStartPos.current = null;
+  }, [draggedIndex, dragOverIndex, formData]);
 
   const handleSaveMaterial = async () => {
     if (!formData.name) {
@@ -810,22 +892,33 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
                 {/* Photo thumbnails grid */}
                 {formData.photo_urls.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Arraste para reordenar</p>
-                    <div className="grid grid-cols-5 gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {draggedIndex !== null ? "Solte sobre outra foto" : "Segure e arraste para reordenar"}
+                    </p>
+                    <div 
+                      ref={photoGridRef}
+                      className="grid grid-cols-5 gap-2"
+                    >
                       {formData.photo_urls.map((url, index) => (
                         <div 
-                          key={`photo-${index}`} 
+                          key={`photo-${index}`}
+                          data-photo-index={index}
                           draggable
                           onDragStart={() => handleDragStart(index)}
                           onDragOver={(e) => handleDragOver(e, index)}
                           onDragLeave={handleDragLeave}
                           onDrop={() => handleDrop(index)}
                           onDragEnd={handleDragEnd}
-                          className={`relative aspect-square rounded-lg overflow-hidden border group cursor-grab active:cursor-grabbing transition-all ${
-                            draggedIndex === index ? "opacity-50 scale-95" : ""
+                          onTouchStart={(e) => handleTouchStart(e, index)}
+                          onTouchMove={handleTouchMove}
+                          onTouchEnd={handleTouchEnd}
+                          className={`relative aspect-square rounded-lg overflow-hidden border group transition-all touch-none select-none ${
+                            draggedIndex === index 
+                              ? "opacity-50 scale-95 ring-2 ring-primary" 
+                              : "cursor-grab active:cursor-grabbing"
                           } ${
                             dragOverIndex === index && draggedIndex !== index 
-                              ? "ring-2 ring-primary ring-offset-2" 
+                              ? "ring-2 ring-primary ring-offset-2 scale-105" 
                               : ""
                           }`}
                         >
@@ -837,7 +930,8 @@ export function SalesMaterialsSection({ userId, isAdmin }: SalesMaterialsSection
                           <button
                             type="button"
                             onClick={() => removePhotoFromCollection(index)}
-                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 md:opacity-0 transition-opacity"
+                            style={{ opacity: draggedIndex === null ? undefined : 0 }}
                           >
                             <X className="w-3 h-3" />
                           </button>
