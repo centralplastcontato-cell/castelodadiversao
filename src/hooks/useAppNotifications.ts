@@ -17,9 +17,18 @@ export interface AppNotification {
 export function useAppNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [clientAlertCount, setClientAlertCount] = useState(0);
+  const [transferCount, setTransferCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const { showBrowserNotification, requestPermission } = useNotifications({ soundEnabled: false });
-  const { playMessageSound, playLeadSound } = useNotificationSounds();
+  const { playMessageSound, playLeadSound, playClientSound } = useNotificationSounds();
+
+  const updateCounts = useCallback((notifs: AppNotification[]) => {
+    const unread = notifs.filter((n) => !n.read);
+    setUnreadCount(unread.length);
+    setClientAlertCount(unread.filter((n) => n.type === "existing_client").length);
+    setTransferCount(unread.filter((n) => n.type === "lead_transfer").length);
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -33,11 +42,12 @@ export function useAppNotifications() {
       .limit(50);
 
     if (!error && data) {
-      setNotifications(data as AppNotification[]);
-      setUnreadCount(data.filter((n) => !n.read).length);
+      const notifs = data as AppNotification[];
+      setNotifications(notifs);
+      updateCounts(notifs);
     }
     setIsLoading(false);
-  }, []);
+  }, [updateCounts]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     const { error } = await supabase
@@ -46,12 +56,13 @@ export function useAppNotifications() {
       .eq("id", notificationId);
 
     if (!error) {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setNotifications((prev) => {
+        const updated = prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n));
+        updateCounts(updated);
+        return updated;
+      });
     }
-  }, []);
+  }, [updateCounts]);
 
   const markAllAsRead = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -64,25 +75,28 @@ export function useAppNotifications() {
       .eq("read", false);
 
     if (!error) {
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
+      setNotifications((prev) => {
+        const updated = prev.map((n) => ({ ...n, read: true }));
+        updateCounts(updated);
+        return updated;
+      });
     }
-  }, []);
+  }, [updateCounts]);
 
   const deleteNotification = useCallback(async (notificationId: string) => {
-    const notification = notifications.find((n) => n.id === notificationId);
     const { error } = await supabase
       .from("notifications")
       .delete()
       .eq("id", notificationId);
 
     if (!error) {
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-      if (notification && !notification.read) {
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
+      setNotifications((prev) => {
+        const updated = prev.filter((n) => n.id !== notificationId);
+        updateCounts(updated);
+        return updated;
+      });
     }
-  }, [notifications]);
+  }, [updateCounts]);
 
   // Subscribe to realtime notifications
   useEffect(() => {
@@ -104,11 +118,16 @@ export function useAppNotifications() {
           },
           (payload) => {
             const newNotification = payload.new as AppNotification;
-            setNotifications((prev) => [newNotification, ...prev]);
-            setUnreadCount((prev) => prev + 1);
+            setNotifications((prev) => {
+              const updated = [newNotification, ...prev];
+              updateCounts(updated);
+              return updated;
+            });
 
             // Play different sound based on notification type
-            if (newNotification.type === "lead_transfer" || newNotification.type === "new_lead") {
+            if (newNotification.type === "existing_client") {
+              playClientSound();
+            } else if (newNotification.type === "lead_transfer" || newNotification.type === "new_lead") {
               playLeadSound();
             } else {
               playMessageSound();
@@ -137,11 +156,13 @@ export function useAppNotifications() {
         supabase.removeChannel(channel);
       }
     };
-  }, [fetchNotifications, playMessageSound, playLeadSound, showBrowserNotification]);
+  }, [fetchNotifications, updateCounts, playMessageSound, playLeadSound, playClientSound, showBrowserNotification]);
 
   return {
     notifications,
     unreadCount,
+    clientAlertCount,
+    transferCount,
     isLoading,
     markAsRead,
     markAllAsRead,

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, Trash2, UserPlus, ArrowRightLeft } from "lucide-react";
+import { Bell, Check, Trash2, UserPlus, ArrowRightLeft, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -21,6 +21,7 @@ export function NotificationBell() {
   const {
     notifications,
     unreadCount,
+    clientAlertCount,
     markAsRead,
     markAllAsRead,
     deleteNotification,
@@ -30,6 +31,8 @@ export function NotificationBell() {
     switch (type) {
       case "lead_transfer":
         return <ArrowRightLeft className="w-4 h-4 text-primary" />;
+      case "existing_client":
+        return <Crown className="w-4 h-4 text-amber-500" />;
       case "lead_assigned":
         return <UserPlus className="w-4 h-4 text-green-500" />;
       default:
@@ -42,8 +45,14 @@ export function NotificationBell() {
       await markAsRead(notification.id);
     }
 
-    // Navigate to the lead if data contains lead_id
-    if (notification.data && typeof notification.data === "object" && "lead_id" in notification.data) {
+    // Navigate based on notification type
+    if (notification.type === "existing_client" && notification.data && typeof notification.data === "object") {
+      // Open conversation for client alerts
+      if ("contact_phone" in notification.data) {
+        setIsOpen(false);
+        navigate(`/atendimento?phone=${notification.data.contact_phone}`);
+      }
+    } else if (notification.data && typeof notification.data === "object" && "lead_id" in notification.data) {
       setIsOpen(false);
       navigate(`/atendimento?lead=${notification.data.lead_id}`);
     }
@@ -55,20 +64,44 @@ export function NotificationBell() {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge
-              className={cn(
-                "absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs",
-                "bg-primary text-primary-foreground",
-                "animate-pulse"
+            <div className="absolute -top-1 -right-1 flex items-center gap-0.5">
+              {clientAlertCount > 0 && (
+                <Badge
+                  className={cn(
+                    "h-5 min-w-5 px-1 text-xs",
+                    "bg-amber-500 text-white hover:bg-amber-500",
+                    "animate-pulse"
+                  )}
+                >
+                  {clientAlertCount > 9 ? "9+" : clientAlertCount}
+                </Badge>
               )}
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Badge>
+              {(unreadCount - clientAlertCount) > 0 && (
+                <Badge
+                  className={cn(
+                    "h-5 min-w-5 px-1 text-xs",
+                    "bg-primary text-primary-foreground",
+                    clientAlertCount === 0 && "animate-pulse"
+                  )}
+                >
+                  {(unreadCount - clientAlertCount) > 99 ? "99+" : (unreadCount - clientAlertCount)}
+                </Badge>
+              )}
+            </div>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between p-3 border-b">
+          <div className="flex items-center gap-2">
+            <h4 className="font-semibold text-sm">Notificações</h4>
+            {clientAlertCount > 0 && (
+              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">
+                <Crown className="w-3 h-3" />
+                {clientAlertCount} cliente{clientAlertCount !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
           <h4 className="font-semibold text-sm">Notificações</h4>
           {unreadCount > 0 && (
             <Button
