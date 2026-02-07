@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -7,6 +7,7 @@ import { useUnitPermissions } from "@/hooks/useUnitPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useLeadNotifications } from "@/hooks/useLeadNotifications";
 import { useChatNotificationToggle } from "@/hooks/useChatNotificationToggle";
+import { useUnreadCountRealtime, useLeadsRealtime } from "@/hooks/useRealtimeOptimized";
 import { Lead, LeadStatus, UserWithRole, Profile } from "@/types/crm";
 import { LeadsTable } from "@/components/admin/LeadsTable";
 import { LeadsFilters } from "@/components/admin/LeadsFilters";
@@ -331,117 +332,67 @@ export default function CentralAtendimento() {
     }
   }, [leads, isLoadingLeads, searchParams, setSearchParams]);
 
-  // Fetch unread messages count with realtime updates
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      const { data } = await supabase
-        .from("wapi_conversations")
-        .select("unread_count");
-      
-      if (data) {
-        const total = data.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
-        setUnreadCount(total);
-      }
-    };
+  // Optimized: Fetch unread count with debounced realtime
+  const fetchUnreadCount = useCallback(async () => {
+    const { data } = await supabase
+      .from("wapi_conversations")
+      .select("unread_count"); // Only fetch unread_count column
+    
+    if (data) {
+      const total = data.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+      setUnreadCount(total);
+    }
+  }, []);
 
+  useEffect(() => {
     fetchUnreadCount();
+  }, [fetchUnreadCount]);
 
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel('unread-count-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'wapi_conversations',
-        },
-        () => {
-          fetchUnreadCount();
-        }
-      )
-      .subscribe();
+  // Use optimized realtime hook with debounce (1s)
+  useUnreadCountRealtime(fetchUnreadCount, { debounceMs: 1000 });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+  // Optimized: Fetch new leads count
+  const fetchNewLeadsCount = useCallback(async () => {
+    const { count } = await supabase
+      .from("campaign_leads")
+      .select("id", { count: "exact", head: true }) // Only count, don't fetch data
+      .eq("status", "novo");
+    
+    setNewLeadsCount(count || 0);
   }, []);
 
-  // Fetch new leads count with realtime updates AND refresh leads list on new lead
   useEffect(() => {
-    const fetchNewLeadsCount = async () => {
-      const { count } = await supabase
-        .from("campaign_leads")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "novo");
-      
-      setNewLeadsCount(count || 0);
-    };
-
     fetchNewLeadsCount();
+  }, [fetchNewLeadsCount]);
 
-    // Subscribe to realtime changes - also refresh leads list when new leads arrive
-    const leadsChannel = supabase
-      .channel('new-leads-count-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'campaign_leads',
-        },
-        (payload) => {
-          console.log('Novo lead recebido em tempo real:', payload.new);
-          fetchNewLeadsCount();
-          // Add the new lead to the list immediately (at the beginning since ordered by created_at desc)
-          setLeads((prev) => {
-            const newLead = payload.new as Lead;
-            // Check if lead already exists to avoid duplicates
-            if (prev.some(l => l.id === newLead.id)) {
-              return prev;
-            }
-            return [newLead, ...prev];
-          });
-          setTotalCount((prev) => prev + 1);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'campaign_leads',
-        },
-        (payload) => {
-          fetchNewLeadsCount();
-          // Update the lead in the list
-          setLeads((prev) =>
-            prev.map((lead) =>
-              lead.id === payload.new.id ? (payload.new as Lead) : lead
-            )
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'campaign_leads',
-        },
-        (payload) => {
-          fetchNewLeadsCount();
-          // Remove the lead from the list
-          setLeads((prev) => prev.filter((lead) => lead.id !== payload.old.id));
-          setTotalCount((prev) => Math.max(0, prev - 1));
-        }
-      )
-      .subscribe();
+  // Use optimized realtime hook for leads with debounced callbacks
+  const handleLeadInsert = useCallback((payload: unknown) => {
+    const newLead = payload as Lead;
+    console.log('Novo lead recebido em tempo real:', newLead);
+    fetchNewLeadsCount();
+    setLeads((prev) => {
+      if (prev.some(l => l.id === newLead.id)) return prev;
+      return [newLead, ...prev];
+    });
+    setTotalCount((prev) => prev + 1);
+  }, [fetchNewLeadsCount]);
 
-    return () => {
-      supabase.removeChannel(leadsChannel);
-    };
-  }, []);
+  const handleLeadUpdate = useCallback((payload: unknown) => {
+    const updatedLead = payload as Lead;
+    fetchNewLeadsCount();
+    setLeads((prev) =>
+      prev.map((lead) => lead.id === updatedLead.id ? updatedLead : lead)
+    );
+  }, [fetchNewLeadsCount]);
+
+  const handleLeadDelete = useCallback((payload: unknown) => {
+    const deletedLead = payload as { id: string };
+    fetchNewLeadsCount();
+    setLeads((prev) => prev.filter((lead) => lead.id !== deletedLead.id));
+    setTotalCount((prev) => Math.max(0, prev - 1));
+  }, [fetchNewLeadsCount]);
+
+  useLeadsRealtime(handleLeadInsert, handleLeadUpdate, handleLeadDelete, { debounceMs: 300 });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
