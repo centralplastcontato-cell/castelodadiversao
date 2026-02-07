@@ -455,9 +455,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         fetchConversations();
       }
 
-      // Subscribe to realtime updates for conversations - with notifications
+      // Optimized: Use debounced realtime with smarter notifications
+      let debounceTimer: NodeJS.Timeout | null = null;
+      
       const conversationsChannel = supabase
-        .channel('wapi_conversations_changes')
+        .channel(`wapi_conversations_optimized_${selectedInstance.id}`)
         .on(
           'postgres_changes',
           {
@@ -467,16 +469,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
             filter: `instance_id=eq.${selectedInstance.id}`,
           },
           (payload) => {
-            // Check if this is a new message (unread_count increased or last_message changed)
+            // Handle notifications immediately (no debounce for UX)
             if (payload.eventType === 'UPDATE') {
               const newData = payload.new as Conversation;
               const oldData = payload.old as Partial<Conversation>;
               
-              // If unread count increased and message is not from me, trigger notification
               if (
                 newData.unread_count > (oldData.unread_count || 0) && 
                 !newData.last_message_from_me &&
-                newData.id !== selectedConversation?.id // Don't notify for current conversation
+                newData.id !== selectedConversation?.id
               ) {
                 notify({
                   title: newData.contact_name || newData.contact_phone,
@@ -485,12 +486,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 });
               }
             }
-            fetchConversations();
+            
+            // Debounce fetchConversations to reduce DB calls
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              fetchConversations();
+            }, 500);
           }
         )
         .subscribe();
 
       return () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
         supabase.removeChannel(conversationsChannel);
       };
     }
@@ -678,9 +685,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const fetchConversations = async (selectPhone?: string) => {
     if (!selectedInstance) return;
 
+    // Optimized: Select only necessary columns instead of "*"
     const { data } = await supabase
       .from("wapi_conversations")
-      .select("*")
+      .select("id, instance_id, lead_id, remote_jid, contact_name, contact_phone, contact_picture, last_message_at, unread_count, is_favorite, is_closed, has_scheduled_visit, is_freelancer, is_equipe, last_message_content, last_message_from_me, bot_enabled, bot_step, created_at")
       .eq("instance_id", selectedInstance.id)
       .order("last_message_at", { ascending: false, nullsFirst: true });
 
@@ -859,10 +867,10 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     // Note: For initial load, states are already set in the useEffect before calling this function
     
     try {
-      // Build query with cursor-based pagination
+      // Build query with cursor-based pagination - select only necessary columns
       let query = supabase
         .from("wapi_messages")
-        .select("*")
+        .select("id, conversation_id, message_id, from_me, message_type, content, media_url, status, timestamp")
         .eq("conversation_id", conversationId)
         .order("timestamp", { ascending: false })
         .limit(MESSAGES_LIMIT);
