@@ -145,6 +145,7 @@ import { ConversationStatusActions } from "@/components/whatsapp/ConversationSta
 import { ConversationFilters, FilterType } from "@/components/whatsapp/ConversationFilters";
 import { LeadInfoPopover } from "@/components/whatsapp/LeadInfoPopover";
 import { SalesMaterialsMenu } from "@/components/whatsapp/SalesMaterialsMenu";
+import { ShareToGroupDialog } from "@/components/whatsapp/ShareToGroupDialog";
 import { useFilterOrder } from "@/hooks/useFilterOrder";
 
 export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled }: WhatsAppChatProps) {
@@ -182,6 +183,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [isTransferring, setIsTransferring] = useState(false);
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [showShareToGroupDialog, setShowShareToGroupDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [closedLeadConversationIds, setClosedLeadConversationIds] = useState<Set<string>>(new Set());
   const [orcamentoEnviadoConversationIds, setOrcamentoEnviadoConversationIds] = useState<Set<string>>(new Set());
@@ -2266,6 +2268,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         currentUserName={currentUserName}
                         onShowTransferDialog={() => setShowTransferDialog(true)}
                         onShowDeleteDialog={() => setShowDeleteConfirmDialog(true)}
+                        onShowShareToGroupDialog={() => linkedLead && setShowShareToGroupDialog(true)}
                         onCreateAndClassifyLead={createAndClassifyLead}
                         onToggleConversationBot={toggleConversationBot}
                         onLeadNameChange={(newName) => {
@@ -2878,6 +2881,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       currentUserName={currentUserName}
                       onShowTransferDialog={() => setShowTransferDialog(true)}
                       onShowDeleteDialog={() => setShowDeleteConfirmDialog(true)}
+                      onShowShareToGroupDialog={() => linkedLead && setShowShareToGroupDialog(true)}
                       onCreateAndClassifyLead={createAndClassifyLead}
                       onToggleConversationBot={toggleConversationBot}
                       onLeadNameChange={(newName) => {
@@ -3557,6 +3561,22 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Share to Group Dialog */}
+      {linkedLead && (
+        <ShareToGroupDialog
+          open={showShareToGroupDialog}
+          onOpenChange={setShowShareToGroupDialog}
+          lead={linkedLead}
+          groups={conversations.filter(c => c.remote_jid?.endsWith('@g.us')).map(c => ({
+            id: c.id,
+            remote_jid: c.remote_jid,
+            contact_name: c.contact_name,
+            instance_id: c.instance_id,
+          }))}
+          instances={instances}
+        />
+      )}
     </div>
   );
 }
