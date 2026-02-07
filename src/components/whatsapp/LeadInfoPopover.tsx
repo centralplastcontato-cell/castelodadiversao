@@ -11,7 +11,7 @@
  import { toast } from "@/hooks/use-toast";
 import { 
   Info, MessageSquare, Clock, MapPin, Calendar, Users, 
-  ArrowRightLeft, Bot, Loader2, Pencil, Check, X, Trash2
+  ArrowRightLeft, Bot, Loader2, Pencil, Check, X, Trash2, UsersRound
 } from "lucide-react";
  import { format } from "date-fns";
  import { ptBR } from "date-fns/locale";
@@ -55,28 +55,30 @@ interface LeadInfoPopoverProps {
   currentUserName: string;
   onShowTransferDialog: () => void;
   onShowDeleteDialog: () => void;
+  onShowShareToGroupDialog: () => void;
   onCreateAndClassifyLead: (status: string) => void;
   onToggleConversationBot: (conv: Conversation) => void;
   onLeadNameChange: (newName: string) => void;
   mobile?: boolean;
 }
  
- export function LeadInfoPopover({
-   linkedLead,
-   selectedConversation,
-   selectedInstance,
-   canTransferLeads,
+export function LeadInfoPopover({
+  linkedLead,
+  selectedConversation,
+  selectedInstance,
+  canTransferLeads,
   canDeleteFromChat,
-   isCreatingLead,
-   userId,
-   currentUserName,
-   onShowTransferDialog,
+  isCreatingLead,
+  userId,
+  currentUserName,
+  onShowTransferDialog,
   onShowDeleteDialog,
-   onCreateAndClassifyLead,
-   onToggleConversationBot,
-   onLeadNameChange,
-   mobile = false,
- }: LeadInfoPopoverProps) {
+  onShowShareToGroupDialog,
+  onCreateAndClassifyLead,
+  onToggleConversationBot,
+  onLeadNameChange,
+  mobile = false,
+}: LeadInfoPopoverProps) {
    const [isEditingName, setIsEditingName] = useState(false);
    const [editedName, setEditedName] = useState("");
    const [isSavingName, setIsSavingName] = useState(false);
@@ -326,30 +328,41 @@ interface LeadInfoPopoverProps {
                )}
              </div>
              
-             {/* Transfer button */}
-             {canTransferLeads && (
-               <Button 
-                 variant="outline" 
-                 size="sm" 
-                 className="w-full text-xs h-7 gap-2"
-                 onClick={onShowTransferDialog}
-               >
-                 <ArrowRightLeft className="w-3 h-3" />
-                 Transferir Lead
-               </Button>
-             )}
-            
-            {canDeleteFromChat && (
+              {/* Share to Group button */}
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="w-full text-xs h-7 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                onClick={onShowDeleteDialog}
+                className="w-full text-xs h-7 gap-2"
+                onClick={onShowShareToGroupDialog}
               >
-                <Trash2 className="w-3 h-3" />
-                Excluir Lead
+                <UsersRound className="w-3 h-3" />
+                Compartilhar em Grupo
               </Button>
-            )}
+
+              {/* Transfer button */}
+              {canTransferLeads && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs h-7 gap-2"
+                  onClick={onShowTransferDialog}
+                >
+                  <ArrowRightLeft className="w-3 h-3" />
+                  Transferir Lead
+                </Button>
+              )}
+             
+             {canDeleteFromChat && (
+               <Button 
+                 variant="outline" 
+                 size="sm" 
+                 className="w-full text-xs h-7 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                 onClick={onShowDeleteDialog}
+               >
+                 <Trash2 className="w-3 h-3" />
+                 Excluir Lead
+               </Button>
+             )}
            </div>
          ) : (
            <div className="space-y-3">
