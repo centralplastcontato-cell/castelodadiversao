@@ -142,9 +142,10 @@ interface WhatsAppChatProps {
 // Component for displaying media with auto-download capability
 import { MediaMessage } from "@/components/whatsapp/MediaMessage";
 import { ConversationStatusActions } from "@/components/whatsapp/ConversationStatusActions";
-import { ConversationFilters } from "@/components/whatsapp/ConversationFilters";
+import { ConversationFilters, FilterType } from "@/components/whatsapp/ConversationFilters";
 import { LeadInfoPopover } from "@/components/whatsapp/LeadInfoPopover";
 import { SalesMaterialsMenu } from "@/components/whatsapp/SalesMaterialsMenu";
+import { useFilterOrder } from "@/hooks/useFilterOrder";
 
 export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandled }: WhatsAppChatProps) {
   const [instances, setInstances] = useState<WapiInstance[]>([]);
@@ -162,7 +163,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [hasUserScrolledToTop, setHasUserScrolledToTop] = useState(false); // Track if user manually scrolled to top
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites' | 'grupos'>('all');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const { filterOrder, setFilterOrder: saveFilterOrder } = useFilterOrder(userId);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -1891,6 +1893,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 orcamentoEnviadoCount={orcamentoEnviadoConversationIds.size}
                 collapsible={true}
                 defaultOpen={false}
+                filterOrder={filterOrder}
+                onFilterOrderChange={saveFilterOrder}
               />
             </div>
             
@@ -2021,6 +2025,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                     orcamentoEnviadoCount={orcamentoEnviadoConversationIds.size}
                     collapsible={true}
                     defaultOpen={false}
+                    filterOrder={filterOrder}
+                    onFilterOrderChange={saveFilterOrder}
                   />
                 </div>
                 
