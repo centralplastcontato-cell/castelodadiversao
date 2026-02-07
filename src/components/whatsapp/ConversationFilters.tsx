@@ -6,24 +6,25 @@
  CollapsibleContent, 
  CollapsibleTrigger 
  } from "@/components/ui/collapsible";
- import { 
- X, Star, CheckCircle, CalendarCheck, Briefcase, Users, FileCheck, ChevronDown, Filter
- } from "lucide-react";
+import { 
+X, Star, CheckCircle, CalendarCheck, Briefcase, Users, FileCheck, ChevronDown, Filter, UsersRound
+} from "lucide-react";
  import { cn } from "@/lib/utils";
  
- interface Conversation {
- id: string;
- unread_count: number;
- is_favorite: boolean;
- is_closed: boolean;
- has_scheduled_visit: boolean;
- is_freelancer: boolean;
- is_equipe: boolean;
- }
+interface Conversation {
+id: string;
+unread_count: number;
+is_favorite: boolean;
+is_closed: boolean;
+has_scheduled_visit: boolean;
+is_freelancer: boolean;
+is_equipe: boolean;
+remote_jid: string;
+}
  
- interface ConversationFiltersProps {
- filter: 'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites';
- onFilterChange: (filter: 'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites') => void;
+interface ConversationFiltersProps {
+filter: 'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites' | 'grupos';
+onFilterChange: (filter: 'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites' | 'grupos') => void;
  conversations: Conversation[];
  closedLeadCount: number;
  orcamentoEnviadoCount: number;
@@ -31,17 +32,18 @@
  defaultOpen?: boolean;
  }
  
- const FILTER_LABELS: Record<string, string> = {
- all: 'Tudo',
- unread: 'Não lidas',
- closed: 'Encerradas',
- fechados: 'Fechados',
- oe: 'O.E',
- visitas: 'Visitas',
- freelancer: 'Freelancer',
- equipe: 'Equipe',
- favorites: 'Favoritos',
- };
+const FILTER_LABELS: Record<string, string> = {
+all: 'Tudo',
+unread: 'Não lidas',
+closed: 'Encerradas',
+fechados: 'Fechados',
+oe: 'O.E',
+visitas: 'Visitas',
+freelancer: 'Freelancer',
+equipe: 'Equipe',
+favorites: 'Favoritos',
+grupos: 'Grupos',
+};
  
  export function ConversationFilters({
  filter,
@@ -54,11 +56,12 @@
  }: ConversationFiltersProps) {
  const [isOpen, setIsOpen] = useState(defaultOpen);
  
- const unreadCount = conversations.filter(c => c.unread_count > 0).length;
- const closedCount = conversations.filter(c => c.is_closed).length;
- const visitasCount = conversations.filter(c => c.has_scheduled_visit).length;
- const freelancerCount = conversations.filter(c => c.is_freelancer).length;
- const equipeCount = conversations.filter(c => c.is_equipe).length;
+const unreadCount = conversations.filter(c => c.unread_count > 0).length;
+const closedCount = conversations.filter(c => c.is_closed).length;
+const visitasCount = conversations.filter(c => c.has_scheduled_visit).length;
+const freelancerCount = conversations.filter(c => c.is_freelancer).length;
+const equipeCount = conversations.filter(c => c.is_equipe).length;
+const gruposCount = conversations.filter(c => c.remote_jid?.endsWith('@g.us')).length;
  
  // Count active filters (non-default)
  const hasActiveFilter = filter !== 'all';
@@ -258,6 +261,30 @@
       >
         <Star className="w-3.5 h-3.5 mr-1" />
         Favoritos
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm" 
+        className={cn(
+          "h-8 px-3 text-xs font-semibold rounded-xl transition-all duration-200",
+          filter === 'grupos' 
+            ? "bg-indigo-600 text-white shadow-md hover:bg-indigo-600/90" 
+            : "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/20"
+        )}
+        onClick={() => onFilterChange('grupos')}
+      >
+        <UsersRound className="w-3.5 h-3.5 mr-1" />
+        Grupos
+        {gruposCount > 0 && (
+          <Badge className={cn(
+            "ml-1.5 h-5 min-w-5 px-1.5 text-[11px] font-bold",
+            filter === 'grupos' 
+              ? "bg-white/20 text-white" 
+              : "bg-indigo-500/25 text-indigo-700 dark:text-indigo-400"
+          )}>
+            {gruposCount}
+          </Badge>
+        )}
       </Button>
     </div>
   );

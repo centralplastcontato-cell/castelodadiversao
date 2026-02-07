@@ -162,7 +162,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [hasUserScrolledToTop, setHasUserScrolledToTop] = useState(false); // Track if user manually scrolled to top
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'closed' | 'fechados' | 'visitas' | 'freelancer' | 'equipe' | 'oe' | 'favorites' | 'grupos'>('all');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -1607,6 +1607,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       if (filter === 'freelancer') return matchesSearch && conv.is_freelancer;
       if (filter === 'equipe') return matchesSearch && conv.is_equipe;
       if (filter === 'favorites') return matchesSearch && conv.is_favorite;
+      if (filter === 'grupos') return matchesSearch && conv.remote_jid?.endsWith('@g.us');
       // 'all' filter - show non-closed conversations only
       return matchesSearch && !conv.is_closed;
     })
