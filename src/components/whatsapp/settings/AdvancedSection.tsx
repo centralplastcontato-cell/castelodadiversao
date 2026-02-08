@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { RefreshCw, Trash2, FileText, AlertTriangle, Database, Copy, Loader2, Download, Users, MessageCircle, MessagesSquare } from "lucide-react";
+import { RefreshCw, Trash2, FileText, AlertTriangle, Database, Copy, Loader2, Download, Users, MessageCircle, MessagesSquare, Package } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { exportLeadsToJSON, exportConversationsToJSON, exportMessagesToJSON } from "@/components/admin/exportDataJSON";
+import { exportLeadsToJSON, exportConversationsToJSON, exportMessagesToJSON, exportSalesMaterialsToJSON } from "@/components/admin/exportDataJSON";
 
 interface AdvancedSectionProps {
   userId: string;
@@ -46,6 +46,7 @@ export function AdvancedSection({ userId, isAdmin }: AdvancedSectionProps) {
   const [isExportingLeads, setIsExportingLeads] = useState(false);
   const [isExportingConversations, setIsExportingConversations] = useState(false);
   const [isExportingMessages, setIsExportingMessages] = useState(false);
+  const [isExportingMaterials, setIsExportingMaterials] = useState(false);
 
   const scanForDuplicates = async () => {
     setIsScanning(true);
@@ -520,6 +521,36 @@ export function AdvancedSection({ userId, isAdmin }: AdvancedSectionProps) {
                   <MessagesSquare className="w-4 h-4 mr-2" />
                 )}
                 Mensagens
+              </Button>
+
+              {/* Export Sales Materials */}
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setIsExportingMaterials(true);
+                  const result = await exportSalesMaterialsToJSON();
+                  setIsExportingMaterials(false);
+                  if (result.success) {
+                    toast({
+                      title: "Materiais exportados",
+                      description: `${result.count} material(ais) exportado(s) com sucesso.`,
+                    });
+                  } else {
+                    toast({
+                      title: "Erro ao exportar",
+                      description: result.error,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                disabled={isExportingMaterials}
+              >
+                {isExportingMaterials ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Package className="w-4 h-4 mr-2" />
+                )}
+                Materiais
               </Button>
             </div>
           </CardContent>
