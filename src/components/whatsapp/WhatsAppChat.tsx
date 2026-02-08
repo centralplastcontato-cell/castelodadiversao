@@ -629,6 +629,21 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     lastMessageFromMeRef.current = isFromMe || false;
   }, [messages, isInitialLoad]);
   
+  // Track if user has manually scrolled (to prevent auto-loading on initial load)
+  const canLoadMoreRef = useRef(false);
+  
+  // Reset canLoadMore when conversation changes
+  useEffect(() => {
+    if (isInitialLoad) {
+      canLoadMoreRef.current = false;
+      // Enable loading more after a delay to let initial scroll settle
+      const timer = setTimeout(() => {
+        canLoadMoreRef.current = true;
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialLoad]);
+  
   // Infinite scroll listener - load more when near top
   useEffect(() => {
     const desktopViewport = scrollAreaDesktopRef.current?.querySelector('[data-radix-scroll-area-viewport]');
@@ -643,8 +658,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         setHasUserScrolledToTop(true);
       }
       
-      // Load more when scrolled near top (within 120px) and not during initial load
-      if (scrollTop < 120 && hasMoreMessages && !isLoadingMoreRef.current && !isInitialLoad && messages.length > 0) {
+      // Load more when scrolled near top (within 80px) and user has manually scrolled
+      // canLoadMoreRef prevents auto-loading right after initial scroll
+      if (scrollTop < 80 && hasMoreMessages && !isLoadingMoreRef.current && !isInitialLoad && messages.length > 0 && canLoadMoreRef.current) {
         loadMoreMessages();
       }
     };
