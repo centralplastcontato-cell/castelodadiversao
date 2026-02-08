@@ -162,6 +162,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const [oldestMessageTimestamp, setOldestMessageTimestamp] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [hasUserScrolledToTop, setHasUserScrolledToTop] = useState(false); // Track if user manually scrolled to top
+  const [isAtBottom, setIsAtBottom] = useState(true); // Track if scroll is at bottom (for scroll-to-bottom button visibility)
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>('all');
@@ -517,6 +518,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         setOldestMessageTimestamp(null);
         setIsInitialLoad(true);
         setHasUserScrolledToTop(false);
+        setIsAtBottom(true); // Reset to bottom when changing conversations
         prevConversationIdRef.current = selectedConversation.id;
       }
       
@@ -582,14 +584,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const prevMessagesLengthRef = useRef(0);
   const lastMessageFromMeRef = useRef(false);
   
-  // Reliable scroll to bottom function with double rAF for Safari
-  const scrollToBottomInstant = (viewport: Element) => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        viewport.scrollTop = viewport.scrollHeight;
-      });
-    });
-  };
+  
+  // Track if we need to force scroll on next render (for initial load)
+  const pendingInitialScrollRef = useRef(false);
   
   useEffect(() => {
     const messagesLength = messages.length;
@@ -597,31 +594,56 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     const isNewMessage = messagesLength > prevMessagesLengthRef.current;
     const isFromMe = lastMessage?.from_me;
     
-    // Scroll to bottom only when:
-    // 1. Initial load completed (isInitialLoad was true and now false, messages loaded)
-    // 2. New message from me
-    // 3. New message received while already at bottom
-    const shouldScrollToBottom = (
-      (isInitialLoad && messagesLength > 0) ||
-      (isNewMessage && isFromMe) ||
-      (isNewMessage && !isFromMe && !lastMessageFromMeRef.current)
+    // On initial load with messages, set pending scroll flag
+    if (isInitialLoad && messagesLength > 0) {
+      pendingInitialScrollRef.current = true;
+    }
+    
+    // Execute pending scroll with aggressive timing
+    if (pendingInitialScrollRef.current && messagesLength > 0) {
+      const executeScroll = () => {
+        const desktopViewport = scrollAreaDesktopRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        const mobileViewport = scrollAreaMobileRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        const viewport = desktopViewport || mobileViewport;
+        
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+          return true;
+        }
+        return false;
+      };
+      
+      // Execute immediately
+      executeScroll();
+      
+      // And with multiple delays to catch late-rendering scenarios
+      requestAnimationFrame(executeScroll);
+      requestAnimationFrame(() => requestAnimationFrame(executeScroll));
+      setTimeout(executeScroll, 50);
+      setTimeout(executeScroll, 100);
+      setTimeout(executeScroll, 200);
+      setTimeout(() => {
+        executeScroll();
+        pendingInitialScrollRef.current = false;
+      }, 350);
+    }
+    
+    // Handle new messages (not initial load)
+    const shouldScrollForNewMessage = (
+      !isInitialLoad && 
+      isNewMessage && 
+      (isFromMe || !lastMessageFromMeRef.current)
     );
     
-    if (shouldScrollToBottom) {
+    if (shouldScrollForNewMessage) {
       const desktopViewport = scrollAreaDesktopRef.current?.querySelector('[data-radix-scroll-area-viewport]');
       const mobileViewport = scrollAreaMobileRef.current?.querySelector('[data-radix-scroll-area-viewport]');
       const viewport = desktopViewport || mobileViewport;
       
       if (viewport) {
-        if (isInitialLoad) {
-          // Use instant scroll with double rAF for initial load (Safari fix)
-          scrollToBottomInstant(viewport);
-        } else {
-          // Use smooth scroll for new messages
-          requestAnimationFrame(() => {
-            viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-          });
-        }
+        requestAnimationFrame(() => {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+        });
       }
     }
     
@@ -652,6 +674,12 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLDivElement;
       const scrollTop = target.scrollTop;
+      const scrollHeight = target.scrollHeight;
+      const clientHeight = target.clientHeight;
+      
+      // Track if at bottom (within 100px of bottom)
+      const atBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setIsAtBottom(atBottom);
       
       // Track when user reaches top (within 50px)
       if (scrollTop < 50 && !isInitialLoad && messages.length > 0) {
@@ -934,8 +962,8 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       isLoadingMoreRef.current = false;
       
       if (!loadMore) {
-        // Mark initial load complete after a brief delay for scroll
-        setTimeout(() => setIsInitialLoad(false), 100);
+        // Mark initial load complete after a brief delay for scroll (handled by useEffect)
+        setTimeout(() => setIsInitialLoad(false), 400);
       }
     }
   };
@@ -2626,16 +2654,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                         <div ref={messagesEndRefDesktop} />
                       </div>
                     </ScrollArea>
-                    {/* Scroll to bottom button - outside ScrollArea for proper positioning */}
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg opacity-90 hover:opacity-100 z-10"
-                      onClick={scrollToBottomDesktop}
-                      title="Ir para última mensagem"
-                    >
-                      <ArrowDown className="w-5 h-5" />
-                    </Button>
+                    {/* Scroll to bottom button - only show when not at bottom */}
+                    {!isAtBottom && (
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg opacity-90 hover:opacity-100 z-10"
+                        onClick={scrollToBottomDesktop}
+                        title="Ir para última mensagem"
+                      >
+                        <ArrowDown className="w-5 h-5" />
+                      </Button>
+                    )}
                   </div>
 
                   {/* Message Input */}
@@ -3238,16 +3268,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                       <div ref={messagesEndRefMobile} />
                     </div>
                   </ScrollArea>
-                  {/* Scroll to bottom button - outside ScrollArea for proper positioning */}
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg opacity-90 hover:opacity-100 z-10"
-                    onClick={scrollToBottomMobile}
-                    title="Ir para última mensagem"
-                  >
-                    <ArrowDown className="w-5 h-5" />
-                  </Button>
+                  {/* Scroll to bottom button - only show when not at bottom */}
+                  {!isAtBottom && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg opacity-90 hover:opacity-100 z-10"
+                      onClick={scrollToBottomMobile}
+                      title="Ir para última mensagem"
+                    >
+                      <ArrowDown className="w-5 h-5" />
+                    </Button>
+                  )}
                 </div>
                 <div className="p-3 border-t shrink-0">
                   <form
