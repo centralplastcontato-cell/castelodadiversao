@@ -198,3 +198,115 @@ export async function exportSalesMaterialsToJSON(): Promise<{ success: boolean; 
     return { success: false, count: 0, error: error.message || "Erro ao exportar materiais" };
   }
 }
+
+// Export Bot Settings to JSON
+export async function exportBotSettingsToJSON(): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    // Fetch bot settings with instance info
+    const { data: settings, error: settingsError } = await supabase
+      .from("wapi_bot_settings")
+      .select(`
+        instance_id,
+        bot_enabled,
+        welcome_message,
+        completion_message,
+        transfer_message,
+        qualified_lead_message,
+        next_step_question,
+        next_step_visit_response,
+        next_step_questions_response,
+        next_step_analyze_response,
+        follow_up_enabled,
+        follow_up_message,
+        follow_up_delay_hours,
+        follow_up_2_enabled,
+        follow_up_2_message,
+        follow_up_2_delay_hours,
+        auto_send_materials,
+        auto_send_pdf,
+        auto_send_pdf_intro,
+        auto_send_photos,
+        auto_send_photos_intro,
+        auto_send_presentation_video,
+        auto_send_promo_video,
+        message_delay_seconds
+      `);
+
+    if (settingsError) throw settingsError;
+
+    // Fetch bot questions
+    const { data: questions, error: questionsError } = await supabase
+      .from("wapi_bot_questions")
+      .select("instance_id, step, question_text, confirmation_text, sort_order, is_active")
+      .order("sort_order", { ascending: true });
+
+    if (questionsError) throw questionsError;
+
+    // Fetch instances to map unit names
+    const { data: instances } = await supabase
+      .from("wapi_instances")
+      .select("id, unit");
+
+    const instanceMap = new Map<string, string>();
+    instances?.forEach(inst => {
+      instanceMap.set(inst.id, inst.unit || "Desconhecida");
+    });
+
+    // Group questions by instance_id
+    const questionsByInstance = new Map<string, any[]>();
+    questions?.forEach(q => {
+      const existing = questionsByInstance.get(q.instance_id) || [];
+      existing.push({
+        step: q.step,
+        question_text: q.question_text,
+        confirmation_text: q.confirmation_text,
+        sort_order: q.sort_order,
+        is_active: q.is_active,
+      });
+      questionsByInstance.set(q.instance_id, existing);
+    });
+
+    // Build export data grouped by unit
+    const exportData = settings?.map(s => ({
+      unit: instanceMap.get(s.instance_id) || "Desconhecida",
+      settings: {
+        bot_enabled: s.bot_enabled,
+        welcome_message: s.welcome_message,
+        completion_message: s.completion_message,
+        transfer_message: s.transfer_message,
+        qualified_lead_message: s.qualified_lead_message,
+        next_step_question: s.next_step_question,
+        next_step_visit_response: s.next_step_visit_response,
+        next_step_questions_response: s.next_step_questions_response,
+        next_step_analyze_response: s.next_step_analyze_response,
+        follow_up_enabled: s.follow_up_enabled,
+        follow_up_message: s.follow_up_message,
+        follow_up_delay_hours: s.follow_up_delay_hours,
+        follow_up_2_enabled: s.follow_up_2_enabled,
+        follow_up_2_message: s.follow_up_2_message,
+        follow_up_2_delay_hours: s.follow_up_2_delay_hours,
+        auto_send_materials: s.auto_send_materials,
+        auto_send_pdf: s.auto_send_pdf,
+        auto_send_pdf_intro: s.auto_send_pdf_intro,
+        auto_send_photos: s.auto_send_photos,
+        auto_send_photos_intro: s.auto_send_photos_intro,
+        auto_send_presentation_video: s.auto_send_presentation_video,
+        auto_send_promo_video: s.auto_send_promo_video,
+        message_delay_seconds: s.message_delay_seconds,
+      },
+      questions: questionsByInstance.get(s.instance_id) || [],
+    })) || [];
+
+    if (exportData.length === 0) {
+      return { success: false, count: 0, error: "Nenhuma configuração de bot encontrada" };
+    }
+
+    const filename = `bot-settings-export-${format(new Date(), "yyyy-MM-dd_HH-mm")}.json`;
+    downloadJSON(exportData, filename);
+
+    return { success: true, count: exportData.length };
+  } catch (error: any) {
+    console.error("Error exporting bot settings:", error);
+    return { success: false, count: 0, error: error.message || "Erro ao exportar configurações" };
+  }
+}
