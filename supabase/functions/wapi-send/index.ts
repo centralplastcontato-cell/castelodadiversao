@@ -582,17 +582,21 @@ Deno.serve(async (req) => {
                 });
                 
                 if (!upErr) {
-                  const { data: pubUrl } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+                  // Use signed URL for private bucket (7-day expiry)
+                  const { data: signedUrlData } = await supabase.storage.from('whatsapp-media').createSignedUrl(path, 604800);
+                  const signedUrl = signedUrlData?.signedUrl;
                   
-                  await supabase.from('wapi_messages').update({ 
-                    media_key: null, 
-                    media_direct_path: null,
-                    media_url: pubUrl.publicUrl 
-                  }).eq('message_id', msgId);
-                  
-                  return new Response(JSON.stringify({ success: true, url: pubUrl.publicUrl, mimeType }), {
-                    status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                  });
+                  if (signedUrl) {
+                    await supabase.from('wapi_messages').update({ 
+                      media_key: null, 
+                      media_direct_path: null,
+                      media_url: signedUrl 
+                    }).eq('message_id', msgId);
+                    
+                    return new Response(JSON.stringify({ success: true, url: signedUrl, mimeType }), {
+                      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    });
+                  }
                 }
               }
             }
@@ -673,17 +677,21 @@ Deno.serve(async (req) => {
               });
             }
             
-            const { data: pubUrl } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+            // Use signed URL for private bucket (7-day expiry)
+            const { data: signedUrlData } = await supabase.storage.from('whatsapp-media').createSignedUrl(path, 604800);
+            const signedUrl = signedUrlData?.signedUrl;
             
-            await supabase.from('wapi_messages').update({ 
-              media_key: null, 
-              media_direct_path: null,
-              media_url: pubUrl.publicUrl 
-            }).eq('message_id', msgId);
-            
-            return new Response(JSON.stringify({ success: true, url: pubUrl.publicUrl, mimeType }), {
-              status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+            if (signedUrl) {
+              await supabase.from('wapi_messages').update({ 
+                media_key: null, 
+                media_direct_path: null,
+                media_url: signedUrl 
+              }).eq('message_id', msgId);
+              
+              return new Response(JSON.stringify({ success: true, url: signedUrl, mimeType }), {
+                status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
           }
           
           // Smaller files: convert to base64 in chunks
@@ -722,15 +730,23 @@ Deno.serve(async (req) => {
           });
         }
         
-        const { data: pubUrl } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+        // Use signed URL for private bucket (7-day expiry)
+        const { data: signedUrlData } = await supabase.storage.from('whatsapp-media').createSignedUrl(path, 604800);
+        const signedUrl = signedUrlData?.signedUrl;
+        
+        if (!signedUrl) {
+          return new Response(JSON.stringify({ error: 'Falha ao gerar URL assinada' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
         
         await supabase.from('wapi_messages').update({ 
           media_key: null, 
           media_direct_path: null,
-          media_url: pubUrl.publicUrl 
+          media_url: signedUrl 
         }).eq('message_id', msgId);
         
-        return new Response(JSON.stringify({ success: true, url: pubUrl.publicUrl, mimeType }), {
+        return new Response(JSON.stringify({ success: true, url: signedUrl, mimeType }), {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }

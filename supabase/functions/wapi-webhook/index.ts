@@ -1156,9 +1156,14 @@ async function downloadMedia(supabase: SupabaseClient, iId: string, iToken: stri
       return null;
     }
     
-    const { data: pu } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
-    console.log(`[${msgId}] Upload successful, URL: ${pu?.publicUrl?.substring(0, 60)}...`);
-    return pu?.publicUrl ? { url: pu.publicUrl, fileName: fn || `${msgId}.${ext}` } : null;
+    // Use signed URL for private bucket (7-day expiry)
+    const { data: signedUrlData, error: signedErr } = await supabase.storage.from('whatsapp-media').createSignedUrl(path, 604800);
+    if (signedErr || !signedUrlData?.signedUrl) {
+      console.error(`[${msgId}] Signed URL creation error:`, signedErr?.message);
+      return null;
+    }
+    console.log(`[${msgId}] Upload successful, signed URL: ${signedUrlData.signedUrl.substring(0, 60)}...`);
+    return { url: signedUrlData.signedUrl, fileName: fn || `${msgId}.${ext}` };
   } catch (err) {
     console.error(`[${msgId}] Download error:`, err instanceof Error ? err.message : String(err));
     return null;
