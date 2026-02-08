@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { RefreshCw, Trash2, FileText, AlertTriangle, Database, Copy, Loader2, Download, Users, MessageCircle, MessagesSquare, Package } from "lucide-react";
+import { RefreshCw, Trash2, FileText, AlertTriangle, Database, Copy, Loader2, Download, Users, MessageCircle, MessagesSquare, Package, Bot } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { exportLeadsToJSON, exportConversationsToJSON, exportMessagesToJSON, exportSalesMaterialsToJSON } from "@/components/admin/exportDataJSON";
+import { exportLeadsToJSON, exportConversationsToJSON, exportMessagesToJSON, exportSalesMaterialsToJSON, exportBotSettingsToJSON } from "@/components/admin/exportDataJSON";
 
 interface AdvancedSectionProps {
   userId: string;
@@ -47,6 +47,7 @@ export function AdvancedSection({ userId, isAdmin }: AdvancedSectionProps) {
   const [isExportingConversations, setIsExportingConversations] = useState(false);
   const [isExportingMessages, setIsExportingMessages] = useState(false);
   const [isExportingMaterials, setIsExportingMaterials] = useState(false);
+  const [isExportingBotSettings, setIsExportingBotSettings] = useState(false);
 
   const scanForDuplicates = async () => {
     setIsScanning(true);
@@ -551,6 +552,36 @@ export function AdvancedSection({ userId, isAdmin }: AdvancedSectionProps) {
                   <Package className="w-4 h-4 mr-2" />
                 )}
                 Materiais
+              </Button>
+
+              {/* Export Bot Settings */}
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setIsExportingBotSettings(true);
+                  const result = await exportBotSettingsToJSON();
+                  setIsExportingBotSettings(false);
+                  if (result.success) {
+                    toast({
+                      title: "Configurações do bot exportadas",
+                      description: `${result.count} configuração(ões) exportada(s) com sucesso.`,
+                    });
+                  } else {
+                    toast({
+                      title: "Erro ao exportar",
+                      description: result.error,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                disabled={isExportingBotSettings}
+              >
+                {isExportingBotSettings ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Bot className="w-4 h-4 mr-2" />
+                )}
+                Config. Bot
               </Button>
             </div>
           </CardContent>
