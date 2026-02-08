@@ -688,7 +688,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       
       // Load more when scrolled near top (within 80px) and user has manually scrolled
       // canLoadMoreRef prevents auto-loading right after initial scroll
+      if (scrollTop < 80 && messages.length > 0) {
+        console.log('[Scroll Debug]', {
+          scrollTop,
+          hasMoreMessages,
+          isLoadingMore: isLoadingMoreRef.current,
+          isInitialLoad,
+          canLoadMore: canLoadMoreRef.current,
+          messagesCount: messages.length
+        });
+      }
       if (scrollTop < 80 && hasMoreMessages && !isLoadingMoreRef.current && !isInitialLoad && messages.length > 0 && canLoadMoreRef.current) {
+        console.log('[Scroll] Loading more messages...');
         loadMoreMessages();
       }
     };
@@ -940,7 +951,9 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         setOldestMessageTimestamp(oldestMsg.timestamp);
         
         // Check if there are more messages
-        setHasMoreMessages(data.length >= MESSAGES_LIMIT);
+        const moreAvailable = data.length >= MESSAGES_LIMIT;
+        console.log('[fetchMessages]', { dataLength: data.length, limit: MESSAGES_LIMIT, moreAvailable, loadMore });
+        setHasMoreMessages(moreAvailable);
         
         if (loadMore) {
           // Prepend older messages - scroll preservation handled in UI
