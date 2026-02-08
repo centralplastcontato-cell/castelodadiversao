@@ -554,7 +554,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
             const newMessage = payload.new as Message;
             setMessages((prev) => {
               // Check if this message already exists (optimistic update case)
-              // Match by message_id or content+timestamp for from_me messages
+              // Match by message_id or content+timestamp+type for from_me messages
               const exists = prev.some(m => {
                 // If both have message_id, compare those
                 if (m.message_id && newMessage.message_id) {
@@ -562,9 +562,16 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
                 }
                 // For optimistic messages (no message_id yet), check by ID prefix
                 if (m.id.startsWith('optimistic-') && m.from_me && newMessage.from_me) {
-                  // Same content and close timestamp = same message
-                  return m.content === newMessage.content && 
-                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMessage.timestamp).getTime()) < 5000;
+                  // For text messages: compare content
+                  if (m.message_type === 'text' && newMessage.message_type === 'text') {
+                    return m.content === newMessage.content && 
+                      Math.abs(new Date(m.timestamp).getTime() - new Date(newMessage.timestamp).getTime()) < 5000;
+                  }
+                  // For media messages: compare type and timestamp proximity
+                  if (m.message_type === newMessage.message_type) {
+                    const timeDiff = Math.abs(new Date(m.timestamp).getTime() - new Date(newMessage.timestamp).getTime());
+                    return timeDiff < 10000; // 10 second window for media (upload takes longer)
+                  }
                 }
                 return m.id === newMessage.id;
               });
@@ -572,8 +579,18 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
               if (exists) {
                 // Replace optimistic message with real one
                 return prev.map(m => {
-                  if (m.id.startsWith('optimistic-') && m.content === newMessage.content && m.from_me && newMessage.from_me) {
-                    return newMessage;
+                  if (m.id.startsWith('optimistic-') && m.from_me && newMessage.from_me) {
+                    // For text: match by content
+                    if (m.message_type === 'text' && newMessage.message_type === 'text' && m.content === newMessage.content) {
+                      return newMessage;
+                    }
+                    // For media: match by type and timestamp
+                    if (m.message_type === newMessage.message_type && m.message_type !== 'text') {
+                      const timeDiff = Math.abs(new Date(m.timestamp).getTime() - new Date(newMessage.timestamp).getTime());
+                      if (timeDiff < 10000) {
+                        return newMessage;
+                      }
+                    }
                   }
                   return m;
                 });
@@ -1374,6 +1391,25 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     if (!audioBlob || !selectedConversation || !selectedInstance || isUploading) return;
 
     setIsUploading(true);
+    
+    // Optimistic update - show audio message immediately
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      conversation_id: selectedConversation.id,
+      message_id: null,
+      from_me: true,
+      message_type: 'audio',
+      content: '[Áudio]',
+      media_url: null, // Will be updated when upload completes
+      status: 'pending',
+      timestamp: new Date().toISOString(),
+    };
+    
+    setMessages(prev => [...prev, optimisticMessage]);
+    
+    // Clear the recording UI immediately for better UX
+    cancelRecording();
 
     try {
       // Create file from blob
@@ -1411,18 +1447,19 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         throw new Error(response.error.message);
       }
 
-      // Note: The Edge Function already saves the message to the database,
-      // and the realtime subscription will add it to the UI automatically.
-      // No need for optimistic update here to avoid duplicate messages.
-
-      // Clear the recorded audio
-      cancelRecording();
+      // Update optimistic message to sent status
+      setMessages(prev => prev.map(m => 
+        m.id === optimisticId ? { ...m, status: 'sent', media_url: mediaUrl } : m
+      ));
 
       toast({
         title: "Áudio enviado",
         description: "Mensagem de voz enviada com sucesso.",
       });
     } catch (error: any) {
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
+      
       toast({
         title: "Erro ao enviar áudio",
         description: error.message || "Não foi possível enviar o áudio.",
@@ -1498,9 +1535,30 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     if (!mediaPreview || !selectedConversation || !selectedInstance || isUploading) return;
 
     setIsUploading(true);
+    
+    // Optimistic update - show media message immediately
+    const { type, file, preview } = mediaPreview;
+    const optimisticId = `optimistic-${Date.now()}`;
+    const captionToSend = mediaCaption;
+    
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      conversation_id: selectedConversation.id,
+      message_id: null,
+      from_me: true,
+      message_type: type === 'document' ? 'document' : type,
+      content: captionToSend || (type === 'image' ? '[Imagem]' : type === 'video' ? '[Vídeo]' : `[Documento] ${file.name}`),
+      media_url: preview || null, // Use preview URL for immediate display
+      status: 'pending',
+      timestamp: new Date().toISOString(),
+    };
+    
+    setMessages(prev => [...prev, optimisticMessage]);
+    
+    // Clear preview immediately for better UX
+    cancelMediaUpload();
 
     try {
-      const { type, file } = mediaPreview;
       const fileExt = file.name.split('.').pop();
       const fileName = `${selectedConversation.id}/${Date.now()}.${fileExt}`;
 
@@ -1548,7 +1606,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
             instanceId: selectedInstance.instance_id,
             instanceToken: selectedInstance.instance_token,
             base64: base64Data,
-            caption: mediaCaption,
+            caption: captionToSend,
             mediaUrl: mediaUrl,
           },
         });
@@ -1556,6 +1614,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         if (response.error) {
           throw new Error(response.error.message);
         }
+        
+        // Update optimistic message with final URL
+        setMessages(prev => prev.map(m => 
+          m.id === optimisticId ? { ...m, status: 'sent', media_url: mediaUrl || m.media_url } : m
+        ));
       } else if (type === 'document') {
         // For documents: upload to storage first (W-API needs URL)
         const { error: uploadError } = await supabase.storage
@@ -1587,6 +1650,11 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         if (response.error) {
           throw new Error(response.error.message);
         }
+        
+        // Update optimistic message with final URL
+        setMessages(prev => prev.map(m => 
+          m.id === optimisticId ? { ...m, status: 'sent', media_url: mediaUrl } : m
+        ));
       } else if (type === 'video') {
         // For videos: upload to storage first (W-API needs URL)
         const { error: uploadError } = await supabase.storage
@@ -1613,23 +1681,28 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
             instanceId: selectedInstance.instance_id,
             instanceToken: selectedInstance.instance_token,
             mediaUrl,
-            caption: mediaCaption,
+            caption: captionToSend,
           },
         });
 
         if (response.error) {
           throw new Error(response.error.message);
         }
+        
+        // Update optimistic message with final URL
+        setMessages(prev => prev.map(m => 
+          m.id === optimisticId ? { ...m, status: 'sent', media_url: mediaUrl } : m
+        ));
       }
-
-      // Clear preview
-      cancelMediaUpload();
 
       toast({
         title: "Mídia enviada",
         description: `${type === 'image' ? 'Imagem' : type === 'audio' ? 'Áudio' : type === 'video' ? 'Vídeo' : 'Arquivo'} enviado com sucesso.`,
       });
     } catch (error: any) {
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
+      
       toast({
         title: "Erro ao enviar mídia",
         description: error.message || "Não foi possível enviar a mídia.",
