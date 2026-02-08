@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { RefreshCw, Trash2, FileText, AlertTriangle, Database, Copy, Loader2 } from "lucide-react";
+import { RefreshCw, Trash2, FileText, AlertTriangle, Database, Copy, Loader2, Download, Users, MessageCircle, MessagesSquare } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { exportLeadsToJSON, exportConversationsToJSON, exportMessagesToJSON } from "@/components/admin/exportDataJSON";
 
 interface AdvancedSectionProps {
   userId: string;
@@ -40,6 +41,11 @@ export function AdvancedSection({ userId, isAdmin }: AdvancedSectionProps) {
   const [isMerging, setIsMerging] = useState(false);
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);
   const [hasScanned, setHasScanned] = useState(false);
+  
+  // JSON Export states
+  const [isExportingLeads, setIsExportingLeads] = useState(false);
+  const [isExportingConversations, setIsExportingConversations] = useState(false);
+  const [isExportingMessages, setIsExportingMessages] = useState(false);
 
   const scanForDuplicates = async () => {
     setIsScanning(true);
@@ -406,6 +412,119 @@ export function AdvancedSection({ userId, isAdmin }: AdvancedSectionProps) {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Exportação de Dados JSON - Apenas Admin */}
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Exportar Dados (JSON)
+            </CardTitle>
+            <CardDescription>
+              Baixe os dados do sistema em formato JSON para backup ou análise
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Exporte leads, conversas e mensagens em arquivos JSON separados.
+              Os arquivos podem ser usados para backup, migração ou análise de dados.
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              {/* Export Leads */}
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setIsExportingLeads(true);
+                  const result = await exportLeadsToJSON();
+                  setIsExportingLeads(false);
+                  if (result.success) {
+                    toast({
+                      title: "Leads exportados",
+                      description: `${result.count} lead(s) exportado(s) com sucesso.`,
+                    });
+                  } else {
+                    toast({
+                      title: "Erro ao exportar",
+                      description: result.error,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                disabled={isExportingLeads}
+              >
+                {isExportingLeads ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Users className="w-4 h-4 mr-2" />
+                )}
+                Leads
+              </Button>
+
+              {/* Export Conversations */}
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setIsExportingConversations(true);
+                  const result = await exportConversationsToJSON();
+                  setIsExportingConversations(false);
+                  if (result.success) {
+                    toast({
+                      title: "Conversas exportadas",
+                      description: `${result.count} conversa(s) exportada(s) com sucesso.`,
+                    });
+                  } else {
+                    toast({
+                      title: "Erro ao exportar",
+                      description: result.error,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                disabled={isExportingConversations}
+              >
+                {isExportingConversations ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                )}
+                Conversas
+              </Button>
+
+              {/* Export Messages */}
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setIsExportingMessages(true);
+                  const result = await exportMessagesToJSON();
+                  setIsExportingMessages(false);
+                  if (result.success) {
+                    toast({
+                      title: "Mensagens exportadas",
+                      description: `${result.count} mensagem(ns) exportada(s) com sucesso.`,
+                    });
+                  } else {
+                    toast({
+                      title: "Erro ao exportar",
+                      description: result.error,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                disabled={isExportingMessages}
+              >
+                {isExportingMessages ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <MessagesSquare className="w-4 h-4 mr-2" />
+                )}
+                Mensagens
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Mesclar Conversas Duplicadas - Apenas Admin */}
       {isAdmin && (
