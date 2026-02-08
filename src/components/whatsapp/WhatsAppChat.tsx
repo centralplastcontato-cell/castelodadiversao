@@ -551,7 +551,35 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
             filter: `conversation_id=eq.${selectedConversation.id}`,
           },
           (payload) => {
-            setMessages((prev) => [...prev, payload.new as Message]);
+            const newMessage = payload.new as Message;
+            setMessages((prev) => {
+              // Check if this message already exists (optimistic update case)
+              // Match by message_id or content+timestamp for from_me messages
+              const exists = prev.some(m => {
+                // If both have message_id, compare those
+                if (m.message_id && newMessage.message_id) {
+                  return m.message_id === newMessage.message_id;
+                }
+                // For optimistic messages (no message_id yet), check by ID prefix
+                if (m.id.startsWith('optimistic-') && m.from_me && newMessage.from_me) {
+                  // Same content and close timestamp = same message
+                  return m.content === newMessage.content && 
+                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMessage.timestamp).getTime()) < 5000;
+                }
+                return m.id === newMessage.id;
+              });
+              
+              if (exists) {
+                // Replace optimistic message with real one
+                return prev.map(m => {
+                  if (m.id.startsWith('optimistic-') && m.content === newMessage.content && m.from_me && newMessage.from_me) {
+                    return newMessage;
+                  }
+                  return m;
+                });
+              }
+              return [...prev, newMessage];
+            });
           }
         )
         .subscribe();
@@ -688,18 +716,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
       
       // Load more when scrolled near top (within 80px) and user has manually scrolled
       // canLoadMoreRef prevents auto-loading right after initial scroll
-      if (scrollTop < 80 && messages.length > 0) {
-        console.log('[Scroll Debug]', {
-          scrollTop,
-          hasMoreMessages,
-          isLoadingMore: isLoadingMoreRef.current,
-          isInitialLoad,
-          canLoadMore: canLoadMoreRef.current,
-          messagesCount: messages.length
-        });
-      }
       if (scrollTop < 80 && hasMoreMessages && !isLoadingMoreRef.current && !isInitialLoad && messages.length > 0 && canLoadMoreRef.current) {
-        console.log('[Scroll] Loading more messages...');
         loadMoreMessages();
       }
     };
@@ -952,7 +969,6 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         
         // Check if there are more messages
         const moreAvailable = data.length >= MESSAGES_LIMIT;
-        console.log('[fetchMessages]', { dataLength: data.length, limit: MESSAGES_LIMIT, moreAvailable, loadMore });
         setHasMoreMessages(moreAvailable);
         
         if (loadMore) {
@@ -1147,14 +1163,31 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !selectedInstance || isSending) return;
 
+    const messageToSend = newMessage.trim();
+    setNewMessage(""); // Clear immediately for UX
     setIsSending(true);
+
+    // Optimistic update - show message immediately
+    const optimisticMessage: Message = {
+      id: `optimistic-${Date.now()}`,
+      conversation_id: selectedConversation.id,
+      message_id: null,
+      from_me: true,
+      message_type: 'text',
+      content: messageToSend,
+      media_url: null,
+      status: 'pending',
+      timestamp: new Date().toISOString(),
+    };
+    
+    setMessages(prev => [...prev, optimisticMessage]);
 
     try {
       const response = await supabase.functions.invoke("wapi-send", {
         body: {
           action: "send-text",
           phone: selectedConversation.contact_phone,
-          message: newMessage,
+          message: messageToSend,
           conversationId: selectedConversation.id,
           instanceId: selectedInstance.instance_id,
           instanceToken: selectedInstance.instance_token,
@@ -1165,12 +1198,15 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
         throw new Error(response.error.message);
       }
 
-      setNewMessage("");
-      
-      // Note: The Edge Function already saves the message to the database,
-      // and the realtime subscription will add it to the UI automatically.
-      // No need for optimistic update here to avoid duplicate messages.
+      // Update optimistic message to sent status while waiting for realtime
+      setMessages(prev => prev.map(m => 
+        m.id === optimisticMessage.id ? { ...m, status: 'sent' } : m
+      ));
     } catch (error: unknown) {
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+      setNewMessage(messageToSend); // Restore message to input
+      
       toast({
         title: "Erro ao enviar",
         description: error instanceof Error ? error.message : "Não foi possível enviar a mensagem.",
