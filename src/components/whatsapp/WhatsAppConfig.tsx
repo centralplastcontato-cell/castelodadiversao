@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Wifi, MessageSquare, Bell, Bot, Settings, Lock, HelpCircle, FolderOpen } from "lucide-react";
+import { Wifi, MessageSquare, Bell, Bot, Settings, Lock, HelpCircle, FolderOpen, Download } from "lucide-react";
 import { ConnectionSection } from "./settings/ConnectionSection";
 import { MessagesSection } from "./settings/MessagesSection";
 import { NotificationsSection } from "./settings/NotificationsSection";
@@ -7,6 +7,7 @@ import { AutomationsSection } from "./settings/AutomationsSection";
 import { AdvancedSection } from "./settings/AdvancedSection";
 import { VisualGuideSection } from "./settings/VisualGuideSection";
 import { SalesMaterialsSection } from "./settings/SalesMaterialsSection";
+import { DataExportSection } from "./settings/DataExportSection";
 import { useConfigPermissions } from "@/hooks/useConfigPermissions";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -67,6 +68,13 @@ const allConfigSections = [
     description: "Legenda de ícones",
     icon: HelpCircle,
   },
+  {
+    id: "export",
+    permissionKey: "advanced" as const, // Admin only
+    title: "Exportar Dados",
+    description: "Exportar CSV",
+    icon: Download,
+  },
 ];
 
 export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
@@ -104,6 +112,8 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
         return <AdvancedSection userId={userId} isAdmin={isAdmin} />;
       case "guide":
         return <VisualGuideSection />;
+      case "export":
+        return <DataExportSection userId={userId} isAdmin={isAdmin} />;
       default:
         return null;
     }
