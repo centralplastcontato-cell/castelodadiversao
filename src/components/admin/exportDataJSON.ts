@@ -45,7 +45,6 @@ export async function exportLeadsToJSON(): Promise<{ success: boolean; count: nu
 // Export WhatsApp Conversations to JSON
 export async function exportConversationsToJSON(): Promise<{ success: boolean; count: number; error?: string }> {
   try {
-    // First get conversations with instance_id
     const { data: conversations, error: convError } = await supabase
       .from("wapi_conversations")
       .select(`
@@ -58,11 +57,14 @@ export async function exportConversationsToJSON(): Promise<{ success: boolean; c
         last_message_from_me,
         unread_count,
         bot_enabled,
+        bot_step,
+        bot_data,
         is_closed,
         is_favorite,
         is_equipe,
         is_freelancer,
-        has_scheduled_visit
+        has_scheduled_visit,
+        created_at
       `)
       .order("last_message_at", { ascending: false });
 
@@ -92,11 +94,14 @@ export async function exportConversationsToJSON(): Promise<{ success: boolean; c
       last_message_from_me: conv.last_message_from_me,
       unread_count: conv.unread_count,
       bot_enabled: conv.bot_enabled,
+      bot_step: conv.bot_step,
+      bot_data: conv.bot_data,
       is_closed: conv.is_closed,
       is_favorite: conv.is_favorite,
       is_equipe: conv.is_equipe,
       is_freelancer: conv.is_freelancer,
       has_scheduled_visit: conv.has_scheduled_visit,
+      created_at: conv.created_at,
     }));
 
     const filename = `conversations-export-${format(new Date(), "yyyy-MM-dd_HH-mm")}.json`;
@@ -112,16 +117,18 @@ export async function exportConversationsToJSON(): Promise<{ success: boolean; c
 // Export WhatsApp Messages to JSON
 export async function exportMessagesToJSON(): Promise<{ success: boolean; count: number; error?: string }> {
   try {
-    // Get all messages with conversation info
+    // Get all messages
     const { data: messages, error: msgError } = await supabase
       .from("wapi_messages")
       .select(`
         id,
         conversation_id,
+        message_id,
         from_me,
         message_type,
         content,
         media_url,
+        status,
         timestamp
       `)
       .order("timestamp", { ascending: false });
@@ -135,7 +142,7 @@ export async function exportMessagesToJSON(): Promise<{ success: boolean; count:
     // Get all conversations to map contact_phone
     const conversationIds = [...new Set(messages.map(m => m.conversation_id))];
     
-    // Fetch conversations in batches if needed (Supabase has 1000 row limit)
+    // Fetch conversations in batches if needed
     const { data: conversations } = await supabase
       .from("wapi_conversations")
       .select("id, contact_phone")
@@ -149,10 +156,12 @@ export async function exportMessagesToJSON(): Promise<{ success: boolean; count:
     // Transform data to include contact_phone
     const exportData = messages.map(msg => ({
       contact_phone: phoneMap.get(msg.conversation_id) || "Desconhecido",
+      message_id: msg.message_id,
       from_me: msg.from_me,
       message_type: msg.message_type,
       content: msg.content,
       media_url: msg.media_url,
+      status: msg.status,
       timestamp: msg.timestamp,
     }));
 
@@ -163,5 +172,29 @@ export async function exportMessagesToJSON(): Promise<{ success: boolean; count:
   } catch (error: any) {
     console.error("Error exporting messages:", error);
     return { success: false, count: 0, error: error.message || "Erro ao exportar mensagens" };
+  }
+}
+
+// Export Sales Materials to JSON
+export async function exportSalesMaterialsToJSON(): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const { data: materials, error } = await supabase
+      .from("sales_materials")
+      .select("name, type, unit, file_url, file_path, photo_urls, guest_count, sort_order, is_active, created_at")
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+
+    if (!materials || materials.length === 0) {
+      return { success: false, count: 0, error: "Nenhum material de vendas encontrado" };
+    }
+
+    const filename = `sales-materials-export-${format(new Date(), "yyyy-MM-dd_HH-mm")}.json`;
+    downloadJSON(materials, filename);
+
+    return { success: true, count: materials.length };
+  } catch (error: any) {
+    console.error("Error exporting sales materials:", error);
+    return { success: false, count: 0, error: error.message || "Erro ao exportar materiais" };
   }
 }
