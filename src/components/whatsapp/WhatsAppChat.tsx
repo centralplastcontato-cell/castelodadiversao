@@ -854,7 +854,7 @@ export function WhatsAppChat({ userId, allowedUnits, initialPhone, onPhoneHandle
     }
   };
 
-  const MESSAGES_LIMIT = 50; // Reduced for faster initial load
+  const MESSAGES_LIMIT = 10; // Reduced further for Cloud credit savings
   
   const fetchMessages = async (conversationId: string, loadMore: boolean = false) => {
     // Prevent concurrent loads
