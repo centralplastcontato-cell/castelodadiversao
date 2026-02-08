@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Wifi, MessageSquare, Bell, Bot, Settings, Lock, HelpCircle, FolderOpen, Download } from "lucide-react";
+import { Wifi, MessageSquare, Bell, Bot, Settings, Lock, HelpCircle, FolderOpen, Download, Code } from "lucide-react";
 import { ConnectionSection } from "./settings/ConnectionSection";
 import { MessagesSection } from "./settings/MessagesSection";
 import { NotificationsSection } from "./settings/NotificationsSection";
@@ -8,6 +8,7 @@ import { AdvancedSection } from "./settings/AdvancedSection";
 import { VisualGuideSection } from "./settings/VisualGuideSection";
 import { SalesMaterialsSection } from "./settings/SalesMaterialsSection";
 import { DataExportSection } from "./settings/DataExportSection";
+import { SqlSchemaSection } from "./settings/SqlSchemaSection";
 import { useConfigPermissions } from "@/hooks/useConfigPermissions";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -75,6 +76,13 @@ const allConfigSections = [
     description: "Exportar CSV",
     icon: Download,
   },
+  {
+    id: "sql",
+    permissionKey: "advanced" as const, // Admin only
+    title: "SQL Schema",
+    description: "Migrar tabelas",
+    icon: Code,
+  },
 ];
 
 export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
@@ -114,6 +122,8 @@ export function WhatsAppConfig({ userId, isAdmin }: WhatsAppConfigProps) {
         return <VisualGuideSection />;
       case "export":
         return <DataExportSection userId={userId} isAdmin={isAdmin} />;
+      case "sql":
+        return <SqlSchemaSection isAdmin={isAdmin} />;
       default:
         return null;
     }
